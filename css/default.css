@@ -42,8 +42,7 @@ div#header {
 div#logo a {
     color: black;
     float: left;
-    font-size: 18px;
-    font-weight: bold;
+    font-size: 24px;
     text-decoration: none;
 }
 
@@ -54,7 +53,6 @@ div#header #navigation {
 div#header #navigation a {
     color: black;
     font-size: 18px;
-    font-weight: bold;
     margin-left: 12px;
     text-decoration: none;
 }
