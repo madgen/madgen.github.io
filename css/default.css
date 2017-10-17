@@ -16,6 +16,7 @@ li {
     list-style-type: none;
     font-family: helvetica;
 }
+
 li::before{
     position:absolute;
     content:"";
@@ -34,7 +35,6 @@ li::before{
 }
 
 div#header {
-    border-bottom: 2px solid black;
     margin-bottom: 30px;
     padding: 12px 0px 12px 0px;
 }
@@ -58,6 +58,21 @@ div#header #navigation a {
     margin-left: 12px;
     text-decoration: none;
 }
+
+div#mandelbrot {
+  position: relative;
+  top: 10px;
+  width: 100%;
+  height: 100%;
+  padding-bottom: 0;
+}
+
+div#mandelbrot img {
+  width: 100%;
+  border-bottom: 2px solid black;
+  border-top: 2px solid black;
+}
+
 
 div#footer {
     border-top: solid 2px black;
