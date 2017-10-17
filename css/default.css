@@ -1,8 +1,36 @@
 body {
+    font-family: helvetica;
     color: black;
     font-size: 16px;
     margin: 0px auto 0px auto;
-    width: 600px;
+    width: 800px;
+}
+
+p {
+    text-align: justify;
+    text-justify: inter-word;
+}
+
+li {
+    position:relative;
+    list-style-type: none;
+    font-family: helvetica;
+}
+li::before{
+    position:absolute;
+    content:"";
+    top:15%;
+    -webkit-transform:translateY(-50%);
+    -moz-transform:translateY(-50%);
+    -o-transform:translateY(-50%);
+    -ms-transform:translateY(-50%);
+    transform:translateY(-50%);
+    margin-left:-20px;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 5px solid black;
 }
 
 div#header {
@@ -53,4 +81,9 @@ div.info {
     color: #555;
     font-size: 14px;
     font-style: italic;
+}
+
+a:link, a:visited, a:hover, a:active {
+    color: #6699ff;
+    text-decoration: none;
 }
