@@ -1,0 +1,21 @@
+name:                do-disturb-me
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/madgen/do-disturb-me#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Mistral Contrastin
+maintainer:          madgenhetic@gmail.com
+copyright:           2016
+category:            Static Analysis
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+executable do-disturb-me
+  main-is:             site.hs
+  default-language:    Haskell2010
+  ghc-options:         -threaded
+  build-depends:       base >= 4.7 && < 5,
+                       hakyll
