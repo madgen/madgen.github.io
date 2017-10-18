@@ -8,7 +8,8 @@ body {
 
 div#content {
     position: relative;
-    width: 800px;
+    max-width: 800px;
+    padding: 0 10px 0 10px;
     margin: 0px auto 0px auto;
 }
 
@@ -50,7 +51,8 @@ div.top-container {
     height: 24px;
     position: relative;
     margin: 0 auto 0 auto;
-    width: 800px;
+    padding: 0 10px 0 10px;
+    max-width: 800px;
 }
 
 div#logo a {
