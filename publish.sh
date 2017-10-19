@@ -20,6 +20,7 @@ rsync -a --filter='P _site/'      \
          --filter='P .git/'       \
          --filter='P .gitignore'  \
          --filter='P .stack-work' \
+         --filter='P CNAME'       \
          --delete-excluded        \
          _site/ .
 
