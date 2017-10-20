@@ -1,6 +1,6 @@
 # Teaching
 
-I regularly supervise undergraduates at Cambridge for variety of courses.
+I regularly supervise undergraduates at Cambridge for a variety of courses.
 
 You can also contact me if you want need a Part II supervisor for your project.
 I will be interested in supervising projects related to verification, compilers,
