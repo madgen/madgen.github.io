@@ -25,15 +25,36 @@
 
         <div id="content">
             <div class="info">
-  Posted on August 23, 2015
+  Posted on January 6th, 2018
   
   
 </div>
 
-<h1>example post</h1>
+<h1>Logic and Proof Example Sheet I</h1>
 
-<p>Mauris in lorem nisl. Maecenas tempus facilisis ante, eget viverra nisl tincidunt et. Donec turpis lectus, mattis ac malesuada a, accumsan eu libero. Morbi condimentum, tortor et tincidunt ullamcorper, sem quam pretium nulla, id convallis lectus libero nec turpis. Proin dapibus nisi id est sodales nec ultrices tortor pellentesque.</p>
-<p>Vivamus vel nisi ac lacus sollicitudin vulputate ac ut ligula. Nullam feugiat risus eget eros gravida in molestie sapien euismod. Nunc sed hendrerit orci. Nulla mollis consequat lorem ac blandit. Ut et turpis mauris. Nulla est odio, posuere id ullamcorper sit amet, tincidunt vel justo. Curabitur placerat tincidunt varius. Nulla vulputate, ipsum eu consectetur mollis, dui nibh aliquam neque, at ultricies leo ligula et arcu.</p>
+<h2 id="from-the-lecture-notes">From the lecture notes</h2>
+<ul>
+<li>Section 2 Exercises: 1, 2, 4</li>
+<li>Section 3 Exercises: 6, 7</li>
+<li>Section 4 Exercises: 8, 10, 11</li>
+</ul>
+<h2 id="exam-questions">Exam questions</h2>
+<ul>
+<li><a href="http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2010p6q6.pdf">2010/6/6</a> (b)</li>
+</ul>
+<h2 id="implementation">Implementation</h2>
+<p>Write a program to convert an arbitrary propositional logic formula to CNF. Formulae involve single capital letter variables and the following operators:</p>
+<ul>
+<li>implies</li>
+<li>and</li>
+<li>or</li>
+<li>not</li>
+</ul>
+<p>To prevent you from losing time on parsing you can use prefix notation.</p>
+<p>Example input from shell: or (and P Q) R Example output to shell: and (or P R) (or Q R)</p>
+<p>Bonus points if you implement a theorem prover on top of it. (It is not as difficult as it sounds.)</p>
+<p>Please write it in one of the following languages: Haskell, SML, OCaml, Prolog, Elixir, Ruby, Python, Fortran, C, C++, Java, Scheme, Common Lisp.</p>
+<p>You will realise it is much easier to do it in functional languages compared to procedural ones.</p>
 
         </div>
         <div id="footer">
