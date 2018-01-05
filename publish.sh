@@ -29,7 +29,7 @@ git add -A
 git commit -m "Publish."
 
 # Push
-git push origin master:master
+git push -f origin master:master
 
 # Restoration
 git checkout develop
