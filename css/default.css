@@ -13,18 +13,22 @@ div#content {
     margin: 0px auto 0px auto;
 }
 
+div.references {
+    border-top: 1px solid gray;
+}
+
 p {
     text-align: justify;
     text-justify: inter-word;
 }
 
-li {
+ul li {
     position:relative;
     list-style-type: none;
     font-family: helvetica;
 }
 
-li::before{
+ul li::before{
     position:absolute;
     content:"";
     top: 0.5em;

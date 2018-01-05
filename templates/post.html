@@ -1,8 +1,13 @@
 <div class="info">
-    Posted on $date$
-    $if(author)$
-        by $author$
-    $endif$
+  Posted on $date$
+  $if(author)$
+    by $author$
+  $endif$
+  $if(lastUpdated)$
+    and last updated on $lastUpdated$
+  $endif$
 </div>
+
+<h1>$title$</h1>
 
 $body$

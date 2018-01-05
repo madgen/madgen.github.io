@@ -1,0 +1,56 @@
+---
+title: Compiler Construction Example Sheet III
+date: January 6th, 2018
+---
+
+\begin{document}
+
+\begin{enumerate}
+  \item Read the paper by~\citet{reynolds1972definitional} up to and including
+    section seven. Later sections are delightful as well, but less relevant to
+    the course. Section one can be skimmed, but it nicely sets up the scene. He
+    talks about \textsc{Algol} a lot. For the unfamiliar it is the archetype of
+    block structured programming languages \emph{e.g.} \textsc{C}, but unlike
+    \textsc{C} it has \emph{some} high-order function support.
+
+    This is a great paper in computer science. Apart from historical value, it
+    is also what the lecturer basis his interpreter upon. It will allow you to
+    deeply understand how and why we bother with defunctionalisation \&
+    continuation passing style.
+
+    I strongly suggest you read it before you attempt the rest of the workset.
+
+  \item
+    \href{https://www.cl.cam.ac.uk/teaching/current/CompConstr/Exercises_Set_2.ml}{Exercise
+    set 2} (from the course site)
+
+  \item How is the state data type in interpreter 1 used? What is the
+    difference between EXAMINE and COMPUTE constructors? Discuss in detail.
+
+  \item How can multiple source files can be compiled separately and linked
+    together? How and which parts of ELF help you do that?
+
+  \item \href{http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2017p23q4.pdf}{2017/3/4}
+
+  \item Write a program with the following specification on Linux outputting an
+    ELF binary using x86\_64 instruction set:
+
+    Input: An integer N (supplied as command line argument or standard input)
+
+    Output: N lines. In the first of which there is a \texttt{*} and in each
+    subsequent lines there is an extra star.
+
+    Example:
+    \begin{minted}{text}
+Input: 5
+Output:
+*
+**
+***
+****
+*****
+    \end{minted}
+
+\end{enumerate}
+
+\end{document}

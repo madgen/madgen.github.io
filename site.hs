@@ -3,10 +3,13 @@
 import           Data.Monoid (mappend)
 import           Hakyll
 
-
 --------------------------------------------------------------------------------
 main :: IO ()
 main = hakyll $ do
+    match "bib/bib.bib" $ compile biblioCompiler
+    -- Taken from https://github.com/citation-style-language/styles
+    match "bib/elsevier-harvard.csl" $ compile cslCompiler
+
     match "images/*" $ do
         route   idRoute
         compile copyFileCompiler
@@ -18,6 +21,14 @@ main = hakyll $ do
     match "posts/*" $ do
         route $ setExtension "html"
         compile $ pandocCompiler
+            >>= loadAndApplyTemplate "templates/post.html"    postCtx
+            >>= loadAndApplyTemplate "templates/default.html" postCtx
+            >>= relativizeUrls
+
+    match "example-sheets/*" $ do
+        route $ setExtension "html"
+
+        compile $ pandocBiblioCompiler "bib/elsevier-harvard.csl" "bib/bib.bib"
             >>= loadAndApplyTemplate "templates/post.html"    postCtx
             >>= loadAndApplyTemplate "templates/default.html" postCtx
             >>= relativizeUrls
