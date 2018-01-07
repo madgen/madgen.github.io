@@ -44,10 +44,10 @@ main = hakyll $ do
         route idRoute
         compile $ do
             posts <- recentFirst =<< loadAll "posts/*"
-            let archiveCtx =
-                  constField "title" "Blog"
-                  partialWith posts postCtx `mappend`
-                  defaultContext
+            let archiveCtx = constField "title" "Blog"
+                          <> partialWith posts postCtx
+                          <> defaultContext
+
 
             makeItem ""
                 >>= loadAndApplyTemplate "templates/archive.html" archiveCtx
@@ -57,9 +57,7 @@ main = hakyll $ do
     match "teaching.markdown" $ do
       route $ setExtension "html"
       compile $ do
-        let indexCtx =
-              constField "title" "Teaching" `mappend`
-              defaultContext
+        let indexCtx = constField "title" "Teaching" <> defaultContext
 
         pandocCompiler
           >>= loadAndApplyTemplate "templates/default.html" indexCtx
@@ -68,9 +66,7 @@ main = hakyll $ do
     match "index.html" $ do
         route idRoute
         compile $ do
-            let indexCtx =
-                    constField "title" "Home"                `mappend`
-                    defaultContext
+            let indexCtx = constField "title" "Home" <> defaultContext
 
             getResourceBody
                 >>= applyAsTemplate indexCtx
