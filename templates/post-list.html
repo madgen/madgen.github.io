@@ -1,11 +1,15 @@
-$if(postsNonNull)$
-  <ul>
-    $for(posts)$
-      <li>
-        <a href="$url$" class="blog-title">$title$</a> - $date$
-      </li>
-    $endfor$
-  </ul>
-$else$
-  Nothing to see here yet!
-$endif$
+<div class="archive-column">
+  <h2>$postType$</h2>
+
+  $if(postsNonNull)$
+    <ul>
+      $for(posts)$
+        <li>
+          <a href="$url$" class="blog-title">$title$</a> - $date$
+        </li>
+      $endfor$
+    </ul>
+  $else$
+    <p>Nothing to see here yet!</p>
+  $endif$
+</div>

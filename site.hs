@@ -89,7 +89,8 @@ partialWith items itemCtx = functionField "partialWith" f
     loadAndApplyTemplate
       (fromString template)
       (listField var itemCtx (return filteredItems) `mappend`
-       boolField (var ++ "NonNull") (const . not . null $ filteredItems)) cmp
+       boolField (var ++ "NonNull") (const . not . null $ filteredItems) `mappend`
+       constField key val) cmp
 
   itemP key val item = do
     mVal <- flip getMetadataField key . itemIdentifier $ item

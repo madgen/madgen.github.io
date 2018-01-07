@@ -17,6 +17,11 @@ div.references {
     border-top: 1px solid gray;
 }
 
+div.archive-column {
+    width: 390px;
+    display: inline-block;
+}
+
 p {
     text-align: justify;
     text-justify: inter-word;
