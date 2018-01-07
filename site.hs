@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-import           Data.Monoid (mappend)
+import           Data.Monoid ((<>))
 import qualified Data.Map.Strict as M
 import           Data.String (fromString)
 
@@ -84,13 +84,11 @@ partialWith :: [ Item a ] -> Context a -> Context a
 partialWith items itemCtx = functionField "partialWith" f
   where
   f [template, var, key, val] _ = fmap itemBody $ do
-    cmp <- makeItem ""
     filteredItems <- filterM (itemP key val) items
-    loadAndApplyTemplate
-      (fromString template)
-      (listField var itemCtx (return filteredItems) `mappend`
-       boolField (var ++ "NonNull") (const . not . null $ filteredItems) `mappend`
-       constField key val) cmp
+    let ctx = listField var itemCtx (return filteredItems)
+           <> boolField (var ++ "NonNull") (const . not . null $ filteredItems)
+           <> constField key val
+    makeItem "" >>= loadAndApplyTemplate (fromString template) ctx
 
   itemP key val item = do
     mVal <- flip getMetadataField key . itemIdentifier $ item
