@@ -1,7 +1,11 @@
-<ul>
+$if(postsNonNull)$
+  <ul>
     $for(posts)$
-        <li>
-            <a href="$url$">$title$</a> - $date$
-        </li>
+      <li>
+        <a href="$url$" class="blog-title">$title$</a> - $date$
+      </li>
     $endfor$
-</ul>
+  </ul>
+$else$
+  Nothing to see here yet!
+$endif$

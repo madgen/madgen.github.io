@@ -1,6 +1,13 @@
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 import           Data.Monoid (mappend)
+import qualified Data.Map.Strict as M
+import           Data.String (fromString)
+
+import           Control.Monad (filterM, (>=>))
+
 import           Hakyll
 
 --------------------------------------------------------------------------------
@@ -38,9 +45,8 @@ main = hakyll $ do
         compile $ do
             posts <- recentFirst =<< loadAll "posts/*"
             let archiveCtx =
-                    listField "posts" postCtx (return posts) `mappend`
-                    constField "title" "Archives"            `mappend`
-                    defaultContext
+                  partialWith posts postCtx `mappend`
+                  defaultContext
 
             makeItem ""
                 >>= loadAndApplyTemplate "templates/archive.html" archiveCtx
@@ -74,6 +80,21 @@ main = hakyll $ do
 
 
 --------------------------------------------------------------------------------
+partialWith :: [ Item a ] -> Context a -> Context a
+partialWith items itemCtx = functionField "partialWith" f
+  where
+  f [template, var, key, val] _ = fmap itemBody $ do
+    cmp <- makeItem ""
+    filteredItems <- filterM (itemP key val) items
+    loadAndApplyTemplate
+      (fromString template)
+      (listField var itemCtx (return filteredItems) `mappend`
+       boolField (var ++ "NonNull") (const . not . null $ filteredItems)) cmp
+
+  itemP key val item = do
+    mVal <- flip getMetadataField key . itemIdentifier $ item
+    return $ mVal == Just val
+
 postCtx :: Context String
 postCtx =
     dateField "date" "%B %e, %Y" `mappend`
