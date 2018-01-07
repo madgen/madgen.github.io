@@ -45,6 +45,7 @@ main = hakyll $ do
         compile $ do
             posts <- recentFirst =<< loadAll "posts/*"
             let archiveCtx =
+                  constField "title" "Blog"
                   partialWith posts postCtx `mappend`
                   defaultContext
 
