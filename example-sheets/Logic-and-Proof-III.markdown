@@ -1,6 +1,6 @@
 ---
 title: Logic and Proof Example Sheet I
-date: January 6th, 2018
+date: 2018-01-06
 ---
 
 ## From the lecture notes
