@@ -16,6 +16,8 @@ div#content {
 p.in-which {
     color: dimgray;
     vertical-align: top;
+    min-height: 3em;
+    bottom-margin: 10px;
 }
 
 p.in-which span.drop {
