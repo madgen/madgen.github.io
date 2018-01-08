@@ -10,4 +10,8 @@
 
 <h1>$title$</h1>
 
-$body$
+$if(inWhich)$
+<p class="in-which"><span class="drop">I</span>n which $inWhich$</p>
+$endif$
+
+<div class="post">$body$</div>

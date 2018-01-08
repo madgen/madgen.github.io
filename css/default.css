@@ -13,6 +13,23 @@ div#content {
     margin: 0px auto 0px auto;
 }
 
+p.in-which {
+    color: dimgray;
+    vertical-align: top;
+}
+
+p.in-which span.drop {
+  display: inline-block;
+  float: left;
+  font-size: 3em;
+  width: 1em;
+  height: 1em;
+  text-align: center;
+  line-height: 0.98;
+  border: 2px solid dimgrey;
+  margin-right: 5px;
+}
+
 div.references {
     border-top: 1px solid gray;
 }
