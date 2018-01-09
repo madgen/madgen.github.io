@@ -15,6 +15,7 @@ div#content {
 
 p.in-which {
     color: dimgray;
+    font-size: 1.5em;
     vertical-align: top;
     min-height: 3em;
     bottom-margin: 10px;
@@ -24,10 +25,9 @@ p.in-which span.drop {
   display: inline-block;
   float: left;
   font-size: 3em;
-  width: 1em;
-  height: 1em;
+  width: 1.1em;
+  height: 1.1em;
   text-align: center;
-  line-height: 0.98;
   border: 2px solid dimgrey;
   margin-right: 5px;
 }
