@@ -21,6 +21,7 @@ p.in-which {
     bottom-margin: 10px;
 }
 
+/* Unused for now
 p.in-which span.drop {
   display: inline-block;
   float: left;
@@ -31,6 +32,7 @@ p.in-which span.drop {
   border: 2px solid dimgrey;
   margin-right: 5px;
 }
+*/
 
 div.references {
     border-top: 1px solid gray;
