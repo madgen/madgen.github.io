@@ -41,8 +41,6 @@ it is not as helpful as some think! They are also given different names,
 `extract`, `extend`, and `duplicate`. Whether these names make the concept more
 clear or confusing is a source of endless lively discussions.
 
-Without further ado, here is the full typeclass.
-
 ```haskell
 class Functor w => Comonad w where
   extract   :: w a -> a
@@ -51,18 +49,18 @@ class Functor w => Comonad w where
   extend f cm = fmap f (duplicate cm)
 ```
 
-I know it is not terribly interesting after I gave it away in the explanation,
-but oh well. Perhaps the interesting bit here is the simple definition of
-`extend` in terms of `duplicate`. In particular, `f` in extend does some form of
-re duction from the *context* and this is applied over duplicate of a comonad
-instance. Intuitively, extend's job is to apply `f` to each focus point. This
-impleis that the function of duplicate is to encapsulate the instance within
-itself with different points in focus.
+I know the definition is not terribly exciting after I gave it away in the
+explanation. Perhaps the interesting bit is the simple definition of `extend` in
+terms of `duplicate`. In particular, `f` in extend does some form of reduction
+from the *context* and this is applied over duplicate of a comonad instance.
+Intuitively, `extend`'s job is to use `f` to compute new focus points. This
+implies that `duplicate`'s function is to encapsulate the instance within itself
+with different points in focus.
 
-OK. I know. That explanation was less than intuitive and slightly dizzying. So
-let's see an insntance instead. The data structure of interest today is a
-*zipper*. You can think of it as a list with the concept of focus[^1]. It is
-defined below with functions to navigate it.
+OK. I know. That explanation was less than intuitive. Let's see an instance
+instead. The data structure of interest today is a *zipper*. You can think of it
+as a list with a focus[^1]. It is defined along with helpful functions to
+change the focus point.
 
 ```haskell
 data Zipper a = Zipper [ a ] a [ a ] deriving Functor
@@ -70,18 +68,17 @@ data Zipper a = Zipper [ a ] a [ a ] deriving Functor
 left, right :: Zipper a -> Zipper a
 left  (Zipper (l:ls) a rs) = Zipper ls l (a:rs)
 right (Zipper ls a (r:rs)) = Zipper (a:ls) r rs
-
 ```
 
 The middle element is the focus point and we have bunch of elements to the left
-and right. We'll use zippers with infinite number of elements in this tutorial
-but there isn't a fundamental reason that is the case. So you can think a zipper
-as an infinite tape with a focus and `left` and `right` operations as shifting
-the tape.
+and right. We'll use zippers with infinite number of elements, but there isn't a
+fundamental reason that has to be the case elsewhere. So you can think of a
+zipper as an infinite tape with a focus and `left` & `right` functions as
+shifting the tape.
 
 Let's get to the comonad instance for `Zipper`. The `extract` function is
 pleasingly dull and extracts the focus of the zipper. The `duplicate` function
-is slightly more exciting. It makes shifted copies of the zipper in a zipper
+is slightly more interesting. It makes shifted copies of the zipper in a zipper
 where the shifting is determined by the direction and distance from the focus
 point of the resulting zipper[^2].
 
@@ -104,37 +101,36 @@ Christmas tree (a rather underwhelming use case).
 
 We will use two cellular automata. First to grow the tree and then another to
 make it blink. We need an initial configuration to start the whole process and
-as promised, it is a single dot on an infinite tape (zipper).
+as promised, it is a single dot on an infinite tape.
 
 ```haskell
 initConf = Zipper (repeat 0) 1 (repeat 0)
 ```
 
 Any respectable Christmas tree would have at least two dimensions and this
-zipper represents only one. We can deal with this by stacking multiple
-generations of `grow` applied to every point in this initial configuration[^3].
+zipper represents only the top of the tree. We can deal with this by evolving
+this initial configuration via the reduction `grow` and stack the generations
+one below the other[^3].
 
 ```haskell
 grow :: Zipper Int -> Int
 grow (Zipper (l:_) a (r:_)) = if l == r then 0 else 1
 ```
 
-Here `grow` is a reduction and the type signature corresponds exactly to that
-required by the `extend` function from the comonad instance for `Zipper`.
-Functionally, it is the XOR of the left and right neighbours.
+Here `grow`'s type signature corresponds exactly to that expected by the
+`extend` function. Functionally, it is the XOR of the left and right neighbours.
 
-If you create 10 generations, stack each successive generation below the
-predecessor, and print it on your terminal, you obtain a tree looking ASCII art.
-Here we abuse the fact that in each generation the farthest left and right `1`
-values will have one farther that has a `0` and `1` neighbours. Hence, we get a
-rectangular shape stacking them one after another. Never mind the fact that I am
-also abusing the aspect ratio of individual cells on the terminal to achieve a
-good top angle.
+If you create 16 generations, stack successive generations one after another,
+and print it on your terminal, you obtain a fine looking looking ASCII tree.
+Here we use the fact that in each generation the farthest left and right `1`
+values will have one farther cell with `0` and `1` as its neighbours. Hence, we
+get a triangular shape after stacking them. Never mind me abusing the aspect
+ratio of individual cells on the terminal to achieve a good top angle.
 
 [image]
 
 Now that we have a tree (of infinite height), we can focus on making it blink.
-We will make this through the `blink` reduction.
+We will make this using the `blink` reduction.
 
 ```haskell
 blink :: Zipper Int -> Int
@@ -143,28 +139,28 @@ blink (Zipper (l1:l2:_) a (r1:r2:_)) = 1 + (l1 + l2 + a + r1 + r2) `mod` 3
 ```
 
 It is constructed so that `0` is treated as dead space and maps to itself
-regardless the context and no other value ever maps to it (via `1 +` non-zero
-expression). We compute modulo three of a five cells wide window, which gives us
-sufficiently "random" blinking pattern and three patterns to choose from.
+regardless the context and no other value ever maps to it (by adding one to a
+non-zero expression). We compute modulo three of a five cells wide window which
+gives us sufficiently "random" blinking pattern and three symbols to shift
+through.
 
 Now that we have our reductions, all we need to do it to use `grow` to generate
 as many configurations as we like the height of the tree and use `blink` to
 animate it. We can exploit Haskell's laziness to generate a comprehensive tree
 and worry about height, width, and number of animation frames once it gets to
-display.
+displaying it.
 
 ```haskell
 trees :: [ [ Zipper Int ] ]
-trees = frames
+trees = transpose $ iterate (extend blink) <$> tree
   where
-  frames = transpose $ iterate (extend blink) <$> tree
   tree = iterate (extend grow) initConf
 ```
 
-Repeated application of `grow` through `iterate` produces tapes to stack down
-and we use each of those cellular automaton with `blink` to animate. All
-`transpose` gives is a list of frames of trees instead of a list of list of
-automata configuration frames.
+Repeated application of `grow` through `iterate` produces tapes to stack and we
+use each of those configurations with `blink` to animate. All `transpose` gives
+is a list of frames of trees instead of a list of list of automata
+configurations.
 
 ## Displaying infinity
 
@@ -180,7 +176,7 @@ frame halfWidth height zs = take height $ frameConfig <$> zs
     reverse (take (halfWidth - 1) ls) ++ a : take (halfWidth - 1) rs
 ```
 
-Although I like `Int`s as much as the next version, asterisks, pluses, and x
+Although I like `Int`s as much as the next person, asterisks, pluses, and x
 make better tree ornaments.
 
 ```haskell
@@ -191,7 +187,7 @@ display 2 = '*'
 display 3 = '+'
 ```
 
-Bringing all of this together we can print it frames *forever* (though it is a
+Bringing all of this together we can print frames *forever* (though it is a
 periodic blinking behaviour) with some UNIX trickery to clear the terminal and
 inserting delays so our petty human eyes can follow the blinking.
 
