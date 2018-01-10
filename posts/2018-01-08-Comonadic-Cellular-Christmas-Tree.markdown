@@ -202,8 +202,13 @@ main = do
 
 ## Concluding thoughts
 
-I attach the full program below for your convenience (and to show off with its
-succinctness).
+Here it is, another comonad tutorial. I don't think it is any better than the
+others but it produces something different. A good exercise for strengthening
+your comonad-fu would be coding the Game of Life with the rules encoded as a
+reduction and board represented as a two dimensional array. Or perhaps you
+pursue understanding it categorically and then come and tell me about it.
+
+The full program is below for your convenience.
 
 ```haskell
 {-# LANGUAGE DeriveFunctor #-}
