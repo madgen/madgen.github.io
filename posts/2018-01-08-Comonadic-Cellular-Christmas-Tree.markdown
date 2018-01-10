@@ -231,6 +231,8 @@ instance Comonad Zipper where
   extract (Zipper _ a _) = a
   duplicate u = Zipper (tail $ iterate left u) u (tail $ iterate right u)
 
+initConf = Zipper (repeat 0) 1 (repeat 0)
+
 grow :: Zipper Int -> Int
 grow (Zipper (l:_) a (r:_)) = if l == r then 0 else 1
 
@@ -238,25 +240,22 @@ blink :: Zipper Int -> Int
 blink (Zipper _ 0 _) = 0
 blink (Zipper (l1:l2:_) a (r1:r2:_)) = 1 + (l1 + l2 + a + r1 + r2) `mod` 3
 
-initConf = Zipper (repeat 0) 1 (repeat 0)
-
 trees :: [ [ Zipper Int ] ]
-trees = frames
+trees = transpose $ iterate (extend blink) <$> tree
   where
-  frames = transpose $ iterate (extend blink) <$> tree
   tree = iterate (extend grow) initConf
-
-display :: Int -> Char
-display 0 = ' '
-display 1 = 'x'
-display 2 = '*'
-display 3 = '+'
 
 frame :: Int -> Int -> [ Zipper a ] -> [ [ a ] ]
 frame halfWidth height zs = take height $ frameConfig <$> zs
   where
   frameConfig (Zipper ls a rs) =
     reverse (take (halfWidth - 1) ls) ++ a : take (halfWidth - 1) rs
+
+display :: Int -> Char
+display 0 = ' '
+display 1 = 'x'
+display 2 = '*'
+display 3 = '+'
 
 main = do
   let (halfWidth, height) = (17, 16)
