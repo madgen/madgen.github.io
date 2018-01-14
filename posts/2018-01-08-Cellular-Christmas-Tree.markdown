@@ -125,7 +125,7 @@ Here `grow`'s type signature corresponds exactly to that expected by the
 
 If you evolve 16 generations, stack successive generations one after another,
 and print it on your terminal, you obtain a fine looking looking ASCII tree.  In
-each geneartion, the farthest left and right `1`-cells have one farther
+each generation, the farthest left and right `1`-cells have one farther
 `0`-cell. This cell, then, has a `0`-cell and `1`-cell as its neighbours.  In
 the next generation, these `0`-cells become `1`-cells and we get a triangular
 shape for stacking them. By the way, never mind me abusing the letter aspect
