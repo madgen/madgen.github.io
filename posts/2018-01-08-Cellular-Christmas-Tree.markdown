@@ -1,45 +1,48 @@
 ---
-title: Comonadic Cellular Christmas Tree
+title: Cellular Christmas Tree
 postType: Technical
 inWhich: we create a program displaying a Christmas tree from a single dot on an
   infinite tape using two cellular automata computed with comonads as used in
-  Haskell.
+  Haskell. You can also call it yet-another-comonad-tutorial if you like.
 ---
 
 This post is late, the season has passed, and I am writing this in one of the
-least Christmasy places on this planet. Yet I like this little diversion enough
-that I'll share it with you.
+least Christmasy places. Yet I like this little diversion so much that I'll
+share it with you. Just look at how heart-warming this looks.
+
+![Cellular Christmas Tree](/images/cellular-christmas-tree/xmas-tree.gif "Cellular Christmas Tree GIF")
 
 If you're in the midst of a paper crisis, one of the best ways to procrastinate
-is to learn something you haven't got around to for a long time and doesn't
-contribute towards your paper in any way. In my case, that is comonads.
+is to learn something you haven't got around to for ages and doesn't contribute
+towards your paper in any way. In my case, this was comonads.
 
 It's not that I didn't know what comonads were. They are the dual concept of
-monads in category theory, but this sort of loses its meaning once you realise
-you don't know enough category theory to understand what a monad is apart from
-parroting *"a monad is just a monoid in the category of endofunctors"*.
+monads in category theory, but this sort of lost its meaning once I realised I
+don't know what a monad is.
 
-Upon this realisation, after some digging you realise it is a way of computing
-from context. In blog posts or papers explaining such computations you may also
-find examples such as zippers, multi-dimensional arrays, and streams. We'll only
-use zippers here.
+After some digging and head-scratching, I realised comonads are good for
+computing from *context*. In comonad explanations, you often find zippers,
+multi-dimensional arrays, and streams as example instances, used in everything
+from cellular automata to dataflow analysis. In this post, we only focus on
+zippers to implement cellular automata.
 
-In the rest of this post I will give an overview of the comonad class in Haskell
-and write out the instance for zipper. Then using the functions defined by
-primitives of the comonad class, we'll build a blinking Christmas tree.
+Below, we first give an overview of the comonad typeclass in Haskell and write
+out the instance for zippers. Then using the primitives of the typeclass, we
+build a blinking Christmas tree and briefly look at a way of displaying it
+finitely.
 
 ## Comonad class primer
 
-Although saying comonads are the dual concept of monads at a categorical level
-does not help conceptually, knowing that is the case helps remembering the
-signatures of its primitives. For `return`, `bind`, and `join` of monads, there
-is a `coreturn`, `cobind`, and `cojoin` in comonads. The function arrows in the
-signature of these functions are helpfully reversed. As one might expect, we can
-define `cobind` in terms of `cojoin`. This is what they mean when they say
-comonads are just dual concepts of monads, though without further explanation,
-it is not as helpful as some think! They are also given different names,
-`extract`, `extend`, and `duplicate`. Whether these names make the concept more
-clear or confusing is a source of endless lively discussions.
+Although hearing comonads are the dual of monads at a categorical level may not
+help you conceptually, it helps you remember the signatures of its primitives.
+For `return`, `bind`, and `join` of monads, there is a `coreturn`, `cobind`, and
+`cojoin` in comonads. The function arrows in the signature of these functions
+are helpfully reversed. As one might expect, we can define `cobind` in terms of
+`cojoin`. This is what they mean when they say comonads are just the dual
+concept of monads, though without further explanation it is not as helpful as
+some think! These functions are also given different names in Haskell,
+`extract`, `extend`, and `duplicate` respectively. Whether these names make the
+concept clearer or more confusing is a source of lively discussions.
 
 ```haskell
 class Functor w => Comonad w where
@@ -51,7 +54,7 @@ class Functor w => Comonad w where
 
 I know the definition is not terribly exciting after I gave it away in the
 explanation. Perhaps the interesting bit is the simple definition of `extend` in
-terms of `duplicate`. In particular, `f` in extend does some form of reduction
+terms of `duplicate`. In particular, `f` in extend does some form of *reduction*
 from the *context* and this is applied over duplicate of a comonad instance.
 Intuitively, `extend`'s job is to use `f` to compute new focus points. This
 implies that `duplicate`'s function is to encapsulate the instance within itself
@@ -120,14 +123,13 @@ grow (Zipper (l:_) a (r:_)) = if l == r then 0 else 1
 Here `grow`'s type signature corresponds exactly to that expected by the
 `extend` function. Functionally, it is the XOR of the left and right neighbours.
 
-If you create 16 generations, stack successive generations one after another,
-and print it on your terminal, you obtain a fine looking looking ASCII tree.
-Here we use the fact that in each generation the farthest left and right `1`
-values will have one farther cell with `0` and `1` as its neighbours. Hence, we
-get a triangular shape after stacking them. Never mind me abusing the aspect
-ratio of individual cells on the terminal to achieve a good top angle.
-
-[image]
+If you evolve 16 generations, stack successive generations one after another,
+and print it on your terminal, you obtain a fine looking looking ASCII tree.  In
+each geneartion, the farthest left and right `1`-cells have one farther
+`0`-cell. This cell, then, has a `0`-cell and `1`-cell as its neighbours.  In
+the next generation, these `0`-cells become `1`-cells and we get a triangular
+shape for stacking them. Never mind me abusing the aspect ratio of individual
+cells on the terminal to achieve a good top angle.
 
 Now that we have a tree (of infinite height), we can focus on making it blink.
 We will make this using the `blink` reduction.

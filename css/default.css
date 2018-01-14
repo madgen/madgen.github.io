@@ -34,6 +34,17 @@ p.in-which span.drop {
 }
 */
 
+.figure img {
+  display: block;
+  position: relative;
+  margin: 0 auto 0 auto;
+}
+
+.figure p {
+  text-align: center;
+  font-style: italic;
+}
+
 div.references {
     border-top: 1px solid gray;
 }
