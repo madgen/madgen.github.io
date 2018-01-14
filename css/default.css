@@ -42,6 +42,7 @@ p.in-which span.drop {
 .post .figure p {
   text-align: center;
   font-style: italic;
+  margin-top: 0.5em;
 }
 
 .post h2, .post h3, .post h4 {
