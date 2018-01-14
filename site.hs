@@ -21,7 +21,7 @@ main = hakyll $ do
     -- Taken from https://github.com/citation-style-language/styles
     match "bib/elsevier-harvard.csl" $ compile cslCompiler
 
-    match "images/**/*" $ do
+    match "images/**" $ do
         route   idRoute
         compile copyFileCompiler
 
