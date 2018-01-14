@@ -10,7 +10,7 @@ This post is late, the season has passed, and I am writing this in one of the
 least Christmasy places. Yet I like this little diversion so much that I'll
 share it with you. Just look at how heart-warming this looks.
 
-![Cellular Christmas Tree](/images/cellular-christmas-tree/xmas-tree.gif "Cellular Christmas Tree GIF")
+![Cellular Christmas Tree](/images/cellular-christmas-tree/xmas-tree.gif "Cellular Christmas Tree GIF"){.left}
 
 If you're in the midst of a paper crisis, one of the best ways to procrastinate
 is to learn something you haven't got around to for ages and doesn't contribute
