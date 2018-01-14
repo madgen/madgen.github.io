@@ -54,11 +54,11 @@ class Functor w => Comonad w where
 
 I know the definition is not terribly exciting after I gave it away in the
 explanation. Perhaps the interesting bit is the simple definition of `extend` in
-terms of `duplicate`. In particular, `f` in extend does some form of *reduction*
-from the *context* and this is applied over duplicate of a comonad instance.
-Intuitively, `extend`'s job is to use `f` to compute new focus points. This
-implies that `duplicate`'s function is to encapsulate the instance within itself
-with different points in focus.
+terms of `duplicate`. In particular, `f` in `extend` does some form of
+*reduction* from the *context* and this is applied over duplicate of a comonad
+instance.  Intuitively, `extend`'s job is to use `f` to compute new focus
+points. This implies that `duplicate`'s function is to encapsulate the instance
+within itself with different points in focus.
 
 OK. I know. That explanation was less than intuitive. Let's see an instance
 instead. The data structure of interest today is a *zipper*. You can think of it
@@ -99,8 +99,8 @@ and [Bartosz Milewski](https://bartoszmilewski.com/2017/01/02/comonads/).
 
 ## Cellular automata for Christmas tree
 
-Now that we are equipped with full power of comonads, we can proceed to make a
-Christmas tree (a rather underwhelming use case).
+Now that we are equipped with the full power of comonads, we can proceed to make
+a Christmas tree (admittedly, an underwhelming use case).
 
 We will use two cellular automata. First to grow the tree and then another to
 make it blink. We need an initial configuration to start the whole process and
@@ -111,9 +111,9 @@ initConf = Zipper (repeat 0) 1 (repeat 0)
 ```
 
 Any respectable Christmas tree would have at least two dimensions and this
-zipper represents only the top of the tree. We can deal with this by evolving
-this initial configuration via the reduction `grow` and stack the generations
-one below the other[^3].
+zipper represents only the top of the tree. We heighten it by evolving this
+initial configuration via the reduction `grow` and stack the generations one
+below the other[^3].
 
 ```haskell
 grow :: Zipper Int -> Int
@@ -128,8 +128,8 @@ and print it on your terminal, you obtain a fine looking looking ASCII tree.  In
 each geneartion, the farthest left and right `1`-cells have one farther
 `0`-cell. This cell, then, has a `0`-cell and `1`-cell as its neighbours.  In
 the next generation, these `0`-cells become `1`-cells and we get a triangular
-shape for stacking them. Never mind me abusing the aspect ratio of individual
-cells on the terminal to achieve a good top angle.
+shape for stacking them. By the way, never mind me abusing the letter aspect
+ratio on the terminal to achieve a good top angle.
 
 Now that we have a tree (of infinite height), we can focus on making it blink.
 We will make this using the `blink` reduction.
@@ -142,7 +142,7 @@ blink (Zipper (l1:l2:_) a (r1:r2:_)) = 1 + (l1 + l2 + a + r1 + r2) `mod` 3
 
 It is constructed so that `0` is treated as dead space and maps to itself
 regardless the context and no other value ever maps to it (by adding one to a
-non-zero expression). We compute modulo three of a five cells wide window which
+non-negative expression). We compute modulo three of a five-cells-wide window which
 gives us sufficiently "random" blinking pattern and three symbols to shift
 through.
 
@@ -161,8 +161,7 @@ trees = transpose $ iterate (extend blink) <$> tree
 
 Repeated application of `grow` through `iterate` produces tapes to stack and we
 use each of those configurations with `blink` to animate. All `transpose` gives
-is a list of frames of trees instead of a list of list of automata
-configurations.
+is a list of frames of trees instead of a list of list of configurations.
 
 ## Displaying infinity
 
@@ -178,8 +177,7 @@ frame halfWidth height zs = take height $ frameConfig <$> zs
     reverse (take (halfWidth - 1) ls) ++ a : take (halfWidth - 1) rs
 ```
 
-Although I like `Int`s as much as the next person, asterisks, pluses, and x
-make better tree ornaments.
+Asterisks, pluses, and x make better tree ornaments than integers.
 
 ```haskell
 display :: Int -> Char
@@ -189,8 +187,8 @@ display 2 = '*'
 display 3 = '+'
 ```
 
-Bringing all of this together we can print frames *forever* (though it is a
-periodic blinking behaviour) with some UNIX trickery to clear the terminal and
+Bringing all of this together we can print frames *forever* (though `blink`
+exhibits a periodic behaviour) with some UNIX trickery to clear the terminal and
 inserting delays so our petty human eyes can follow the blinking.
 
 ```haskell
@@ -205,10 +203,12 @@ main = do
 ## Concluding thoughts
 
 Here it is, another comonad tutorial. I don't think it is any better than the
-others but it produces something different. A good exercise for strengthening
-your comonad-fu would be coding the Game of Life with the rules encoded as a
-reduction and board represented as a two dimensional array. Or perhaps you
-pursue understanding it categorically and then come and tell me about it.
+others, but it produces something different. A good exercise for strengthening
+your comonad-fu would be coding Conway's Game of Life with the rules encoded as
+a reduction and the board represented as a two dimensional array. Perhaps you
+pursue understanding it categorically; in that case, come and tell me about it.
+
+Happy past, present, and future holidays.
 
 The full program is below for your convenience.
 
@@ -272,16 +272,16 @@ main = do
     putStr "\ESC[2J" -- UNIX trickery to clear the terminal.
 ```
 
-[^1]: In fact the connection between a list and a zipper goes way deeper. The
+[^1]: In fact, the connection between a list and a zipper goes way deeper. The
 latter is the differentiation of the former. Try to wrap your head around that!
 Or don't and read (parts of) the wonderfully titled paper [*"Clowns to the left
 of me, jokers to the
 right"*](https://personal.cis.strath.ac.uk/conor.mcbride/Dissect.pdf) by Conor
 McBride.
 
-[^2]: This is, in fact, a remarkably common pattern. Streams and non-empty
-lists for example follow pretty much the same implementation pattern for
-`duplicate`. Here are the instances without further explanation.
+[^2]: This is a common pattern. Streams and non-empty lists for example follow
+pretty much the same implementation for `duplicate`. Here are the instances
+without further explanation.
 
     ```haskell
     instance Comonad Stream where
