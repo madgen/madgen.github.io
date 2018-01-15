@@ -13,8 +13,8 @@ share it with you. Just look at how heart-warming this looks.
 ![Cellular Christmas Tree](/images/cellular-christmas-tree/xmas-tree.gif "Cellular Christmas Tree GIF"){.left}
 
 If you're in the midst of a paper crisis, one of the best ways to procrastinate
-is to learn something you haven't got around to for ages and doesn't contribute
-towards your paper in any way. In my case, this was comonads.
+is to learn something you haven't got around to for ages and doesn't in any way
+contribute towards your paper. In my case, this was comonads.
 
 It's not that I didn't know what comonads were. They are the dual concept of
 monads in category theory, but this sort of lost its meaning once I realised I
@@ -31,11 +31,11 @@ out the instance for zippers. Then using the primitives of the typeclass, we
 build a blinking Christmas tree and briefly look at a way of displaying it
 finitely.
 
-## Comonad class primer
+## Comonad typeclass primer
 
-Although hearing comonads are the dual of monads at a categorical level may not
-help you conceptually, it helps you remember the signatures of its primitives.
-For `return`, `bind`, and `join` of monads, there is a `coreturn`, `cobind`, and
+Although hearing comonads are the dual of monads at a categorical level didn't
+help me conceptually, it helps me remember the signatures of its primitives.
+For `return`, `bind`, and `join` of monads, there are `coreturn`, `cobind`, and
 `cojoin` in comonads. The function arrows in the signature of these functions
 are helpfully reversed. As one might expect, we can define `cobind` in terms of
 `cojoin`. This is what they mean when they say comonads are just the dual
@@ -73,17 +73,17 @@ left  (Zipper (l:ls) a rs) = Zipper ls l (a:rs)
 right (Zipper ls a (r:rs)) = Zipper (a:ls) r rs
 ```
 
-The middle element is the focus point and we have bunch of elements to the left
-and right. We'll use zippers with infinite number of elements, but there isn't a
-fundamental reason that has to be the case elsewhere. So you can think of a
-zipper as an infinite tape with a focus and `left` & `right` functions as
+The middle parameter is the focus point and we have bunch of elements to the
+left and right. We'll use zippers with infinite number of elements, but there
+isn't a fundamental reason that has to be the case elsewhere. So you can think
+of a zipper as an infinite tape with a focus and `left` & `right` functions as
 shifting the tape.
 
 Let's get to the comonad instance for `Zipper`. The `extract` function is
 pleasingly dull and extracts the focus of the zipper. The `duplicate` function
 is slightly more interesting. It makes shifted copies of the zipper in a zipper
-where the shifting is determined by the direction and distance from the focus
-point of the resulting zipper[^2].
+where the number of shifts is determined by the direction and distance from the
+focus point of the enclosing zipper[^2].
 
 ```haskell
 instance Comonad Zipper where
@@ -91,16 +91,16 @@ instance Comonad Zipper where
   duplicate u = Zipper (tail $ iterate left u) u (tail $ iterate right u)
 ```
 
-If you're still unsure about zippers and comonads there are better tutorials
-than mine which you can jump in before coming back to the Christmas tree.
-Examples include those by [Dan
+If you're still unsure about zippers and comonads there are better explanations
+of them than that of mine (such as those by [Dan
 Piponi](http://blog.sigfpe.com/2007/01/monads-hidden-behind-every-zipper.html)
-and [Bartosz Milewski](https://bartoszmilewski.com/2017/01/02/comonads/).
+and [Bartosz Milewski](https://bartoszmilewski.com/2017/01/02/comonads/)) which
+you can jump in before coming back for the Christmas tree.
 
 ## Cellular automata for Christmas tree
 
-Now that we are equipped with the full power of comonads, we can proceed to make
-a Christmas tree (admittedly, an underwhelming use case).
+Now that we are equipped with the full power of comonads, we can proceed to
+animate a Christmas tree---admittedly, an underwhelming use case.
 
 We will use two cellular automata. First to grow the tree and then another to
 make it blink. We need an initial configuration to start the whole process and
@@ -123,16 +123,18 @@ grow (Zipper (l:_) a (r:_)) = if l == r then 0 else 1
 Here `grow`'s type signature corresponds exactly to that expected by the
 `extend` function. Functionally, it is the XOR of the left and right neighbours.
 
-If you evolve 16 generations, stack successive generations one after another,
-and print it on your terminal, you obtain a fine looking looking ASCII tree.  In
+If you evolve some number of generations, stack successive generations one after
+another, and print it on your terminal, you obtain a fine looking ASCII tree. In
 each generation, the farthest left and right `1`-cells have one farther
-`0`-cell. This cell, then, has a `0`-cell and `1`-cell as its neighbours.  In
+`0`-cell. This cell, then, has a `0`-cell and a `1`-cell as its neighbours. In
 the next generation, these `0`-cells become `1`-cells and we get a triangular
-shape for stacking them. By the way, never mind me abusing the letter aspect
-ratio on the terminal to achieve a good top angle.
+shape for stacking configurations. In a terminal, since the height of a letter
+is often longer than its width, we get a nice top angle suitable for a tree.
+Every generation that is a power of 2 has only `1`-cells between its farthest
+edges making a base for our tree.
 
-Now that we have a tree (of infinite height), we can focus on making it blink.
-We will make this using the `blink` reduction.
+Now that we have a tree (of infinite height), we can focus on making it blink
+using the `blink` reduction.
 
 ```haskell
 blink :: Zipper Int -> Int
@@ -142,15 +144,16 @@ blink (Zipper (l1:l2:_) a (r1:r2:_)) = 1 + (l1 + l2 + a + r1 + r2) `mod` 3
 
 It is constructed so that `0` is treated as dead space and maps to itself
 regardless the context and no other value ever maps to it (by adding one to a
-non-negative expression). We compute modulo three of a five-cells-wide window which
-gives us sufficiently "random" blinking pattern and three symbols to shift
+non-negative expression). We compute modulo three of a five-cells-wide window
+which gives us sufficiently "random" blinking pattern and three symbols to shift
 through.
 
-Now that we have our reductions, all we need to do it to use `grow` to generate
-as many configurations as we like the height of the tree and use `blink` to
-animate it. We can exploit Haskell's laziness to generate a comprehensive tree
-and worry about height, width, and number of animation frames once it gets to
-displaying it.
+With these two reductions, all we need is `grow` to generate as many
+configurations as we like the height of the tree to be and `blink` to animate
+it. The generations produced using `grow` will act as initial configurations of
+the automaton with the transition function `blink`. We can exploit Haskell's
+laziness to generate a comprehensive tree and worry about height, width, and
+number of animation frames once we want to display it.
 
 ```haskell
 trees :: [ [ Zipper Int ] ]
@@ -161,7 +164,7 @@ trees = transpose $ iterate (extend blink) <$> tree
 
 Repeated application of `grow` through `iterate` produces tapes to stack and we
 use each of those configurations with `blink` to animate. All `transpose` gives
-is a list of frames of trees instead of a list of list of configurations.
+is a list of frames of trees instead of a list of lists of configurations.
 
 ## Displaying infinity
 
@@ -188,7 +191,7 @@ display 3 = '+'
 ```
 
 Bringing all of this together we can print frames *forever* (though `blink`
-exhibits a periodic behaviour) with some UNIX trickery to clear the terminal and
+behaves periodically) with some UNIX trickery to clear the terminal and
 inserting delays so our petty human eyes can follow the blinking.
 
 ```haskell
@@ -204,9 +207,11 @@ main = do
 
 Here it is, another comonad tutorial. I don't think it is any better than the
 others, but it produces something different. A good exercise for strengthening
-your comonad-fu would be coding Conway's Game of Life with the rules encoded as
-a reduction and the board represented as a two dimensional array. Perhaps you
-pursue understanding it categorically; in that case, come and tell me about it.
+your comonad-fu would be coding [Conway's Game of
+Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life#Rules) with the
+rules encoded as a reduction and the board represented as a two dimensional
+array. Perhaps you pursue understanding it categorically; in that case, come and
+tell me about it.
 
 Happy past, present, and future holidays.
 
