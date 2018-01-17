@@ -34,9 +34,20 @@ p.in-which span.drop {
 }
 */
 
-.post .figure {
+.post .left-figure {
   float: left;
   margin-right: 20px;
+}
+
+.post .right-figure {
+  float: right;
+  margin-left: 20px;
+}
+
+.post .figure img {
+  display: block;
+  position: relative;
+  margin: 0 auto 0 auto;
 }
 
 .post .figure p {
