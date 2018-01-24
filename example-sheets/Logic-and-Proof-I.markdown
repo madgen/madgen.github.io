@@ -1,13 +1,14 @@
 ---
 title: Logic and Proof Example Sheet I
 date: 2018-01-06
+lastUpdated: 2018-01-24
 ---
 
 ## From the lecture notes
 
   - Section 2 Exercises: 1, 2, 4
   - Section 3 Exercises: 6, 7
-  - Section 4 Exercises: 8, 10, 11
+  - Section 4 Exercises: 10, 12, 13
 
 ## Exam questions
 
