@@ -1,7 +1,7 @@
 ---
 title: Logic and Proof Example Sheet I
 date: 2018-01-06
-lastUpdated: 2018-01-24
+lastUpdated: 2018-01-27
 ---
 
 ## From the lecture notes
