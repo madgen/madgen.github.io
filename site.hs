@@ -4,7 +4,11 @@
 
 import           Data.Monoid ((<>))
 import qualified Data.Map.Strict as M
+import           Data.Maybe (fromMaybe)
 import           Data.String (fromString)
+import           Data.Time.Clock (UTCTime(..))
+import           Data.Time.Format (formatTime, parseTimeM)
+import           Data.Time.Locale.Compat (defaultTimeLocale)
 
 import           Control.Monad (filterM, (>=>))
 
@@ -94,5 +98,12 @@ partialWith items itemCtx = functionField "partialWith" f
 postCtx :: Context String
 postCtx =
     dateField "date" "%B %e, %Y" `mappend`
-    defaultContext
+    defaultContext `mappend`
+    field "lastUpdatedFormatted" (\item -> do
+      mLU <- getMetadataField (itemIdentifier item) "lastUpdated"
+      return $ fromMaybe "" $ do
+        strToFormat <- mLU
+        parsedTime <-
+          parseTimeM True defaultTimeLocale "%Y-%m-%d" strToFormat :: Maybe UTCTime
+        return $ formatTime defaultTimeLocale "%B %e, %Y" parsedTime)
 
