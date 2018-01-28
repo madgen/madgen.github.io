@@ -317,4 +317,4 @@ Comonads"*](https://www.cs.kent.ac.uk/people/staff/dao7/publ/codo-notation-orcha
     a type such as `CArray (Int,Int) Int`.
 
 [^4]: Fractally inclined reader will realise this is, in fact, [how you
-construct the Sierpenski triangle](http://mathworld.wolfram.com/Rule90.html).
+construct the Sierpe&#324;ski triangle](http://mathworld.wolfram.com/Rule90.html).
