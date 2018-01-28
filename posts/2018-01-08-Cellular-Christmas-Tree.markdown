@@ -121,7 +121,8 @@ grow (Zipper (l:_) a (r:_)) = if l == r then 0 else 1
 ```
 
 Here `grow`'s type signature corresponds exactly to that expected by the
-`extend` function. Functionally, it is the XOR of the left and right neighbours.
+`extend` function. Functionally, it is the XOR of the left and right
+neighbours[^4].
 
 If you evolve some number of generations, stack successive generations one after
 another, and print it on your terminal, you obtain a fine looking ASCII tree. In
@@ -130,8 +131,6 @@ each generation, the farthest left and right `1`-cells have one farther
 the next generation, these `0`-cells become `1`-cells and we get a triangular
 shape for stacking configurations. In a terminal, since the height of a letter
 is often longer than its width, we get a nice top angle suitable for a tree.
-Fractally inclined reader will realise this is, in fact,
-[how you construct the Sierpenski triangle](http://mathworld.wolfram.com/Rule90.html).
 
 Now that we have a tree (of infinite height), we can focus on making it blink
 using the `blink` reduction.
@@ -313,3 +312,6 @@ Comonads"*](https://www.cs.kent.ac.uk/people/staff/dao7/publ/codo-notation-orcha
 
     You might get a two dimensional array that would help for our purposes with
     a type such as `CArray (Int,Int) Int`.
+
+[^4]: Fractally inclined reader will realise this is, in fact, [how you
+construct the Sierpenski triangle](http://mathworld.wolfram.com/Rule90.html).
