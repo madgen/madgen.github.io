@@ -95,7 +95,10 @@ If you're still unsure about zippers and comonads there are better explanations
 of them than that of mine (such as those by [Dan
 Piponi](http://blog.sigfpe.com/2007/01/monads-hidden-behind-every-zipper.html)
 and [Bartosz Milewski](https://bartoszmilewski.com/2017/01/02/comonads/)) which
-you can jump in before coming back for the Christmas tree.
+you can jump in before coming back for the Christmas tree. Also I am too cheap
+to discuss the laws that needs to be satisfied by a comonad instance as they are
+not enforcable by the Haskell type system. This might be another reason to check
+other tutorials.
 
 ## Cellular automata for Christmas tree
 
