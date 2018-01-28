@@ -130,8 +130,8 @@ each generation, the farthest left and right `1`-cells have one farther
 the next generation, these `0`-cells become `1`-cells and we get a triangular
 shape for stacking configurations. In a terminal, since the height of a letter
 is often longer than its width, we get a nice top angle suitable for a tree.
-Every generation that is a power of 2 has only `1`-cells between its farthest
-edges making a base for our tree.
+Fractally inclined reader will realise this is, in fact,
+[how you construct the Sierpenski triangle](http://mathworld.wolfram.com/Rule90.html).
 
 Now that we have a tree (of infinite height), we can focus on making it blink
 using the `blink` reduction.
