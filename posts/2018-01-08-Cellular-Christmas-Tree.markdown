@@ -21,10 +21,10 @@ monads in category theory, but this sort of lost its meaning once I realised I
 don't know what a monad is.
 
 After some digging and head-scratching, I realised comonads are good for
-computing from *context*. In comonad explanations, you often find zippers,
+computing from a *context*. In comonad explanations, you often find zippers,
 multi-dimensional arrays, and streams as example instances, used in everything
-from cellular automata to dataflow analysis. In this post, we only focus on
-zippers to implement cellular automata.
+from cellular automata to dataflow analysis. In this post, we focus on zippers
+to implement cellular automata.
 
 Below, we first give an overview of the comonad typeclass in Haskell and write
 out the instance for zippers. Then using the primitives of the typeclass, we
@@ -55,7 +55,7 @@ class Functor w => Comonad w where
 I know the definition is not terribly exciting after I gave it away in the
 explanation. Perhaps the interesting bit is the simple definition of `extend` in
 terms of `duplicate`. In particular, `f` in `extend` does some form of
-*reduction* from the *context* and this is applied over duplicate of a comonad
+*reduction* from the *context* and this is applied over `duplicate` of a comonad
 instance.  Intuitively, `extend`'s job is to use `f` to compute new focus
 points. This implies that `duplicate`'s function is to encapsulate the instance
 within itself with different points in focus.
