@@ -154,7 +154,7 @@ With these two reductions, all we need is `grow` to generate as many
 configurations as we like the height of the tree to be and `blink` to animate
 it. The generations produced using `grow` will act as initial configurations of
 the automaton with the transition function `blink`. We can exploit Haskell's
-laziness to generate a comprehensive tree and worry about height, width, and
+laziness to generate a comprehensive tree and worry about its height, width, and
 number of animation frames once we want to display it.
 
 ```haskell
