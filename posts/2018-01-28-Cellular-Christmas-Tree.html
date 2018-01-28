@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-41394820-3');
+        </script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="description" content="Mistral Contrastin's thought bubble,
+          blog, and personal revelations." />
+        <meta name="author" content="Mistral Contrastin" />
+        <title>Do disturb me
+          
+            | Cellular Christmas Tree
+          
+        </title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div class="top-container">
+              <div id="logo">
+                  <a href="../">Do Disturb Me</a>
+              </div>
+              <div id="navigation">
+                  <a href="../archive.html">Blog</a>
+                  <a href="../teaching.html">Teaching</a>
+              </div>
+            </div>
+            <div id="mandelbrot"></div>
+        </div>
+
+        <div id="content">
+            <div class="info">
+  Posted on January 28, 2018
+  
+  
+</div>
+
+<h1>Cellular Christmas Tree</h1>
+
+
+<p class="in-which">In which we create a program displaying a Christmas tree from a single dot on an infinite tape using two cellular automata computed with comonads as used in Haskell. You can also call it yet another comonad tutorial if you like.</p>
+
+
+<div class="post"><p>This post is late, the season has passed, and I am writing this in one of the least Christmasy places. Yet I like this little diversion so much that I’ll share it with you. Just look at how heart-warming this looks.</p>
+<div class="figure">
+<img src="../images/cellular-christmas-tree/xmas-tree.gif" title="Cellular Christmas Tree GIF" alt="Cellular Christmas Tree" class="left" />
+<p class="caption">Cellular Christmas Tree</p>
+</div>
+<p>If you’re in the midst of a paper crisis, one of the best ways to procrastinate is to learn something you haven’t got around to for ages and doesn’t in any way contribute towards your paper. In my case, this was comonads.</p>
+<p>It’s not that I didn’t know what comonads were. They are the dual concept of monads in category theory, but this sort of lost its meaning once I realised I don’t know what a monad is.</p>
+<p>After some digging and head-scratching, I realised comonads are good for computing from a <em>context</em>. In comonad explanations, you often find zippers, multi-dimensional arrays, and streams as example instances, used in everything from cellular automata to dataflow analysis. In this post, we focus on zippers to implement cellular automata.</p>
+<p>Below, we first give an overview of the comonad typeclass in Haskell and write out the instance for zippers. Then using the primitives of the typeclass, we build a blinking Christmas tree and briefly look at a way of displaying it finitely.</p>
+<h2 id="comonad-typeclass-primer">Comonad typeclass primer</h2>
+<p>Although hearing comonads are the dual of monads at a categorical level didn’t help me conceptually, it helps me remember the signatures of its primitives. For <code>return</code>, <code>bind</code>, and <code>join</code> of monads, there are <code>coreturn</code>, <code>cobind</code>, and <code>cojoin</code> in comonads. The function arrows in the signature of these functions are helpfully reversed. As one might expect, we can define <code>cobind</code> in terms of <code>cojoin</code>. This is what they mean when they say comonads are just the dual concept of monads, though without further explanation it is not as helpful as some think! These functions are also given different names in Haskell, <code>extract</code>, <code>extend</code>, and <code>duplicate</code> respectively. Whether these names make the concept clearer or more confusing is a source of lively discussions.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">Functor</span> w <span class="ot">=&gt;</span> <span class="dt">Comonad</span> w <span class="kw">where</span>
+<span class="ot">  extract   ::</span> w a <span class="ot">-&gt;</span> a
+<span class="ot">  duplicate ::</span> w a <span class="ot">-&gt;</span> w (w a)
+<span class="ot">  extend    ::</span> (w a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> w a <span class="ot">-&gt;</span> w b
+  extend f cm <span class="fu">=</span> fmap f (duplicate cm)</code></pre></div>
+<p>I know the definition is not terribly exciting after I gave it away in the explanation. Perhaps the interesting bit is the simple definition of <code>extend</code> in terms of <code>duplicate</code>. In particular, <code>f</code> in <code>extend</code> does some form of <em>reduction</em> from the <em>context</em> and this is applied over <code>duplicate</code> of a comonad instance. Intuitively, <code>extend</code>’s job is to use <code>f</code> to compute new focus points. This implies that <code>duplicate</code>’s function is to encapsulate the instance within itself with different points in focus.</p>
+<p>OK. I know. That explanation was less than intuitive. Let’s see an instance instead. The data structure of interest today is a <em>zipper</em>. You can think of it as a list with a focus<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a>. It is defined along with helpful functions to change the focus point.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Zipper</span> a <span class="fu">=</span> <span class="dt">Zipper</span> [ a ] a [ a ] <span class="kw">deriving</span> <span class="dt">Functor</span>
+
+left,<span class="ot"> right ::</span> <span class="dt">Zipper</span> a <span class="ot">-&gt;</span> <span class="dt">Zipper</span> a
+left  (<span class="dt">Zipper</span> (l<span class="fu">:</span>ls) a rs) <span class="fu">=</span> <span class="dt">Zipper</span> ls l (a<span class="fu">:</span>rs)
+right (<span class="dt">Zipper</span> ls a (r<span class="fu">:</span>rs)) <span class="fu">=</span> <span class="dt">Zipper</span> (a<span class="fu">:</span>ls) r rs</code></pre></div>
+<p>The middle parameter is the focus point and we have bunch of elements to the left and right. We’ll use zippers with infinite number of elements, but there isn’t a fundamental reason that has to be the case elsewhere. So you can think of a zipper as an infinite tape with a focus and <code>left</code> &amp; <code>right</code> functions as shifting the tape.</p>
+<p>Let’s get to the comonad instance for <code>Zipper</code>. The <code>extract</code> function is pleasingly dull and extracts the focus of the zipper. The <code>duplicate</code> function is slightly more interesting. It makes shifted copies of the zipper in a zipper where the number of shifts is determined by the direction and distance from the focus point of the enclosing zipper<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a>.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Comonad</span> <span class="dt">Zipper</span> <span class="kw">where</span>
+  extract (<span class="dt">Zipper</span> _ a _) <span class="fu">=</span> a
+  duplicate u <span class="fu">=</span> <span class="dt">Zipper</span> (tail <span class="fu">$</span> iterate left u) u (tail <span class="fu">$</span> iterate right u)</code></pre></div>
+<p>If you’re still unsure about zippers and comonads there are better explanations of them than that of mine (such as those by <a href="http://blog.sigfpe.com/2007/01/monads-hidden-behind-every-zipper.html">Dan Piponi</a> and <a href="https://bartoszmilewski.com/2017/01/02/comonads/">Bartosz Milewski</a>) which you can jump in before coming back for the Christmas tree. Also I am too cheap to discuss the laws that needs to be satisfied by a comonad instance as they are not enforcable by the Haskell type system. This might be another reason to check other tutorials.</p>
+<h2 id="cellular-automata-for-christmas-tree">Cellular automata for Christmas tree</h2>
+<p>Now that we are equipped with the full power of comonads, we can proceed to animate a Christmas tree—admittedly, an underwhelming use case.</p>
+<p>We will use two cellular automata. First to grow the tree and then another to make it blink. We need an initial configuration to start the whole process and as promised, it is a single dot on an infinite tape.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">initConf <span class="fu">=</span> <span class="dt">Zipper</span> (repeat <span class="dv">0</span>) <span class="dv">1</span> (repeat <span class="dv">0</span>)</code></pre></div>
+<p>Any respectable Christmas tree would have at least two dimensions and this zipper represents only the top of the tree. We heighten it by evolving this initial configuration via the reduction <code>grow</code> and stack the generations one below the other<a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a>.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">grow ::</span> <span class="dt">Zipper</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span>
+grow (<span class="dt">Zipper</span> (l<span class="fu">:</span>_) a (r<span class="fu">:</span>_)) <span class="fu">=</span> <span class="kw">if</span> l <span class="fu">==</span> r <span class="kw">then</span> <span class="dv">0</span> <span class="kw">else</span> <span class="dv">1</span></code></pre></div>
+<p>Here <code>grow</code>’s type signature corresponds exactly to that expected by the <code>extend</code> function. Functionally, it is the XOR of the left and right neighbours<a href="#fn4" class="footnoteRef" id="fnref4"><sup>4</sup></a>.</p>
+<p>If you evolve some number of generations, stack successive generations one after another, and print it on your terminal, you obtain a fine looking ASCII tree. In each generation, the farthest left and right <code>1</code>-cells have one farther <code>0</code>-cell. This cell, then, has a <code>0</code>-cell and a <code>1</code>-cell as its neighbours. In the next generation, these <code>0</code>-cells become <code>1</code>-cells and we get a triangular shape for stacking configurations. In a terminal, since the height of a letter is often longer than its width, we get a nice top angle suitable for a tree.</p>
+<p>Now that we have a tree (of infinite height), we can focus on making it blink using the <code>blink</code> reduction.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">blink ::</span> <span class="dt">Zipper</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span>
+blink (<span class="dt">Zipper</span> _ <span class="dv">0</span> _) <span class="fu">=</span> <span class="dv">0</span>
+blink (<span class="dt">Zipper</span> (l1<span class="fu">:</span>l2<span class="fu">:</span>_) a (r1<span class="fu">:</span>r2<span class="fu">:</span>_)) <span class="fu">=</span> <span class="dv">1</span> <span class="fu">+</span> (l1 <span class="fu">+</span> l2 <span class="fu">+</span> a <span class="fu">+</span> r1 <span class="fu">+</span> r2) <span class="ot">`mod`</span> <span class="dv">3</span></code></pre></div>
+<p>It is constructed so that <code>0</code> is treated as dead space and maps to itself regardless the context and no other value ever maps to it (by adding one to a non-negative expression). We compute modulo three of a five-cells-wide window which gives us sufficiently “random” blinking pattern and three symbols to shift through.</p>
+<p>With these two reductions, all we need is <code>grow</code> to generate as many configurations as we like the height of the tree to be and <code>blink</code> to animate it. The generations produced using <code>grow</code> will act as initial configurations of the automaton with the transition function <code>blink</code>. We can exploit Haskell’s laziness to generate a comprehensive tree and worry about its height, width, and number of animation frames once we want to display it.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">trees ::</span> [ [ <span class="dt">Zipper</span> <span class="dt">Int</span> ] ]
+trees <span class="fu">=</span> transpose <span class="fu">$</span> iterate (extend blink) <span class="fu">&lt;$&gt;</span> tree
+  <span class="kw">where</span>
+  tree <span class="fu">=</span> iterate (extend grow) initConf</code></pre></div>
+<p>Repeated application of <code>grow</code> through <code>iterate</code> produces tapes to stack and we use each of those configurations with <code>blink</code> to animate. All <code>transpose</code> gives is a list of frames of trees instead of a list of lists of configurations.</p>
+<h2 id="displaying-infinity">Displaying infinity</h2>
+<p>This is the trivial bit of it. Since the tree is vertically symmetric on the zipper focus, we can take equal number of items on each side to set the width and take as many tapes as we want to set the height.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">frame ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [ <span class="dt">Zipper</span> a ] <span class="ot">-&gt;</span> [ [ a ] ]
+frame halfWidth height zs <span class="fu">=</span> take height <span class="fu">$</span> frameConfig <span class="fu">&lt;$&gt;</span> zs
+  <span class="kw">where</span>
+  frameConfig (<span class="dt">Zipper</span> ls a rs) <span class="fu">=</span>
+    reverse (take (halfWidth <span class="fu">-</span> <span class="dv">1</span>) ls) <span class="fu">++</span> a <span class="fu">:</span> take (halfWidth <span class="fu">-</span> <span class="dv">1</span>) rs</code></pre></div>
+<p>Asterisks, pluses, and x make better tree ornaments than integers.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">display ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Char</span>
+display <span class="dv">0</span> <span class="fu">=</span> <span class="ch">' '</span>
+display <span class="dv">1</span> <span class="fu">=</span> <span class="ch">'x'</span>
+display <span class="dv">2</span> <span class="fu">=</span> <span class="ch">'*'</span>
+display <span class="dv">3</span> <span class="fu">=</span> <span class="ch">'+'</span></code></pre></div>
+<p>Bringing all of this together we can print frames <em>forever</em> (though <code>blink</code> behaves periodically) with some UNIX trickery to clear the terminal and inserting delays so our petty human eyes can follow the blinking.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">main <span class="fu">=</span> <span class="kw">do</span>
+  <span class="kw">let</span> (halfWidth, height) <span class="fu">=</span> (<span class="dv">17</span>, <span class="dv">16</span>)
+  forM_ trees <span class="fu">$</span> \fr <span class="ot">-&gt;</span> <span class="kw">do</span>
+    putStrLn (intercalate <span class="st">&quot;\n&quot;</span> (fmap display <span class="fu">&lt;$&gt;</span> frame halfWidth height fr))
+    threadDelay <span class="dv">500000</span>
+    putStr <span class="st">&quot;\ESC[2J&quot;</span> <span class="co">-- UNIX trickery to clear the terminal.</span></code></pre></div>
+<h2 id="concluding-thoughts">Concluding thoughts</h2>
+<p>Here it is, another comonad tutorial. I don’t think it is any better than the others, but it produces something different. A good exercise for strengthening your comonad-fu would be coding <a href="https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life#Rules">Conway’s Game of Life</a> with the rules encoded as a reduction and the board represented as a two dimensional array. Perhaps you pursue understanding it categorically; in that case, come and tell me about it.</p>
+<p>Happy past, present, and future holidays.</p>
+<p>The full program is below for your convenience.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE DeriveFunctor #-}</span>
+
+<span class="kw">module</span> <span class="dt">Main</span> <span class="kw">where</span>
+
+<span class="kw">import </span><span class="dt">Data.List</span> (transpose, intercalate)
+
+<span class="kw">import </span><span class="dt">Control.Concurrent</span> (threadDelay)
+<span class="kw">import </span><span class="dt">Control.Monad</span> (forM_)
+
+<span class="kw">class</span> <span class="dt">Functor</span> w <span class="ot">=&gt;</span> <span class="dt">Comonad</span> w <span class="kw">where</span>
+<span class="ot">  extract   ::</span> w a <span class="ot">-&gt;</span> a
+<span class="ot">  duplicate ::</span> w a <span class="ot">-&gt;</span> w (w a)
+<span class="ot">  extend    ::</span> (w a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> w a <span class="ot">-&gt;</span> w b
+  extend f cm <span class="fu">=</span> fmap f (duplicate cm)
+
+<span class="kw">data</span> <span class="dt">Zipper</span> a <span class="fu">=</span> <span class="dt">Zipper</span> [ a ] a [ a ] <span class="kw">deriving</span> <span class="dt">Functor</span>
+
+left,<span class="ot"> right ::</span> <span class="dt">Zipper</span> a <span class="ot">-&gt;</span> <span class="dt">Zipper</span> a
+left  (<span class="dt">Zipper</span> (l<span class="fu">:</span>ls) a rs) <span class="fu">=</span> <span class="dt">Zipper</span> ls l (a<span class="fu">:</span>rs)
+right (<span class="dt">Zipper</span> ls a (r<span class="fu">:</span>rs)) <span class="fu">=</span> <span class="dt">Zipper</span> (a<span class="fu">:</span>ls) r rs
+
+<span class="kw">instance</span> <span class="dt">Comonad</span> <span class="dt">Zipper</span> <span class="kw">where</span>
+  extract (<span class="dt">Zipper</span> _ a _) <span class="fu">=</span> a
+  duplicate u <span class="fu">=</span> <span class="dt">Zipper</span> (tail <span class="fu">$</span> iterate left u) u (tail <span class="fu">$</span> iterate right u)
+
+initConf <span class="fu">=</span> <span class="dt">Zipper</span> (repeat <span class="dv">0</span>) <span class="dv">1</span> (repeat <span class="dv">0</span>)
+
+<span class="ot">grow ::</span> <span class="dt">Zipper</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span>
+grow (<span class="dt">Zipper</span> (l<span class="fu">:</span>_) a (r<span class="fu">:</span>_)) <span class="fu">=</span> <span class="kw">if</span> l <span class="fu">==</span> r <span class="kw">then</span> <span class="dv">0</span> <span class="kw">else</span> <span class="dv">1</span>
+
+<span class="ot">blink ::</span> <span class="dt">Zipper</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span>
+blink (<span class="dt">Zipper</span> _ <span class="dv">0</span> _) <span class="fu">=</span> <span class="dv">0</span>
+blink (<span class="dt">Zipper</span> (l1<span class="fu">:</span>l2<span class="fu">:</span>_) a (r1<span class="fu">:</span>r2<span class="fu">:</span>_)) <span class="fu">=</span> <span class="dv">1</span> <span class="fu">+</span> (l1 <span class="fu">+</span> l2 <span class="fu">+</span> a <span class="fu">+</span> r1 <span class="fu">+</span> r2) <span class="ot">`mod`</span> <span class="dv">3</span>
+
+<span class="ot">trees ::</span> [ [ <span class="dt">Zipper</span> <span class="dt">Int</span> ] ]
+trees <span class="fu">=</span> transpose <span class="fu">$</span> iterate (extend blink) <span class="fu">&lt;$&gt;</span> tree
+  <span class="kw">where</span>
+  tree <span class="fu">=</span> iterate (extend grow) initConf
+
+<span class="ot">frame ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> [ <span class="dt">Zipper</span> a ] <span class="ot">-&gt;</span> [ [ a ] ]
+frame halfWidth height zs <span class="fu">=</span> take height <span class="fu">$</span> frameConfig <span class="fu">&lt;$&gt;</span> zs
+  <span class="kw">where</span>
+  frameConfig (<span class="dt">Zipper</span> ls a rs) <span class="fu">=</span>
+    reverse (take (halfWidth <span class="fu">-</span> <span class="dv">1</span>) ls) <span class="fu">++</span> a <span class="fu">:</span> take (halfWidth <span class="fu">-</span> <span class="dv">1</span>) rs
+
+<span class="ot">display ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Char</span>
+display <span class="dv">0</span> <span class="fu">=</span> <span class="ch">' '</span>
+display <span class="dv">1</span> <span class="fu">=</span> <span class="ch">'x'</span>
+display <span class="dv">2</span> <span class="fu">=</span> <span class="ch">'*'</span>
+display <span class="dv">3</span> <span class="fu">=</span> <span class="ch">'+'</span>
+
+main <span class="fu">=</span> <span class="kw">do</span>
+  <span class="kw">let</span> (halfWidth, height) <span class="fu">=</span> (<span class="dv">17</span>, <span class="dv">16</span>)
+  forM_ trees <span class="fu">$</span> \fr <span class="ot">-&gt;</span> <span class="kw">do</span>
+    putStrLn (intercalate <span class="st">&quot;\n&quot;</span> (fmap display <span class="fu">&lt;$&gt;</span> frame halfWidth height fr))
+    threadDelay <span class="dv">500000</span>
+    putStr <span class="st">&quot;\ESC[2J&quot;</span> <span class="co">-- UNIX trickery to clear the terminal.</span></code></pre></div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>In fact, the connection between a list and a zipper goes way deeper. The latter is the differentiation of the former. Try to wrap your head around that! Or don’t and read (parts of) the wonderfully titled paper <a href="https://personal.cis.strath.ac.uk/conor.mcbride/Dissect.pdf"><em>“Clowns to the left of me, jokers to the right”</em></a> by Conor McBride.<a href="#fnref1">↩</a></p></li>
+<li id="fn2"><p>This is a common pattern. Streams and non-empty lists for example follow pretty much the same implementation for <code>duplicate</code>. Here are the instances without further explanation.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Comonad</span> <span class="dt">Stream</span> <span class="kw">where</span>
+  extract (<span class="dt">Cons</span> x _) <span class="fu">=</span> x
+  duplicate s<span class="fu">@</span>(<span class="dt">Cons</span> _ xs) <span class="fu">=</span> <span class="dt">Cons</span> s (duplicate xs)
+
+<span class="kw">instance</span> <span class="dt">Comonad</span> <span class="dt">NonEmpty</span> <span class="kw">where</span>
+  extract (x <span class="fu">:|</span> _) <span class="fu">=</span> x
+  duplicate n<span class="fu">@</span>(_ <span class="fu">:|</span> xxs) <span class="fu">=</span> n <span class="fu">:|</span> <span class="kw">case</span> <span class="kw">of</span> xxs
+    [] <span class="ot">-&gt;</span> []
+    x<span class="fu">:</span>xs <span class="ot">-&gt;</span> duplicate (x <span class="fu">:|</span> xs)</code></pre></div>
+<a href="#fnref2">↩</a></li>
+<li id="fn3"><p>I admit that stacking one dimensional configurations is a bit awkward and perhaps a two dimensional one is more natural. Well, it is less fun that way, but if you insist you can use a two dimensional array to produce a similar tree. Here is an example declaration of such an array from Dominic Orchard’s paper titled <a href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/codo-notation-orchard-ifl12.pdf"><em>“A notation for Comonads”</em></a>.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">CArray</span> i a <span class="fu">=</span> <span class="dt">CA</span> (<span class="dt">Array</span> i a) i</code></pre></div>
+<p>You might get a two dimensional array that would help for our purposes with a type such as <code>CArray (Int,Int) Int</code>.<a href="#fnref3">↩</a></p></li>
+<li id="fn4"><p>Fractally inclined reader will realise this is, in fact, <a href="http://mathworld.wolfram.com/Rule90.html">how you construct the Sierpeński triangle</a>.<a href="#fnref4">↩</a></p></li>
+</ol>
+</div></div>
+
+<script>
+var figures =
+  Array.prototype.slice.call(document.getElementsByClassName("figure"),0)
+  .concat(
+    Array.prototype.slice.call(document.getElementsByTagName("figure"),0));
+
+for (var i = 0; i < figures.length; i++) {
+  var figure = figures[i];
+  var imgs = figure.getElementsByTagName("img");
+  if (imgs.length > 0) {
+    classes = imgs[0].classList;
+    for (var j = 0; j < classes.length; j++) {
+      figure.classList.add(classes[j] + "-figure");
+    }
+  }
+}
+</script>
+
+        </div>
+        <div id="footer">
+          <div class="top-container">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+          </div>
+        </div>
+    </body>
+</html>
