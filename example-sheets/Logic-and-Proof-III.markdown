@@ -1,14 +1,15 @@
 ---
 title: Logic and Proof Example Sheet I
 date: 2018-01-06
+lastUpdated: 2018-02-03
 ---
 
 ## From the lecture notes
 
-  - Section 9 Exercises: 37
-  - Section 10 Exercises: 39, 41
-  - Section 11 Exercises: 45, 46
-  - Section 12 Exercises: 47
+  - Section 9 Exercises: 41
+  - Section 10 Exercises: 43, 45
+  - Section 11 Exercises: 49, 50
+  - Section 12 Exercises: 51
 
 ## Exam questions
 
