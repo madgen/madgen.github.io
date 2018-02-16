@@ -77,6 +77,20 @@ main = hakyll $ do
                 >>= loadAndApplyTemplate "templates/default.html" indexCtx
                 >>= relativizeUrls
 
+    create ["atom.xml"] $ do
+        route idRoute
+        compile $ do
+            let feedCtx = postCtx <>
+                  field "description" (\item -> do
+                    mInWhich <- getMetadataField (itemIdentifier item) "inWhich"
+                    case mInWhich of
+                      Nothing -> return "There is no description for this post."
+                      Just inWhich -> return $
+                        "In which " <> inWhich)
+
+            posts <- fmap (take 10) . recentFirst =<< loadAll "posts/*"
+            renderAtom feedConf feedCtx posts
+
     match "templates/*" $ compile templateCompiler
 
 
@@ -107,3 +121,12 @@ postCtx =
           parseTimeM True defaultTimeLocale "%Y-%m-%d" strToFormat :: Maybe UTCTime
         return $ formatTime defaultTimeLocale "%B %e, %Y" parsedTime)
 
+feedConf :: FeedConfiguration
+feedConf = FeedConfiguration
+  { feedTitle       = "Do disturb me"
+  , feedDescription =
+      "Programming language, science, and cultural related posts."
+  , feedAuthorName  = "Mistral Contrastin"
+  , feedAuthorEmail = "madgenhetic@gmail.com"
+  , feedRoot        = "https://dodisturb.me"
+  }
