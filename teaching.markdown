@@ -21,7 +21,9 @@ Sobel over Michaelmas.
    [II](example-sheets/Compiler-Construction-II.html),
    [III](example-sheets/Compiler-Construction-III.html), and
    [IV](example-sheets/Compiler-Construction-IV.html))
- - Concepts in Programming Languages
+ - Concepts in Programming Languages (Example sheets
+   [I](example-sheets/Concepts-in-Programming-Languages-I.html) and
+   [II](example-sheets/Concepts-in-Programming-Languages-II.html))
  - Formal Languages
 
 ### Practical
