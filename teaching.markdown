@@ -26,6 +26,10 @@ Sobel over Michaelmas.
    [II](example-sheets/Concepts-in-Programming-Languages-II.html))
  - Formal Languages
 
+### Part II
+ - Hoare Logic and Model Checking (Example sheets
+   [I](example-sheets/Hoare-Logic-and-Model-Checking-I.html))
+
 ### Practical
  - Further Java
 
