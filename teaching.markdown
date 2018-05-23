@@ -28,8 +28,9 @@ Sobel over Michaelmas.
 
 ### Part II
  - Hoare Logic and Model Checking (Example sheets
-   [I](example-sheets/Hoare-Logic-and-Model-Checking-I.html) and
-   [II](example-sheets/Hoare-Logic-and-Model-Checking-II.html))
+   [I](example-sheets/Hoare-Logic-and-Model-Checking-I.html),
+   [II](example-sheets/Hoare-Logic-and-Model-Checking-II.html), and
+   [III](example-sheets/Hoare-Logic-and-Model-Checking-III.html))
 
 ### Practical
  - Further Java
