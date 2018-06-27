@@ -8,16 +8,8 @@
         <name>Mistral Contrastin</name>
         <email>madgenhetic@gmail.com</email>
     </author>
-    <updated>2018-06-19T00:00:00Z</updated>
+    <updated>2018-01-28T00:00:00Z</updated>
     <entry>
-    <title>GADT a la Jane Street in Haskell</title>
-    <link href="https://dodisturb.me/posts/2018-06-19-GADT-a-la-Jane-Street-in-Haskell.html" />
-    <id>https://dodisturb.me/posts/2018-06-19-GADT-a-la-Jane-Street-in-Haskell.html</id>
-    <published>2018-06-19T00:00:00Z</published>
-    <updated>2018-06-19T00:00:00Z</updated>
-    <summary type="html"><![CDATA[In which we translate Marvin Minsky's GADT use case and blog post into Haskell and highlight the differences.]]></summary>
-</entry>
-<entry>
     <title>Cellular Christmas Tree</title>
     <link href="https://dodisturb.me/posts/2018-01-28-Cellular-Christmas-Tree.html" />
     <id>https://dodisturb.me/posts/2018-01-28-Cellular-Christmas-Tree.html</id>
