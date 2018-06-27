@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-41394820-3');
+        </script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="description" content="Mistral Contrastin's thought bubble,
+          blog, and personal revelations." />
+        <meta name="author" content="Mistral Contrastin" />
+        <title>Do disturb me | GADT a la Jane Street in Haskell</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+        <link rel="alternate" type="application/atom+xml" href="../atom.xml" />
+    </head>
+    <body>
+        <div id="header">
+            <div class="top-container">
+              <div id="logo">
+                  <a href="../">Do Disturb Me</a>
+              </div>
+              <div id="navigation">
+                  <a href="../archive.html">Blog</a>
+                  <a href="../teaching.html">Teaching</a>
+              </div>
+            </div>
+            <div id="mandelbrot"></div>
+        </div>
+
+        <div id="content">
+            <div class="info">
+  Posted on June 19, 2018
+  
+  
+</div>
+
+<h1>GADT a la Jane Street in Haskell</h1>
+
+
+<p class="in-which">In which we translate Marvin Minsky's GADT use case and blog post into Haskell and highlight the differences.</p>
+
+
+<div class="post"><p>Some years back Marvin Minsky wrote <a href="https://blog.janestreet.com/why-gadts-matter-for-performance/">Why GADTs matter for performance</a>. I allude to this post while teaching undergraduates who are sick of seeing examples of language features that make writing compilers easy. I thought it would be nice to translate it into Haskell.</p>
+<p>In a nutshell, the Minsky’s post shows GADTs can be used to control memory representation safely that wouldn’t otherwise be possible in OCaml.</p>
+<p>The structure of this post follows almost exactly that of Minsky’s to the extent that I stole the headings. There is some commentary on how Haskell differs from OCaml. The most striking of these differences is lack of <em>ML style modules</em> in Haskell<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a>. For this reason, I develop a number of datatypes as opposed to modules implementing a desired interface (or <em>signature</em> in ML parlance).</p>
+<p>There are also a number of simplifications. First, the original post was not written in a monadic style but with mutable data structures. To simplify the presentation, I opted for immutable data structures <code>Array</code> and <code>ByteString</code> from the beloved <code>array</code> and <code>bytestring</code> packages. Second, I dispensed with the <code>set</code> function.</p>
+<h2 id="the-problem-of-polymorphism">The problem of polymorphism</h2>
+<p>Before getting to the GADT example, let’s first talk about how polymorphic functions are compiled in OCaml and Haskell. Consider the following signature for the <code>foldr</code> function.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">foldr<span class="ot"> ::</span> <span class="dt">Foldable</span> t <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> t a <span class="ot">-&gt;</span> b</code></pre></div>
+<p>Here, we do not care about what <code>a</code>, <code>b</code>, and <code>t</code> are so long as we have a <code>Foldable</code> typeclass instance for <code>t</code>. Regardless the number of instantiations of these type variables, GHC will compile <code>foldr</code> only once. This is possible because the binary generated for this function will access objects indirectly through pointers.</p>
+<p>The downside is if we’d like to iterate over a byte array we will still have to</p>
+<h2 id="controlling-memory-representation-without-gadts">Controlling memory representation without GADTs</h2>
+<h2 id="gadts-to-the-rescue">GADTs to the rescue</h2>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>This is a bit of a lie as <a href="ezyang.com">Edward Yang</a>’s retrofitted module system Backpack (released in GHC 8.2.1) probably allows you to do same style of development. The examples I’ve seen do not give me the same feel as ML modules, but I haven’t digged enough to make a strong statement. A future blog post?<a href="#fnref1">↩</a></p></li>
+</ol>
+</div></div>
+
+<script>
+var figures =
+  Array.prototype.slice.call(document.getElementsByClassName("figure"),0)
+  .concat(
+    Array.prototype.slice.call(document.getElementsByTagName("figure"),0));
+
+for (var i = 0; i < figures.length; i++) {
+  var figure = figures[i];
+  var imgs = figure.getElementsByTagName("img");
+  if (imgs.length > 0) {
+    classes = imgs[0].classList;
+    for (var j = 0; j < classes.length; j++) {
+      figure.classList.add(classes[j] + "-figure");
+    }
+  }
+}
+</script>
+
+        </div>
+        <div id="footer">
+          <div class="top-container">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+          </div>
+        </div>
+    </body>
+</html>
