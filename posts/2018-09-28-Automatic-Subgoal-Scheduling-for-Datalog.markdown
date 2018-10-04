@@ -19,7 +19,7 @@ in Datalog, and what problems they bring with them. Then I get to the
 bottom of what it means to safely evaluate subgoals using such predicates. This
 will lead us to the naïve, incomplete, and inefficient solution and that will
 lead us to our solution. I'll conclude by giving some pointers where this work
-might go and why you might like to look at the paper as well.
+might go and why you might like to look at the paper.
 
 ## Motivation
 
@@ -167,8 +167,8 @@ people off. You'll definitely agree with me once we get there).
 
 *Adornments* indicate the binding status of an argument. *Adornment
 transformation* is the standard analysis that computes it (I am well aware that
-calling an analysis a transformation is silly). Let's understand using Example
-1:
+calling an analysis a transformation is silly). Let's understand using [Example
+1](#example-1):
 
 ```prolog
 auth(User) :- password(User,Pass), hash(Pass,Hash), valid(User,Hash).
@@ -213,7 +213,7 @@ bound in the head of the rule, and `hash(Pass,Hash)`{.prolog} would have `bf`.
 As an exercise you can try to figure out the binding pattern for
 `valid(User,Hash)`{.prolog} from the previous example (the answer[^3]).
 
-#### Adorning Example 4
+#### Example 4
 
 Before moving on from adornments, let's look at an extension of Example 2. There
 is something that brings us closer to the solution of the code duplication
@@ -229,13 +229,13 @@ check_server(Hash) :- weak(Pass,Hash).
 weak(Pass,Hash) :- hash(Pass,Hash), rainbow(Hash,Pass).
 ```
 
-This is the same program in Example 2 except that we have two queries one using
-the $check\_client$ predicate and the other using $check\_server$. Now let's
-adorn this program but rather than noting the adornment patterns separately,
-let's make them suffixes to the names of the predicates. This is how this
-analysis is usually conduct and is the reason why it is referred as a
-transformation despite being an analysis in spirit. As it is a top-down
-procedure we start from the queries.
+This is the same program in [Example 2](#example-2) except that we have two
+queries one using the $check\_client$ predicate and the other using
+$check\_server$. Now let's adorn this program but rather than noting the
+adornment patterns separately, let's make them suffixes to the names of the
+predicates. This is how this analysis is usually conduct and is the reason why
+it is referred as a transformation despite being an analysis in spirit. As it is
+a top-down procedure we start from the queries.
 
 ```prolog
 ?- check_client_b("123456").
@@ -269,15 +269,14 @@ effected by the adornments patern of the head. The binding patterns of `hash`
 above are `bf` and `fb` and this difference stems only from the head of the
 tules.
 
-The reason I showed this example is this: this looks remarkably similar to the
-code duplication solution we found to the problem described in Example 2. We did
-end up with two different versions of weak with two exceptions the suffixes are
-`bf` and `fb` instead of `client` and `server` which is spurfluous and that the
-second clause with head $weak\_fb$ is not reordered while the one with
-$weak\_check$ is. Below when we describe our solution to the problem we will
-leverage this information and make a slightly modified adornment procedure to
-handle code duplication for us behind the scenes without the intervention by the
-programmer!
+This looks remarkably similar to the code duplication solution we found to the
+problem described in [Example 2](#example-2). Once again, we ended up with two
+different versions of weak with suffixes are `bf` and `fb` instead of `client`
+and `server`. This is a spurfluous difference. The other difference is that the
+rule with head $weak\_fb$ is not reordered while the one with $weak\_check$
+is. So it can't be a solution to the invocation safety on its own, but it is a
+step in the right direction and we develop this furter
+[below](#generalised-adornment).
 
 ### Modes: summarising dataflow requirements
 
@@ -287,40 +286,92 @@ Datalog `+` and `?`. If the invocation a predicate is going to be safe,
 parameters with mode `+` must be bound and those with mode `?` are always safe
 bound or not.
 
-For example, $hash$ from Example 1 has a `+?` pattern because its first
-parameter needs to be bound at the time of invocation and the second parameter
-may be bound or not. If we evaluate the subgoal `hash("Hattie","42")`{.prolog},
-`"Hattie"`{.prolog} must be there to safely execute $hash$, but it doesn't
-matter `"42"`{.prolog} is there because if the hash of `"Hattie"`{.prolog} is
-`"0"`{.prolog}, then we can compare `"0"`{.prolog} and `"42"`{.prolog} safely.
-Let's look at $password$ now. That predicate is a lot like a database table,
-there are no restrictions on what you can use to look up values.  Hence, it has
-the mode pattern `??`. In standard Datalog, all predicates have `?` mode
-associated with all of their parameters[^2].
+For example, $hash$ from [Example 1](#example-1) has a `+?` pattern because its
+first parameter needs to be bound at the time of invocation and the second
+parameter may be bound or not. If we evaluate the subgoal
+`hash("Hattie","42")`{.prolog}, `"Hattie"`{.prolog} must be there to safely
+execute $hash$, but it doesn't matter `"42"`{.prolog} is there because if the
+hash of `"Hattie"`{.prolog} is `"0"`{.prolog}, then we can compare
+`"0"`{.prolog} and `"42"`{.prolog} safely.  Let's look at $password$ now. That
+predicate is a lot like a database table, there are no restrictions on what you
+can use to look up values.  Hence, it has the mode pattern `??`. In standard
+Datalog, all predicates have `?` mode associated with all of their
+parameters[^2].
 
-### Relating adornments to modes (aka. invocation safety or well-modedness)
+Let's adopt a scheme of ammending the predicate name with mode patterns to make
+things syntactically obvious just as we did in the [adornments
+example](#example-4). [Example 1](#example-1) becomes
 
-Remember `+` means the parameter **needs to be** bound and `b` means the
-parameter **is** bound. In an adornment program, invocations of extralogical
-predicates are safe when all subgoals with extralogical predicates
-are adorned with `b` for parameters with mode `+`. (I told you it was trivial.)
+```prolog
+auth_x(User) :- password_??(User,Pass), hash_+?(Pass,Hash), valid_??(User,Hash).
+```
 
-In the literature, invocation safety is called _well-modedness_.
+You notice there is an `x` in place of `f` or `b` for the $auth$ predicate.
+That's because we don't know a way of determining modes of user-defined
+predicates. Intuitively, dataflow requirements of a user-defined predicate is
+some function of the subgoals that define those predicates. Indeed, finding an
+finding an effective procedure to precisely determine mode patterns of
+user-defined predicates is the only hard part of our quest to ensure invocation
+safety. Something we explore in the [solution](#solution).
+
+### Relating adornments to modes (aka. invocation safety)
+
+Remember `b` means the parameter **is** bound and `+` means the parameter
+**needs** to be bound. Modes and adornments are clearly related. Their main
+differences are:
+
+ * Adornment transformation needs an entry point (a query) and flows top-down
+ from heads to the bodies. We don't have a procedure for computing modes (yet),
+ but we mentioned the predicates defined in the heads should be a function of
+ those. This suggests bottom-up information flow.
+ * A binding (adornment) pattern qualifies or embellishes a subgoal (a predicate
+ applied to tuples), hence varies depending on the context. A mode pattern, on
+ the other hand, qualifies the predicate and hence does not change from one
+ subgoal to another.
+ * Related to the previous point, adornment is entirely dependent on the query,
+ whereas modes are not. This suggests we can perhaps compute modes beforehand and
+ consult them as queries change.
+
+The agreement between adornments and modes be made precise: in an adorned
+program, invocations of extralogical predicates are safe when all subgoals with
+extralogical predicates are adorned with `b` for parameters with mode `+`. (I
+told you it was trivial.)
+
+In the literature, invocation safety is called _well-modedness_. A well-moded
+query and program pair does not produce invocation errors just like "well-typed
+programs don't go wrong" as [Robin
+Milner](https://en.wikipedia.org/wiki/Robin_Milner) put it.
 
 ## Solution
 
-### Naïvely brute-forcing our way through
+Now we start with the stupidest possible thing we can do and refine our
+approach.
+
+### Naïve solution
+
+The examples so far suggest that it is a simple reordering program of rule
+bodies. So why not let's give this a go. Recall [Example 1](#example-1):
+
+```prolog
+auth(User) :- password(User,Pass), hash(Pass,Hash), valid(User,Hash).
+```
+
+### Brute-forcing our way through the problem
 
 ### Greed is good
+
+### Multiple rules
+
+### Generalised adornment
 
 ## Conclusion
 
 [^1]: `Pass` in this rule is an existentially quantified variable, so there is
 indeed nothing that could have bound it out of the rule context.
 
-[^2]: This seems to contradict what I said in Example 3, so let me clarify. In a
-subgoal like `not r(X,Y,Z)`{.prolog}, the predicate $r$ still has `???` mode
-pattern. It is the negation that imposes makes `r` behave as if it has `+++`
-pattern.
+[^2]: This seems to contradict what I said in [Example 3](#example-3), so let me
+clarify. In a subgoal like `not r(X,Y,Z)`{.prolog}, the predicate $r$ still has
+`???` mode pattern. It is the negation that imposes makes `r` behave as if it
+has `+++` pattern.
 
 [^3]: It is `bb` because both `User` and `Pass` appear in preceding subgoals.
