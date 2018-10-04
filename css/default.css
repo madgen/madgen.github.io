@@ -74,6 +74,10 @@ p {
     text-justify: inter-word;
 }
 
+li {
+    text-align: justify;
+}
+
 ul li {
     position:relative;
     list-style-type: none;
