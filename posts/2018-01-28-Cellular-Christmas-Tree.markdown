@@ -4,6 +4,7 @@ postType: Technical
 inWhich: we create a program displaying a Christmas tree from a single dot on an
   infinite tape using two cellular automata computed with comonads as used in
   Haskell. You can also call it yet another comonad tutorial if you like.
+published: true
 ---
 
 This post is late, the season has passed, and I am writing this in one of the
