@@ -51,7 +51,7 @@ main = hakyll $ do
     create ["archive.html"] $ do
         route idRoute
         compile $ do
-            posts <- recentFirst =<< loadAll "posts/*"
+            posts <- filterM isPublished =<< recentFirst =<< loadAll "posts/*"
             let archiveCtx = constField "title" "Blog"
                           <> partialWith posts postCtx
                           <> defaultContext
@@ -92,13 +92,23 @@ main = hakyll $ do
                       Just inWhich -> return $
                         "In which " <> inWhich)
 
-            posts <- fmap (take 10) . recentFirst =<< loadAll "posts/*"
+            posts <- fmap (take 10)
+                   . filterM isPublished
+                 =<< recentFirst
+                 =<< loadAll "posts/*"
             renderAtom feedConf feedCtx posts
 
     match "templates/*" $ compile templateCompiler
 
 
 --------------------------------------------------------------------------------
+isPublished :: MonadMetadata m => Item a -> m Bool
+isPublished item = do
+  mPublished <- getMetadataField (itemIdentifier item) "published"
+  return $ case mPublished of
+    Just "true" -> True
+    _ -> False
+
 partialWith :: [ Item a ] -> Context a -> Context a
 partialWith items itemCtx = functionField "partialWith" f
   where
