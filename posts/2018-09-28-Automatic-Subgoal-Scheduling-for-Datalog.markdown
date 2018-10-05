@@ -76,7 +76,7 @@ example.
 check_client(Pass) :- weak(Pass,Hash).
 check_server(Hash) :- weak(Pass,Hash).
 
-weak(Pass,Hash) :- hash(Pass,Hash), rainbow(Hash,Pass).
+weak(Pass,Hash) :- hash(Pass,Hash), rainbow(Pass,Hash).
 ```
 
 In this example, we define a relation $weak$ that checks if a password or a hash
@@ -104,8 +104,8 @@ rewrite as follows:
 check_client(Pass) :- weak_client(Pass,Hash).
 check_server(Hash) :- weak_server(Pass,Hash).
 
-weak_client(Pass,Hash) :- hash(Pass,Hash), rainbow(Hash,Pass).
-weak_client(Pass,Hash) :- rainbow(Hash,Pass), hash(Pass,Hash).
+weak_client(Pass,Hash) :- hash(Pass,Hash), rainbow(Pass,Hash).
+weak_client(Pass,Hash) :- rainbow(Pass,Hash), hash(Pass,Hash).
 ```
 
 #### Example 3
@@ -226,7 +226,7 @@ problem described above.
 check_client(Pass) :- weak(Pass,Hash).
 check_server(Hash) :- weak(Pass,Hash).
 
-weak(Pass,Hash) :- hash(Pass,Hash), rainbow(Hash,Pass).
+weak(Pass,Hash) :- hash(Pass,Hash), rainbow(Pass,Hash).
 ```
 
 This is the same program in [Example 2](#example-2) except that we have two
@@ -259,8 +259,8 @@ bodies, we have $weak\_bf$ and $weak\_fb$ predicates because
 we have two different bindings for $weak$, we need two versions of $weak$ body.
 
 ```prolog
-weak_bf(Pass,Hash) :- hash_bf(Pass,Hash), rainbow_bb(Hash,Pass).
-weak_fb(Pass,Hash) :- hash_fb(Pass,Hash), rainbow_bb(Hash,Pass).
+weak_bf(Pass,Hash) :- hash_bf(Pass,Hash), rainbow_bb(Pass,Hash).
+weak_fb(Pass,Hash) :- hash_fb(Pass,Hash), rainbow_bb(Pass,Hash).
 ```
 
 The adornment of these rules are done exactly as before, so I won't describe
@@ -303,7 +303,8 @@ things syntactically obvious just as we did in the [adornments
 example](#example-4). [Example 1](#example-1) becomes
 
 ```prolog
-auth_x(User) :- password_??(User,Pass), hash_+?(Pass,Hash), valid_??(User,Hash).
+auth_x(User) :-
+  password_??(User,Pass), hash_+?(Pass,Hash), valid_??(User,Hash).
 ```
 
 You notice there is an `x` in place of `f` or `b` for the $auth$ predicate.
@@ -355,7 +356,8 @@ bodies. So why not let's give this a go. Recall the variation of [Example
 embellishments](#mode-summarising-dataflow-requirements):
 
 ```prolog
-auth_x(User) :- password_??(User,Pass), hash_+?(Pass,Hash), valid_??(User,Hash).
+auth_x(User) :-
+  password_??(User,Pass), hash_+?(Pass,Hash), valid_??(User,Hash).
 ```
 
 Let's adorn versions of this clause with the subgoals permuted with respect to
@@ -363,12 +365,12 @@ the query `?- auth_x(User)`{.prolog}. The heads of the clauses are omitted as
 they are always `auth_x_f(User)`{.prolog}.
 
 ```prolog
-... :- password_??_ff(User,Pass), hash_+?_bf(Pass,Hash), valid_??_bb(User,Hash).
-... :- password_??_ff(User,Pass), valid_??_bf(User,Hash), hash_+?_bb(Pass,Hash).
-... :- valid_??_ff(User,Hash), password_??_bf(User,Pass), hash_+?_bb(Pass,Hash).
-... :- valid_??_ff(User,Hash), hash_+?_fb(Pass,Hash), password_??_bb(User,Pass).
-... :- hash_+?_ff(Pass,Hash), valid_??_fb(User,Hash), password_??_bb(User,Pass).
-... :- hash_+?_ff(Pass,Hash), password_??_fb(User,Pass), valid_??_bb(User,Hash).
+password_??_ff(User,Pass), hash_+?_bf(Pass,Hash), valid_??_bb(User,Hash).
+password_??_ff(User,Pass), valid_??_bf(User,Hash), hash_+?_bb(Pass,Hash).
+valid_??_ff(User,Hash), password_??_bf(User,Pass), hash_+?_bb(Pass,Hash).
+valid_??_ff(User,Hash), hash_+?_fb(Pass,Hash), password_??_bb(User,Pass).
+hash_+?_ff(Pass,Hash), valid_??_fb(User,Hash), password_??_bb(User,Pass).
+hash_+?_ff(Pass,Hash), password_??_fb(User,Pass), valid_??_bb(User,Hash).
 ```
 
 The last three are well-moded while the first three are not. Since $hash$ the
@@ -478,7 +480,8 @@ no successors.
 Let's apply this strategy to [Example 1](#example-1):
 
 ```prolog
-auth_x(User) :- password_??(User,Pass), hash_+?(Pass,Hash), valid_??(User,Hash).
+auth_x(User) :-
+  password_??(User,Pass), hash_+?(Pass,Hash), valid_??(User,Hash).
 ```
 
 The corresponding graph is:
@@ -503,8 +506,8 @@ because on this path the subgoal `password(User,Pass)` precedes it and binds
 More concretely, this leads to the following orderings:
 
 ```prolog
-auth_x(User) :- password_??(User,Pass), valid_??(User,Hash), hash_+?(Pass,Hash).
-auth_x(User) :- valid_??(User,Hash), password_??(User,Pass), hash_+?(Pass,Hash).
+password_??(User,Pass), valid_??(User,Hash), hash_+?(Pass,Hash).
+valid_??(User,Hash), password_??(User,Pass), hash_+?(Pass,Hash).
 ```
 
 These are the two of three well-moded orderings found through brute-force search
@@ -538,8 +541,10 @@ boundedness of `User`, hence `?` is suitable for $auth$. We can revise the two
 versions of the cluase as follows:
 
 ```prolog
-auth_f(User) :- password_??(User,Pass), valid_??(User,Hash), hash_+?(Pass,Hash).
-auth_f(User) :- valid_??(User,Hash), password_??(User,Pass), hash_+?(Pass,Hash).
+auth_?(User) :-
+  password_??(User,Pass), valid_??(User,Hash), hash_+?(Pass,Hash).
+auth_?(User) :-
+  valid_??(User,Hash), password_??(User,Pass), hash_+?(Pass,Hash).
 ```
 
 #### Example 7
@@ -548,6 +553,7 @@ Let's now look at [Example 5](#example-5) again:
 
 ```prolog
 ?- auth_x(User)
+
 auth_x(User) :- check_xx(User,Pass), password_??(User,Pass).
 check_xx(User,Pass) :- hash_+?(Pass,Hash), valid_??(User,Hash).
 ```
@@ -600,7 +606,7 @@ not the case in general and we can use [Example 2](#example-2) to demonstrate
 it:
 
 ```prolog
-weak_xx(Pass,Hash) :- hash_+?(Pass,Hash), rainbow_?+(Hash,Pass).
+weak_xx(Pass,Hash) :- hash_+?(Pass,Hash), rainbow_?+(Pass,Hash).
 ```
 
 We don't have any logical predicates in this body. This can't be a good start.
@@ -650,7 +656,7 @@ to have a custom extralogical predicate that checks weakness of a password hash
 pair and requires both of them to execute safely.
 
 ```prolog
-weak_xx(Pass,Hash) :- hash_+?(Pass,Hash), rainbow_?+(Hash,Pass).
+weak_xx(Pass,Hash) :- hash_+?(Pass,Hash), rainbow_?+(Pass,Hash).
 weak_xx(Pass,Hash) :- custom_weak_++(Pass,Hash).
 ```
 
@@ -683,7 +689,116 @@ extralogical predicates.
 
 ### Generalised adornment
 
+Now we know how to determine dataflow requirements of user-defined predicates as
+well as orderings of subgoals that lead to these requirements. However, this
+does not help very much with our definition of [invocation
+safety](#relating-adornments-to-modes-aka.-invocation-safety). The reason is
+that definition rely on adorning a program in the given order of subgoals. This
+is already in the result of [Example 4](#example-4) with two different versions
+of the $weak$ clause with different adornments but static ordering of subgoals.
+
+So the final step in our quest to invocation safety is to generalise adornment
+procedure such that it can take reorderings into the account.
+
+We modify the adornment procedure in a single way. We let the procedure take a
+reordering function that given a clause and a binding pattern produces an
+ordering. Of course, we compute these orderings through scheduling graphs as
+above. Then, right before we start adorning the body of a clause, we apply the
+reordering first, then adorn from left to right as usual.
+
+#### Example 9
+
+Consider the following example adapted from [Example 4](#example-4).
+
+```prolog
+?- weak_+?/?+(Pass,"deadbeaf").
+
+weak_+?/?+(Pass,Hash) :- hash_+?(Pass,Hash), rainbow_?+(Pass,Hash).
+```
+
+So the head of $weak$ clause will have the adornment `fb` due to the query. We
+almost computed the ordering function for $weak$ in [Example 8](#example-8). For
+`?+` mode pattern alternative which is the only alternative compatible with `fb`
+binding pattern, we have an ordering in which the subgoal with $rainbow$ comes
+first and the subgoal with $hash$ come second. So we reorder the body first and
+then perform the adornment and that leads to the following adorned program:
+
+```prolog
+?- weak_+?/?+_fb(Pass,"deadbeaf")
+
+weak_+?/?+_fb(Pass,Hash) :- rainbow_?+_fb(Pass,Hash), hash_+?_bb(Pass,Hash).
+```
+
+And voilà, we have a $rainbow$ subgoal with an adornment for its second
+parameter `b` and $hash$ subgoal with an adornment for its first parameter `b`
+as required. As all extralogical predicates are used in subgoals with adornments
+that match their modes, the program is safe to invoke.
+
+### Checking invocation safety
+
+Once we compute modes for all-user defined predicates including the query, we
+don't have to adorn the program to see if the program is well-moded. We only
+need to look at the query.
+
+#### Example 10
+
+In [Example 9](#example-9) the query was `?- weak_+?/?+_fb(Pass,"deadbeaf")`,
+here the fact that `fb` is consistent with one of the mode pattern alternatives,
+namely `?+` immediately indicates that we have a ordering function that satisfy
+all dataflow requirements.
+
+If, on the other, hand we pose the same query to the version of weak used in
+explaining [modes of predicates with multiple rules](#multiple-rules):
+
+```prolog
+?- weak_++(Pass,"deadbeaf")
+
+weak_++(Pass,Hash) :- hash_+?(Pass,Hash), rainbow_?+(Pass,Hash).
+weak_++(Pass,Hash) :- custom_weak_++(Pass,Hash).
+```
+
+Just by looking at the query, we know the program is not well-moded with respect
+to this query because the predicate $weak$ in this case requires both of its
+parameters to be bound but the first argument to the query is the free variable
+`Pass`.
+
+### Some properties
+
+This algorithm enjoys a number of properties. I am neither going to get into
+their proofs nor the mathematical details, but it would be amiss to omit them
+entirely:
+
+ 1. Soundness: if the algorithm finds a reordering function for a program, the
+ the reordered rules won't have invocation safety.
+ 2. Completeness: if there are any orderings of clauses that ensure invocation
+ safety, then the algorithm will find a (possible different) set of orderings
+ that ensure invocation safety.
+ 3. Incremental computation: addition of new rules don't invalidate the old
+ results, hence the mode patterns of existing user-defined predicates can be
+ used to seed the analysis leading to faster execution.
+ 4. Termination: the analysis terminates on all inputs.
+
+In particular, incremental computation is useful for making this analysis
+scalable. In the specical case that the added rule does not extend an existing
+predicate, _i.e._, have a freash head, we don't have to reanalyse old rules.
+This means we can analyse libraries and ship the mode patterns of predicates
+defined in the library with them. The users of the library won't have to
+reanalyse the code in the library.
+
 ## Summary
+
+The main take away is declarative programming is awesome! In the case of
+Datalog, we can supplement its expressivity by allowing extralogical predicates.
+This brings the problem of syntactic execution with it, but our analysis
+completely eliminates this and restore the promise of declarative programming!
+
+The analysis relies on computing dataflow requirements (modes) of user-defined
+predicates and verifying their consistency with respect to the actual bindings
+(adornments) of the program and query pairs.
+
+The analysis avoid inefficiency through a greedy scheduling algorithm, but
+does not sacrifice completeness. Additionally, it is incremental and hence can
+scale to multi module programs with relative ease.
 
 [^existential]: `Pass` in this rule is an existentially quantified variable, so
 there is indeed nothing that could have bound it out of the rule context.
