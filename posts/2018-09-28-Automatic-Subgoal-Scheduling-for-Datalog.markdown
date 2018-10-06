@@ -1,25 +1,31 @@
 ---
 title: Automatic Subgoal Scheduling for Datalog
 postType: Technical
-inWhich: we talk about how to make Datalog safer by reordering subgoals
-  statically when predicates with dataflow constraints are involved.
+inWhich: we investigate dataflow in declarative programs and talk about how
+  to make Datalog safer by statically reordering goals when predicates with
+  dataflow constraints are involved.
 ---
 
-I recently presented "Automatic Reordering for Dataflow Safety of Datalog" (can
-be accessed freely if you follow the link from [my
+I recently presented _"Automatic Reordering for Dataflow Safety of Datalog"_
+(can be accessed freely if you follow the link from [my
 homepage](https://dodisturb.me)) in the 20th Symposium on Principles and
 Practice of Declarative Languages. A few commented that the paper is technically
 dense and consequently hard going. I don't want this work to be ignored because
 I suck at writing. So in an attempt to make things right and also to do some PR,
 I will explain the major ideas of the paper without the formalism and with
-examples.
+numerous examples.
 
-I start by describing what extralogical predicates are, why one might want them
-in Datalog, and what problems they bring with them. Then I get to the
-bottom of what it means to safely evaluate subgoals using such predicates. This
-will lead us to the naïve, incomplete, and inefficient solution and that will
-lead us to our solution. I'll conclude by giving some pointers where this work
-might go and why you might like to look at the paper.
+I want this post to be understandable with easy. If you find yourself confused
+or bored at any point or found some terms that are not very well explained,
+contact me via Twitter or emal (both on [my homepage](https://dodisturb.me)).
+
+After explaining some standard terminology about Datalog, we start by describing
+what extralogical predicates are, why one might want them in Datalog, and what
+problems they bring along. Then we clarify what is meant by invocation safety of
+such predicates. This will lead us to the naïve, incomplete, and inefficient
+solution and that will lead us to a better solution. I'll conclude by giving
+summarising the main points, mentioning where this work work might go and why
+you might like to look at the paper.
 
 ## Motivation
 
@@ -742,10 +748,10 @@ need to look at the query.
 
 #### Example 10
 
-In [Example 9](#example-9) the query was `?- weak_+?/?+_fb(Pass,"deadbeaf")`,
-here the fact that `fb` is consistent with one of the mode pattern alternatives,
-namely `?+` immediately indicates that we have a ordering function that satisfy
-all dataflow requirements.
+In [Example 9](#example-9) the query was `?-
+weak_+?/?+_fb(Pass,"deadbeaf")`{.prolog}, here the fact that `fb` is consistent
+with one of the mode pattern alternatives, namely `?+` immediately indicates
+that we have a ordering function that satisfy all dataflow requirements.
 
 If, on the other, hand we pose the same query to the version of weak used in
 explaining [modes of predicates with multiple rules](#multiple-rules):
