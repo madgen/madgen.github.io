@@ -76,13 +76,12 @@ p {
 
 li {
     text-align: justify;
+    margin-bottom: 10px;
 }
 
 ul li {
     position:relative;
     list-style-type: none;
-    font-family: helvetica;
-    margin-bottom: 20px;
 }
 
 ul li::before{
