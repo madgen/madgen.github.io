@@ -27,6 +27,38 @@ solution and that will lead us to a better solution. I'll conclude by giving
 summarising the main points, mentioning where this work work might go and why
 you might like to look at the paper.
 
+## Terminology
+
+Let's briefly look at basic Datalog terminology through an example:
+
+```prolog
+ancestor(X,Z) :- parent(X,Y), parent(Y,Z).
+```
+```
+                 -----------  -----------
+                   Subgoal      Subgoal
+-------------    -------------------------
+    Head                   Body
+------------------------------------------
+                  Rule
+```
+
+ * This is a **rule** in Datalog (as it happens also in Prolog) with some parts
+highlighted.
+ * A rule consists of a **head** (to the left of `:-`) and a **body**
+ (everything to the right of `:-`). Body is a comma separated list of
+ **subgoals**.
+ * A subgoal is a **predicate** applied to a tuple.
+ * A **predicate** qualifies a tuple with a name (sort). Throughout the text, we
+ write subgoals in `monospace` and predicates in $italic$. For brevity sometimes
+ we say "the subgoal with $p$" that refers to a subgoal with the predicate $p$
+ inside.
+ * A tuple of subgoal consists of **terms** which is either a **constant** like
+ `"Dragon Fruit"` (always with quotation marks around it) or a **variable** like
+ `Fruit` (no quotations, always capitalised).
+
+We're good to go! All other terms will be defined in the text as we go along.
+
 ## Motivation
 
 #### Example 1
