@@ -791,20 +791,39 @@ This means we can analyse libraries and ship the mode patterns of predicates
 defined in the library with them. The users of the library won't have to
 reanalyse the code in the library.
 
-## Summary
+## Summary & concluding thoughts
 
 The main take away is declarative programming is awesome! In the case of
-Datalog, we can supplement its expressivity by allowing extralogical predicates.
-This brings the problem of syntactic execution with it, but our analysis
-completely eliminates this and restore the promise of declarative programming!
+Datalog, we can supplement expressivity by allowing extralogical predicates.
+This brings the syntactic order of execution problem with it, but our analysis
+completely eliminates this and restores the promise of declarative programming!
 
 The analysis relies on computing dataflow requirements (modes) of user-defined
 predicates and verifying their consistency with respect to the actual bindings
 (adornments) of the program and query pairs.
 
-The analysis avoid inefficiency through a greedy scheduling algorithm, but
-does not sacrifice completeness. Additionally, it is incremental and hence can
-scale to multi module programs with relative ease.
+We avoid inefficiency through a greedy scheduling algorithm, but we don't
+sacrifice completeness. Additionally, our analysis is incremental and thus
+scalable to multi module programs with relative ease.
+
+Here are few reasons why you might like to read the paper:
+
+ * understanding the mathematical foundation for modes & bindings,
+ * gaining insights into about an implementation (paper is effectively
+ executable maths),
+ * need more advanced examples (illustrating omitted aspects of the algorithm),
+ * and looking for generalisation from Datalog to other contexts.
+
+There are number of directions this work may go. I believe the constraint-based
+approach of the paper can be generalised to other declarative languages which
+need more sophisticated modes. I firmly believe there is a fundamental link
+between Martelli's semiring and dataflow in general. We didn't discuss
+user-level annotations as you noticed. There are interesting design questions
+about an annotation language for modes that might work exploring. Finally (and a
+bit more abstractly), extralogical predicates are inevitable in logic
+programming but they are afterthoughts to clear declarative semantics. I'd like
+them to be first-class citizens so we can reason about them and analyse them
+better.
 
 [^existential]: `Pass` in this rule is an existentially quantified variable, so
 there is indeed nothing that could have bound it out of the rule context.
