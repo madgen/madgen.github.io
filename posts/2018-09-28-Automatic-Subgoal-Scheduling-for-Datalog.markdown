@@ -260,8 +260,10 @@ check_server_b(Hash) :- weak_fb(Pass,Hash).
 The heads of each predicate receive their adornments directly from their
 callers. Since both callers have the pattern `b`, so do the heads. Now in the
 bodies, we have $weak\_bf$ and $weak\_fb$ predicates because
-`check_client_bf(User)` binds the first parameter of `weak(Pass,Hash)` and
-`check_client_fb(User)` binds the second parameter of `weak(Pass,Hash)`. Since
+`check_client_bf(User)`{.prolog} binds the first parameter of
+`weak(Pass,Hash)`{.prolog} and
+`check_client_fb(User)`{.prolog} binds the second parameter of
+`weak(Pass,Hash)`{.prolog}. Since
 we have two different bindings for $weak$, we need two versions of $weak$ body.
 
 ```prolog
