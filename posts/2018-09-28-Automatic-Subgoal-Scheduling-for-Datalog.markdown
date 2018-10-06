@@ -45,8 +45,8 @@ ancestor(X,Z) :- parent(X,Y), parent(Y,Z).
 
  * This is a **rule** in Datalog (as it happens also in Prolog) with some parts
 highlighted.
- * A rule consists of a **head** (to the left of `:-`) and a **body**
- (everything to the right of `:-`). Body is a comma separated list of
+ * A rule consists of a **head** (to the left of `:-`{.prolog}) and a **body**
+ (everything to the right of `:-`{.prolog}). Body is a comma separated list of
  **subgoals**.
  * A subgoal is a **predicate** applied to a tuple.
  * A **predicate** qualifies a tuple with a name (sort). Throughout the text, we
@@ -63,26 +63,24 @@ We're good to go! All other terms will be defined in the text as we go along.
 
 #### Example 1
 
-Here's a hypothethical Datalog _rule_ that authenticates a user.
+Here's a hypothethical Datalog rule that authenticates a user:
 
 ```prolog
 auth(User) :- password(User,Pass), hash(Pass,Hash), valid(User,Hash).
 ```
 
-The reading of any rule in Datalog is "if everything (_subgoals_) to the right
-of `:-`{.prolog} holds, then we can conclude the thing (atomic formula) on the
-left." In this specific case, we can authenticate a user if we have a password
-for a given user and the hash of that user is known to be valid. One of the
-nicest parts of this reading is that it doesn't matter which order the
-subgoals are presented, we still reach the same conclusion. For example,
+The reading of any rule in Datalog is "if everything (subgoals) to the right of
+`:-`{.prolog} holds, then we can conclude the head." In this specific case, we
+can authenticate a user if we have a password for a given user and the hash of
+that user is known to be valid. One of the nicest parts of this reading is that
+it doesn't matter which order the subgoals are presented, we still reach the
+same conclusion. For example,
 ```prolog
 auth(User) :- hash(Pass,Hash), password(User,Pass), valid(User,Hash).
 ```
 would authenticate exactly the same users as the previous example.
 
-Each atomic formula (more specifically each subgoal) contains a predicate for
-example $password$ is the predicate of the subgoal `password(User,
-Hash)`{.prolog}. When the predicates in a program are _logical_, there are no
+When the predicates in a program are _logical_, there are no
 dataflow restrictions for evaluation of a subgoal with that predicate. For
 example, `password("Milner",Pass)`{.prolog} would bind the password of Milner to
 `Pass` while `password(User,Pass)`{.prolog} would generate all known user and
@@ -91,18 +89,18 @@ predicate.
 
 However, the $hash$ predicate stands out in the previous example because hash
 functions (if they are any good) work only in one direction. It is unreasonable
-to expect $hash$ to bind a value for the password given an hash. Let's refer to
+to expect $hash$ to bind a value for the password given a hash. Let's refer to
 predicates like $hash$ (those with dataflow requirements) as _extralogical_
 predicates.
 
 In light of this knowledge, the two versions of the rule defining the
 predicate $user$ above are not equivalent. Evaluation of the subgoal
 `hash(Pass,Hash)`{.prolog} produces a runtime error if the value of `Pass` is
-unknown.  Suddenly, we have to be careful about the way you order your subgoals
-and not only those that are obviously extralogical like $hash$ but also any
-user-defined logical predicate that uses an extralogical one. To make the
+unknown. Suddenly, we have to be careful about the way we order subgoals.
+Not only those that are obviously extralogical like $hash$, but also any
+user-defined predicates that makes use of extralogical predicates! To make the
 matters worse, although semantically arithmetic relations such as $>$ are
-logical, they are usually implemented as extralogical predicates.
+logical, they are usually implemented as extralogical predicates (or relations).
 
 #### Example 2
 
@@ -117,18 +115,18 @@ check_server(Hash) :- weak(Pass,Hash).
 weak(Pass,Hash) :- hash(Pass,Hash), rainbow(Pass,Hash).
 ```
 
-In this example, we define a relation $weak$ that checks if a password or a hash
-is weak that is to say the hash of the password can be found by a rainbow
+In this example, we define a predicate $weak$ that checks if a password or a
+hash is weak that is to say the hash of the password can be found by a rainbow
 function (a function that can reverse some hashes). Like $hash$, $rainbow$ is
 also extralogical. Now it is beneficial for both the client and the server to
-check if a hash is weak, but the the client shouldn't know the hash of a given
+check if a hash is weak, but the client shouldn't know the hash of a given
 password (otherwise it can construct a rainbow table of its own!) and the server
 shouldn't know the password (in case it gets stolen). Hence, there are two
 predicates `check_server` that takes a password and `check_server` that takes a
 hash that can be used by the client and server respectively.
 
-This example is worse than the previous one because regardless how carefuly the
-programmer is with the dataflow requirements of its predicates, it wouldn't be
+This example is worse than the previous one because regardless how careful the
+programmer is with the dataflow requirements of predicates, she wouldn't be
 able to rewrite the definition of `weak` in a single rule such that all
 binding requirements are satisfied. Now when `check_client` is used, `weak`
 should have the subgoal `hash(Pass,Hash)`{.prolog} first as the password is
@@ -143,17 +141,17 @@ check_client(Pass) :- weak_client(Pass,Hash).
 check_server(Hash) :- weak_server(Pass,Hash).
 
 weak_client(Pass,Hash) :- hash(Pass,Hash), rainbow(Pass,Hash).
-weak_client(Pass,Hash) :- rainbow(Pass,Hash), hash(Pass,Hash).
+weak_server(Pass,Hash) :- rainbow(Pass,Hash), hash(Pass,Hash).
 ```
 
 #### Example 3
 
-If you're still not sold on the idea, I have one final example. Even in the
-purely logical implementations of Datalog, this problem already hides in plain
-sight. Stratified negation is an indispensible tool in Datalog logic
+If you're still not sold on the idea, I have one final motivating example. Even
+in the purely logical implementations of Datalog, this problem already hides in
+plain sight. Stratified negation is an indispensible construct in Datalog
 programming. When discussing negation, the emphasis is always on the lack of
 cyclic dependencies between predicates used negatively. However, there is
-another often ignored syntactic problem. Consider the following rule.
+another syntactic problem that often gets ignored. Consider the following rule:
 
 ```prolog
 accessed("Mistral").
@@ -173,9 +171,9 @@ password recorded for the given user identifier. This is a stratified program,
 so semantically negation should be fine. Yet most implementations would reject
 this program because Datalog semantics is also based on [Herbrand
 Universes](https://en.wikipedia.org/wiki/Herbrand_structure#Herbrand_universe).
-This means we can only conclude facts about terms that are known to the system.
-In this case we can only conclude something positive or negative about Mistral,
-Rebecca, and Hattie, but not about Jessica.
+This means we can only conclude facts about constants that are known to the
+system. In this example, we can only conclude positive or negative negative
+facts about Mistral, Rebecca, and Hattie, but not about Jessica.
 
 In principle, this should be fine because the values `User` variable can take
 are already restricted by the `accessed(User)`{.prolog} subgoal in the query.
@@ -183,14 +181,16 @@ However, most implementations of Datalog would reject this as this subgoal does
 not appear directly within the rule of $guest$ and before the negated subgoal.
 This is a conservative approximation. Notice that we have not used any
 extralogical predicates, yet negated subgoals automatically require all
-variables appearing inside them to be bound by things that precede them. This is
-precisely the problem we have with extralogical predicates.
+variables appearing inside them to be bound by the subgoals preceding them. This
+is precisely the problem we have with extralogical predicates.
+
+### Overall sentiment
 
 The chances are if you chose a declarative language such as Datalog over an
 imperative alternative, these sort of details are exactly what you are trying to
 run away from. It seems here we're forced to choose between useful functionality
-and high-level programming. The work described here allows you to have both and
-without incurring a runtime performance penalty.
+and high-level programming. The work that follows allows you to have both and
+do so without incurring a runtime performance penalty.
 
 ## Understanding invocation safety
 
