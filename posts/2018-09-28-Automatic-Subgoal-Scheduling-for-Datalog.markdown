@@ -15,7 +15,7 @@ I suck at writing. So in an attempt to make things right and also to do some PR,
 I will explain the major ideas of the paper without the formalism and with
 numerous examples.
 
-I want this post to be understandable with easy. If you find yourself confused
+I want this post to be understandable with ease. If you find yourself confused
 or bored at any point or found some terms that are not very well explained,
 contact me via Twitter or emal (both on [my homepage](https://dodisturb.me)).
 
@@ -196,17 +196,15 @@ do so without incurring a runtime performance penalty.
 
 Although the examples illustrate the problems with extralogical predicates, they
 do not provide us anything concrete to compute with. We need a way of
-representing dataflow requirements and binding of parameters in the program.
-As soon as we define these, the precise of invocation safety (or well-modedness
-as it is referred in the literature) is simple (I'd say trivial, but that puts
-people off. You'll definitely agree with me once we get there).
+representing bindings of parameters and dataflow requirements in the program.
+As soon as we define these, the precise definition of invocation safety is
+simple.
 
-### Adornments: summarising binding of parameters
+### Adornments: conrete parameter binding
 
-*Adornments* indicate the binding status of an argument. *Adornment
-transformation* is the standard analysis that computes it (I am well aware that
-calling an analysis a transformation is silly). Let's understand using [Example
-1](#example-1):
+*Adornments* indicate whether a parameter is bound or not. *Adornment
+transformation* is the standard analysis that computes it. Let's understand this
+using [Example 1](#example-1):
 
 ```prolog
 auth(User) :- password(User,Pass), hash(Pass,Hash), valid(User,Hash).
@@ -318,7 +316,7 @@ is. So it can't be a solution to the invocation safety on its own, but it is a
 step in the right direction and we develop this furter
 [below](#generalised-adornment).
 
-### Modes: summarising dataflow requirements
+### Modes: concrete dataflow requirements
 
 A *mode* is an indication of input/output behaviour. Each predicate logical or
 otherwise have a *mode pattern* associated with it. We only need two modes for
