@@ -11,7 +11,7 @@ I recently presented _"Automatic Reordering for Dataflow Safety of Datalog"_
 homepage](https://dodisturb.me)) in the [20th Symposium on Principles and
 Practice of Declarative
 Languages](http://ppdp-lopstr-18.cs.uni-frankfurt.de/ppdp18.html). I
-collabroated with [Dr Dominic
+collaborated with [Dr Dominic
 Orchard](https://www.cs.kent.ac.uk/people/staff/dao7/) and [Dr Andrew
 Rice](https://www.cl.cam.ac.uk/~acr31/) for this work. A few commented that the
 paper is technically dense and consequently hard going. I don't want this work
@@ -66,7 +66,7 @@ We're good to go! All other terms will be defined in the text as we go along.
 
 #### Example 1
 
-Here's a hypothethical Datalog rule that authenticates a user:
+Here's a hypothetical Datalog rule that authenticates a user:
 
 ```prolog
 auth(User,Pass) :- password(User,Pass), hash(Pass,Hash), valid(User,Hash).
@@ -132,7 +132,7 @@ This example is worse than the previous one because regardless how careful the
 programmer is, she can't rewrite the definition of $weak$ in a single rule such
 that all dataflow requirements are satisfied. Now when $check_client$ is used,
 $weak$ should have the subgoal `hash(Pass,Hash)`{.prolog} first, since the
-password is known (satisfying $hash$'s dataflow requirement) and evalauting this
+password is known (satisfying $hash$'s dataflow requirement) and evaluating this
 subgoal produces a hash, satisfying the dataflow requirement of $rainbow$.  If
 $check_server$ is used, we need the opposite ordering because this time the hash
 value is known initially. So neither rule alone can be used to satisfy the
@@ -150,7 +150,7 @@ weak_server(Pass,Hash) :- rainbow(Pass,Hash), hash(Pass,Hash).
 
 If you're still not sold on the idea, I have one final motivating example. Even
 in the purely logical implementations of Datalog, dataflow problems exist.
-Stratified negation is indispensible in Datalog programming. When discussing
+Stratified negation is indispensable in Datalog programming. When discussing
 negation, the emphasis is always on the lack of cyclic dependencies between
 predicates used negatively. However, there is another syntactic problem.
 Consider the following rule:
@@ -203,7 +203,7 @@ representing bindings of parameters and dataflow requirements in the program.
 As soon as we define these, the precise definition of invocation safety is
 simple.
 
-### Adornments: conrete parameter binding
+### Adornments: concrete parameter binding
 
 *Adornments* indicate whether a parameter is bound or not. *Adornment
 transformation* is the standard analysis that computes it. Let's understand this
@@ -308,15 +308,15 @@ The adornment of these rules are done exactly as before, so I won't describe
 them again. The important point is the adornment patterns of subgoals are
 effected by the adornments patern of the head. The binding patterns of `hash`
 above are `bf` and `fb` and this difference stems only from the head of the
-tules.
+rules.
 
 This looks remarkably similar to the code duplication solution we found to the
 problem described in [Example 2](#example-2). Once again, we ended up with two
 different versions of weak with suffixes are `bf` and `fb` instead of `client`
-and `server`. This is a spurfluous difference. The other difference is that the
+and `server`. This is a superfluous difference. The other difference is that the
 rule with head $weak\_fb$ is not reordered while the one with $weak\_check$
 is. So it can't be a solution to the invocation safety on its own, but it is a
-step in the right direction and we develop this furter
+step in the right direction and we develop this further
 [below](#generalised-adornment).
 
 ### Modes: concrete dataflow requirements
@@ -339,7 +339,7 @@ can use to look up values.  Hence, it has the mode pattern `??`. In standard
 Datalog, all predicates have `?` mode associated with all of their
 parameters[^not].
 
-Let's adopt a scheme of ammending the predicate name with mode patterns to make
+Let's adopt a scheme of amending the predicate name with mode patterns to make
 things syntactically obvious just as we did in the [adornments
 example](#example-4). [Example 1](#example-1) becomes
 
@@ -363,7 +363,7 @@ Remember `b` means the parameter **is bound** and `+` means the parameter
 differences are:
 
  * Adornment transformation needs an entry point (a query) and **dataflow
- infromation flows top-down** from heads to the bodies. We don't have a
+ information flows top-down** from heads to the bodies. We don't have a
  procedure for computing modes (yet), but we mentioned the predicates defined in
  the heads should be a function of those. This suggests **bottom-up information
  flow**.
@@ -579,7 +579,7 @@ Technically, if it is safe with a `?` mode, then it is also safe with a `+`
 modes, so we are looking for the most relaxed mode[^principal-moding]. The
 orderings from the graph above didn't make any conditional reasoning about
 boundedness of `User`, hence `?` is suitable for $auth$. We can revise the two
-versions of the cluase as follows:
+versions of the rule as follows:
 
 ```prolog
 auth_?(User) :-
@@ -680,7 +680,7 @@ with by the caller) instead. This suggests a mode pattern `?+`.
 
 So which is it? In a way, it is both. Depending on the ordering of the clauses
 we have different dataflow requirements. This is good! Now we can just select a
-representitive ordering for each mode pattern. When the clause is used
+representative ordering for each mode pattern. When the clause is used
 differently, we use the appropriate ordering. So the overall mode pattern of
 $weak$ is `+?/?+` to signify either of them can be used.
 
@@ -724,7 +724,7 @@ strict. You must have noticed that these two operations sound very algebraic.
 Indeed, to our surprise, they form [Martelli's
 semiring](https://www.cl.cam.ac.uk/teaching/0910/L11/L11_04_08.pdf) (sorry,
 there aren't any non-academic resources I could find) originally used to compute
-cutsets of a graph. To the best of my knowledge this hasn't been used in
+cut-sets of a graph. To the best of my knowledge this hasn't been used in
 dataflow context before and seems general enough to be used beyond Datalog and
 extralogical predicates.
 
@@ -820,8 +820,8 @@ entirely:
  4. Termination: the analysis terminates on all inputs.
 
 In particular, incremental computation is useful for making this analysis
-scalable. In the specical case that the added rule does not extend an existing
-predicate, _i.e._, have a freash head, we don't have to reanalyse old rules.
+scalable. In the special case that the added rule does not extend an existing
+predicate, _i.e._, have a fresh head, we don't have to reanalyse old rules.
 This means we can analyse libraries and ship the mode patterns of predicates
 defined in the library with them. The users of the library won't have to
 reanalyse the code in the library.
