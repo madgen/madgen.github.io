@@ -69,17 +69,17 @@ We're good to go! All other terms will be defined in the text as we go along.
 Here's a hypothethical Datalog rule that authenticates a user:
 
 ```prolog
-auth(User) :- password(User,Pass), hash(Pass,Hash), valid(User,Hash).
+auth(User,Pass) :- password(User,Pass), hash(Pass,Hash), valid(User,Hash).
 ```
 
-The reading of any rule in Datalog is "if everything (subgoals) to the right of
-`:-`{.prolog} holds, then we can conclude the head." In this specific case, we
-can authenticate a user if we have a password for a given user and the hash of
-that user is known to be valid. One of the nicest parts of this reading is that
-it doesn't matter which order the subgoals are presented, we still reach the
-same conclusion. For example,
+The reading of any rule in Datalog is "if every subgoal in the body holds, then
+we can conclude the head." In this specific case, we can authenticate a user if
+we have a known password for a that user and the hash of that user is known to
+be valid. One of the nicest parts of this reading is that it doesn't matter
+which order the subgoals are presented, we still reach the same conclusion. For
+example,
 ```prolog
-auth(User) :- hash(Pass,Hash), password(User,Pass), valid(User,Hash).
+auth(User,Pass) :- hash(Pass,Hash), password(User,Pass), valid(User,Hash).
 ```
 would authenticate exactly the same users as the previous example.
 
@@ -96,20 +96,19 @@ to expect $hash$ to bind a value for the password given a hash. Let's refer to
 predicates like $hash$ (those with dataflow requirements) as _extralogical_
 predicates.
 
-In light of this knowledge, the two versions of the rule defining the
-predicate $user$ above are not equivalent. Evaluation of the subgoal
-`hash(Pass,Hash)`{.prolog} produces a runtime error if the value of `Pass` is
-unknown. Suddenly, we have to be careful about the way we order subgoals.
-Not only those that are obviously extralogical like $hash$, but also any
-user-defined predicates that makes use of extralogical predicates! To make the
-matters worse, although semantically arithmetic relations such as $>$ are
-logical, they are usually implemented as extralogical predicates (or relations).
+In light of this knowledge, the versions of the rule defining $auth$ above are
+not equivalent. Evaluation of the subgoal `hash(Pass,Hash)`{.prolog} produces a
+runtime error if the value of `Pass` is unknown. Suddenly, we have to be careful
+about the way we order subgoals.  Not only those that are obviously extralogical
+like $hash$, but also any user-defined predicates that make use of extralogical
+ones! To make the matters worse, although semantically arithmetic
+relations such as $>$ are logical, they are usually implemented as extralogical
+predicates (or relations).
 
 #### Example 2
 
 Just when you think things are looking bleak, it gets worse. Extralogical
-predicates may also cause code duplication. Let me demonstrate this with another
-example.
+predicates may also cause code duplication. Let' look at another example:
 
 ```prolog
 check_client(Pass) :- weak(Pass,Hash).
@@ -118,27 +117,27 @@ check_server(Hash) :- weak(Pass,Hash).
 weak(Pass,Hash) :- hash(Pass,Hash), rainbow(Pass,Hash).
 ```
 
-In this example, we define a predicate $weak$ that checks if a password or a
-hash is weak that is to say the hash of the password can be found by a rainbow
-function (a function that can reverse some hashes). Like $hash$, $rainbow$ is
-also extralogical. Now it is beneficial for both the client and the server to
-check if a hash is weak, but the client shouldn't know the hash of a given
-password (otherwise it can construct a rainbow table of its own!) and the server
-shouldn't know the password (in case it gets stolen). Hence, there are two
-predicates `check_server` that takes a password and `check_server` that takes a
-hash that can be used by the client and server respectively.
+Here, we define a predicate $weak$ that checks if a password or a hash is weak.
+It does so looking for the hash of the password in a rainbow function (a
+function that can reverse _some_ hashes). Like $hash$, $rainbow$ is also
+extralogical but in its second argument rather than the first. Now it is
+beneficial for both the client and the server to check if a hash is weak, but
+the client shouldn't know the hash of a given password (otherwise it can
+construct a rainbow table of its own!) and the server shouldn't know the
+password (in case it gets stolen). Hence, there are two predicates
+$check_client$ that takes a password and $check_server$ that takes a hash that
+can be used by the client and server respectively.
 
 This example is worse than the previous one because regardless how careful the
-programmer is with the dataflow requirements of predicates, she wouldn't be
-able to rewrite the definition of `weak` in a single rule such that all
-binding requirements are satisfied. Now when `check_client` is used, `weak`
-should have the subgoal `hash(Pass,Hash)`{.prolog} first as the password is
-known (satisfying `hash`'s binding requirement) and evalauting this subgoal
-produces a hash, hence satisfying the binding requirement of `rainbow`. If
-`check_server` is used the situation is the exact opposite because this time the
-hash value is known. So neither of the orderings can be used to satisfy the
+programmer is, she can't rewrite the definition of $weak$ in a single rule such
+that all dataflow requirements are satisfied. Now when $check_client$ is used,
+$weak$ should have the subgoal `hash(Pass,Hash)`{.prolog} first, since the
+password is known (satisfying $hash$'s dataflow requirement) and evalauting this
+subgoal produces a hash, satisfying the dataflow requirement of $rainbow$.  If
+$check_server$ is used, we need the opposite ordering because this time the hash
+value is known initially. So neither rule alone can be used to satisfy the
 requirements of the whole program. The only solution is a code duplicating
-rewrite as follows:
+rewrite:
 ```prolog
 check_client(Pass) :- weak_client(Pass,Hash).
 check_server(Hash) :- weak_server(Pass,Hash).
@@ -150,11 +149,11 @@ weak_server(Pass,Hash) :- rainbow(Pass,Hash), hash(Pass,Hash).
 #### Example 3
 
 If you're still not sold on the idea, I have one final motivating example. Even
-in the purely logical implementations of Datalog, this problem already hides in
-plain sight. Stratified negation is an indispensible construct in Datalog
-programming. When discussing negation, the emphasis is always on the lack of
-cyclic dependencies between predicates used negatively. However, there is
-another syntactic problem that often gets ignored. Consider the following rule:
+in the purely logical implementations of Datalog, dataflow problems exist.
+Stratified negation is indispensible in Datalog programming. When discussing
+negation, the emphasis is always on the lack of cyclic dependencies between
+predicates used negatively. However, there is another syntactic problem.
+Consider the following rule:
 
 ```prolog
 accessed("Mistral").
@@ -165,6 +164,7 @@ password("Hattie" ,"171717").
 password("Rebecca","242424").
 
 guest(User) :- not password(User,Pass).
+
 ?- accessed(User), guest(User).
 ```
 
