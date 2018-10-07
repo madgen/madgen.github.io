@@ -21,7 +21,7 @@ formalism and with numerous examples.
 
 I want this post to be understandable with ease. If you find yourself confused
 or bored at any point or found some terms that are not very well explained,
-contact me via Twitter or emal (both on [my homepage](https://dodisturb.me)).
+contact me via Twitter or email (both on [my homepage](https://dodisturb.me)).
 
 After explaining some standard terminology about Datalog, we start by describing
 what extralogical predicates are, why one might want them in Datalog, and what
