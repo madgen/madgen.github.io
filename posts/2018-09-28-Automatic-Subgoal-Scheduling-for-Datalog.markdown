@@ -8,12 +8,16 @@ inWhich: we investigate dataflow in declarative programs and talk about how
 
 I recently presented _"Automatic Reordering for Dataflow Safety of Datalog"_
 (can be accessed freely if you follow the link from [my
-homepage](https://dodisturb.me)) in the 20th Symposium on Principles and
-Practice of Declarative Languages. A few commented that the paper is technically
-dense and consequently hard going. I don't want this work to be ignored because
-I suck at writing. So in an attempt to make things right and also to do some PR,
-I will explain the major ideas of the paper without the formalism and with
-numerous examples.
+homepage](https://dodisturb.me)) in the [20th Symposium on Principles and
+Practice of Declarative
+Languages](http://ppdp-lopstr-18.cs.uni-frankfurt.de/ppdp18.html). I
+collabroated with [Dr Dominic
+Orchard](https://www.cs.kent.ac.uk/people/staff/dao7/) and [Dr Andrew
+Rice](https://www.cl.cam.ac.uk/~acr31/) for this work. A few commented that the
+paper is technically dense and consequently hard going. I don't want this work
+to be ignored because I suck at writing. So in an attempt to make things right
+and also to do some PR, I will explain the major ideas of the paper without the
+formalism and with numerous examples.
 
 I want this post to be understandable with ease. If you find yourself confused
 or bored at any point or found some terms that are not very well explained,
