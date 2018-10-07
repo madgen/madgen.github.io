@@ -41,7 +41,7 @@ ancestor(X,Z) :- parent(X,Y), parent(Y,Z).
 ```
                  -----------  -----------
                    Subgoal      Subgoal
--------------    -------------------------
+-------------    ------------------------
     Head                   Body
 ------------------------------------------
                   Rule
@@ -50,16 +50,15 @@ ancestor(X,Z) :- parent(X,Y), parent(Y,Z).
  * This is a **rule** in Datalog (as it happens also in Prolog) with some parts
 highlighted.
  * A rule consists of a **head** (to the left of `:-`{.prolog}) and a **body**
- (everything to the right of `:-`{.prolog}). Body is a comma separated list of
+ (everything to the right of `:-`{.prolog}). A body is a comma separated list of
  **subgoals**.
  * A subgoal is a **predicate** applied to a tuple.
  * A **predicate** qualifies a tuple with a name (sort). Throughout the text, we
- write subgoals in `monospace` and predicates in $italic$. For brevity sometimes
- we say "the subgoal with $p$" that refers to a subgoal with the predicate $p$
- inside.
- * A tuple of subgoal consists of **terms** which is either a **constant** like
- `"Dragon Fruit"` (always with quotation marks around it) or a **variable** like
- `Fruit` (no quotations, always capitalised).
+ write subgoals in `monospace` and predicates in $italic$. We sometimes say "the
+ subgoal with $p$" to refer to a subgoal with the predicate $p$ inside.
+ * A tuple of subgoal consists of **terms** which are either **constants** like
+ `"Dragon Fruit"` (with quotation marks) or **variables** like `Fruit` (no
+ quotations, always capitalised).
 
 We're good to go! All other terms will be defined in the text as we go along.
 
