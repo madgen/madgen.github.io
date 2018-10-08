@@ -132,12 +132,12 @@ can be used by the client and server respectively.
 
 This example is worse than the previous one because regardless how careful the
 programmer is, she can't rewrite the definition of $weak$ in a single rule such
-that all dataflow requirements are satisfied. Now when $check_client$ is used,
+that all dataflow requirements are satisfied. Now when $check\_client$ is used,
 $weak$ should have the subgoal `hash(Pass,Hash)`{.prolog} first, since the
 password is known (satisfying $hash$'s dataflow requirement) and evaluating this
 subgoal produces a hash, satisfying the dataflow requirement of $rainbow$.  If
-$check_server$ is used, we need the opposite ordering because this time the hash
-value is known initially. So neither rule alone can be used to satisfy the
+$check\_server$ is used, we need the opposite ordering because this time the
+hash value is known initially. So neither rule alone can be used to satisfy the
 requirements of the whole program. The only solution is a code duplicating
 rewrite:
 ```prolog
@@ -392,7 +392,7 @@ approach.
 
 The examples so far suggest that we need a simple reordering of bodies. So why
 not give that a go. Recall the variation of [Example 1](#example-1) with
-[mode embellishments](#mode-summarising-dataflow-requirements):
+[mode embellishments](#modes-concrete-dataflow-requirements):
 
 ```prolog
 auth_xx(User,Pass) :-
@@ -455,7 +455,7 @@ both lead to a free first argument.
 At this point we can just say that we have a sound but incomplete analysis,
 tough luck. Alternatively, we recognise that the first parameter of the subgoal
 with $hash$ is `Pass` which appear in the head of the rule. As we learn in
-[adornment transformation rules](#adornments-summarising-binding-of-parameters),
+[adornment transformation rules](#adornments-concrete-parameter-binding),
 if a parameter is bound in the head then it is also bound in the body. So all we
 need is to turn the `ff` binding pattern of the head to `fb` or `bb`. This is
 indeed possible if we reorder the use of $check$ within the $auth$ rule as
@@ -570,8 +570,8 @@ ordering. Surprisingly, _greed is good_[^greed] and it doesn't compromise
 completeness.
 
 Before we move on to other examples of scheduling graphs, we can finally address
-the pending problem of determining mode patterns for user-defined predicates posed where
-[modes are introduced](#modes-summarising-dataflow-requirements).
+the pending problem of determining mode patterns for user-defined predicates
+posed where [modes are introduced](#modes-concrete-dataflow-requirements).
 
 ### Modes of user-defined predicates
 
