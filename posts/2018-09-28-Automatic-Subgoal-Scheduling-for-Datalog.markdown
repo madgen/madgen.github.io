@@ -51,11 +51,13 @@ ancestor(X,Z) :- parent(X,Y), parent(Y,Z).
 highlighted.
  * A rule consists of a **head** (to the left of `:-`{.prolog}) and a **body**
  (everything to the right of `:-`{.prolog}). A body is a comma separated list of
- **subgoals**.
- * A subgoal is a **predicate** applied to a tuple.
+ subgoals.
+ * A **subgoal** is a predicate applied to a tuple.
  * A **predicate** qualifies a tuple with a name (sort). Throughout the text, we
  write subgoals in `monospace` and predicates in $italic$. We sometimes say "the
- subgoal with $p$" to refer to a subgoal with the predicate $p$ inside.
+ $p$ subgoal" to refer to a subgoal formed by applying the predicate $p$ to a
+ tuple. We also say "the $p$ rule(s)" to mean the rules with the predicate $p$
+ featured in the head.
  * A tuple of subgoal consists of **terms** which are either **constants** like
  `"Dragon Fruit"` (with quotation marks) or **variables** like `Fruit` (no
  quotations, always capitalised).
@@ -90,11 +92,10 @@ example, `password("Milner",Pass)`{.prolog} would bind the password of Milner to
 password pairs. There are no inherent input and output parameters to a logical
 predicate.
 
-However, the $hash$ predicate stands out in the previous example because hash
-functions (if they are any good) work only in one direction. It is unreasonable
-to expect $hash$ to bind a value for the password given a hash. Let's refer to
-predicates like $hash$ (those with dataflow requirements) as _extralogical_
-predicates.
+However, the $hash$ predicate stands out because hash functions (if they are any
+good) work only in one direction. It is unreasonable to expect $hash$ to bind a
+value for the password given a hash. Let's refer to predicates like $hash$
+(those with dataflow requirements) as _extralogical_ predicates.
 
 In light of this knowledge, the versions of the rule defining $auth$ above are
 not equivalent. Evaluation of the subgoal `hash(Pass,Hash)`{.prolog} produces a
@@ -210,7 +211,7 @@ transformation* is the standard analysis that computes it. Let's understand this
 using [Example 1](#example-1):
 
 ```prolog
-auth(User) :- password(User,Pass), hash(Pass,Hash), valid(User,Hash).
+auth(User,Pass) :- password(User,Pass), hash(Pass,Hash), valid(User,Hash).
 ```
 
 Is the argument `Pass` in the subgoal `hash(Pass,Hash)`{.prolog} bound? Yes, it
@@ -223,12 +224,12 @@ the caller of the $auth$ predicate.
 
 Different queries yield different answers:
 
-  1. `?- auth(U)`{.prolog} asks which users can be authenticated. Since we do
-  not know which user to authenticate, the `User` in
-  `password(User,Pass)`{.prolog} variable is not bound to a value.
-  2. `?- auth("Alice")`{.prolog} asks if Jasmine is authenticated. Since we
+  1. `?- auth(User,Pass)`{.prolog} asks which user & password pairs can be
+  authenticated. Since we do not know which user to authenticate, the variables
+  in `password(User,Pass)`{.prolog} are not bound to values.
+  2. `?- auth("Alice",Pass)`{.prolog} asks if Alice is authenticated. Since we
   know which user to authenticate, `User` in `password(User,Pass)`{.prolog} is
-  bound to a value.
+  bound to a value but not `Pass`.
 
 What we learn from that example is the following:
 
@@ -237,19 +238,20 @@ What we learn from that example is the following:
   2. Constants such as `"Alice"`{.prolog} are ground, hence are bound.
   3. Variables of a subgoal are bound if they appear in subgoals that precede
   them like `password(User,Pass)`{.prolog} preceding `hash(Pass,Hash)`{.prolog}.
-  4. Variables of a subgoal are also bound if the variable appears bound in the
-  head of the rule. For example, `?- auth("Alice")`{.prolog} makes `User` in
-  the head of the $user$ rule bound. Consequently, `User` in
+  4. Variables of a subgoal are also bound when they are bound in the head of a
+  rule. For example, `?- auth("Alice",Pass)`{.prolog} makes the `User` variable
+  in the head of the $user$ rule bound. Consequently, the `User` variable in
   `password(User,Pass)`{.prolog} is bound.
 
 These four rules define a top-down procedure for binding. Let's invent something
-concrete to compute with. Let's call parameters that are bound in an atomic
-formula `b` and those that are free `f`. We can then define binding (or
-adornment) patterns for atomic formula. From the example above,
-`auth("Alice")`{.prolog} would have the pattern `b` due to the constant,
-`password(User,Pass)`{.prolog} would have `ff` or `bf` depending on if `User` is
-bound in the head of the rule, and `hash(Pass,Hash)`{.prolog} would have `bf`.
-As an exercise you can try to figure out the binding pattern for
+concrete to compute with. Let's annotate parameters that are bound with `b` and
+those that are free with `f`. In the query, `auth("Alice",Pass)`{.prolog}
+receives the pattern `bf` due to the constant and this information flows down to
+the rules with head predicate $auth$. Then, `password(User,Pass)`{.prolog} in
+the body of $auth$ rule receives `bf` because `User` is bound in the head and
+`Pass` is not. The subgoal `hash(Pass,Hash)`{.prolog} would have `bf` because
+`Pass` appears in the preceding subgoal and `Hash` has never been observed
+before. As an exercise you can try to figure out the binding pattern for
 `valid(User,Hash)`{.prolog} from the previous example (the answer[^exercise]).
 
 #### Example 4
@@ -313,11 +315,10 @@ rules.
 This looks remarkably similar to the code duplication solution we found to the
 problem described in [Example 2](#example-2). Once again, we ended up with two
 different versions of weak with suffixes are `bf` and `fb` instead of `client`
-and `server`. This is a superfluous difference. The other difference is that the
-rule with head $weak\_fb$ is not reordered while the one with $weak\_check$
-is. So it can't be a solution to the invocation safety on its own, but it is a
-step in the right direction and we develop this further
-[below](#generalised-adornment).
+and `server`. This is a superfluous difference. The important difference is that
+the $weak\_fb$ rule is not reordered while the $weak\_check$ rule is. So it
+can't be a solution to the invocation safety on its own, but it is a step in the
+right direction and we develop this further [below](#generalised-adornment).
 
 ### Modes: concrete dataflow requirements
 
@@ -344,17 +345,17 @@ things syntactically obvious just as we did in the [adornments
 example](#example-4). [Example 1](#example-1) becomes
 
 ```prolog
-auth_x(User) :-
+auth_xx(User,Pass) :-
   password_??(User,Pass), hash_+?(Pass,Hash), valid_??(User,Hash).
 ```
 
-You notice there is an `x` in place of `f` or `b` for the $auth$ predicate.
+You notice there is an `xx` in place of `f`s and `b`s for the $auth$ predicate.
 That's because we don't know a way of determining modes of user-defined
 predicates. Intuitively, dataflow requirements of a user-defined predicate is
 some function of the subgoals that define those predicates. Indeed, finding an
-finding an effective procedure to precisely determine mode patterns of
-user-defined predicates is the only hard part of our quest to ensure invocation
-safety. Something we explore in the [solution](#solution).
+effective procedure to precisely determine mode patterns of user-defined
+predicates is the only hard part of our quest to ensure invocation safety. We
+explore this soon in the [solution](#solution).
 
 ### Relating adornments to modes (aka. invocation safety)
 
@@ -365,8 +366,8 @@ differences are:
  * Adornment transformation needs an entry point (a query) and **dataflow
  information flows top-down** from heads to the bodies. We don't have a
  procedure for computing modes (yet), but we mentioned the predicates defined in
- the heads should be a function of those. This suggests **bottom-up information
- flow**.
+ the heads should be a function of those in the body. This suggests a
+ **bottom-up information flow**.
  * Binding (adornment) patterns **qualify subgoals** (predicates
  applied to tuples of variable and constants). Mode patterns, on the other hand,
  **qualify predicates** and hence don't change from one subgoal to another.
@@ -377,10 +378,11 @@ differences are:
 The agreement between adornments and modes be made precise: in an adorned
 program, invocations of extralogical predicates are safe when all subgoals with
 extralogical predicates are adorned with `b` for parameters with mode `+`. This
-is to say **if it needs to be bound, it is bound.** (Told you it was trivial.)
+can be restated as the following almost tautological statement: **if something
+needs to be bound, then it is bound.**
 
 In the literature, invocation safety is called _well-modedness_. A well-moded
-query and program pair doesn't produce invocation errors just like "well-typed
+query & program pair doesn't produce invocation errors just as "well-typed
 programs don't go wrong" as [Robin
 Milner](https://en.wikipedia.org/wiki/Robin_Milner) put it.
 
@@ -391,48 +393,48 @@ approach.
 
 ### Naïve solution
 
-The examples so far suggest that it is a simple reordering program of rule
-bodies. So why not let's give this a go. Recall the variation of [Example
-1](#example-1) with [mode
-embellishments](#mode-summarising-dataflow-requirements):
+The examples so far suggest that we need a simple reordering of bodies. So why
+not give that a go. Recall the variation of [Example 1](#example-1) with
+[mode embellishments](#mode-summarising-dataflow-requirements):
 
 ```prolog
-auth_x(User) :-
+auth_xx(User,Pass) :-
   password_??(User,Pass), hash_+?(Pass,Hash), valid_??(User,Hash).
 ```
 
-Let's adorn versions of this clause with the subgoals permuted with respect to
-the query `?- auth_x(User)`{.prolog}. The heads of the clauses are omitted as
-they are always `auth_x_f(User)`{.prolog}.
+Let's adorn versions of this rule with the subgoals permuted with respect to
+the query `?- auth_xx(User,Pass)`{.prolog}. The heads of the rules are omitted
+as they are always `auth_xx_ff(User,Pass)`{.prolog}.
 
 ```prolog
-password_??_ff(User,Pass), hash_+?_bf(Pass,Hash), valid_??_bb(User,Hash).
-password_??_ff(User,Pass), valid_??_bf(User,Hash), hash_+?_bb(Pass,Hash).
-valid_??_ff(User,Hash), password_??_bf(User,Pass), hash_+?_bb(Pass,Hash).
-valid_??_ff(User,Hash), hash_+?_fb(Pass,Hash), password_??_bb(User,Pass).
-hash_+?_ff(Pass,Hash), valid_??_fb(User,Hash), password_??_bb(User,Pass).
-hash_+?_ff(Pass,Hash), password_??_fb(User,Pass), valid_??_bb(User,Hash).
+✖password_??_ff(User,Pass), hash_+?_bf(Pass,Hash), valid_??_bb(User,Hash).
+✖password_??_ff(User,Pass), valid_??_bf(User,Hash), hash_+?_bb(Pass,Hash).
+✖valid_??_ff(User,Hash), password_??_bf(User,Pass), hash_+?_bb(Pass,Hash).
+✓valid_??_ff(User,Hash), hash_+?_fb(Pass,Hash), password_??_bb(User,Pass).
+✓hash_+?_ff(Pass,Hash), valid_??_fb(User,Hash), password_??_bb(User,Pass).
+✓hash_+?_ff(Pass,Hash), password_??_fb(User,Pass), valid_??_bb(User,Hash).
 ```
 
-The last three are well-moded while the first three are not. Since $hash$ the
-only predicate with a binding requirement, namely on its parameters. Orderings
-that leads to a bound mode (`b`) at the first parameter are well-moded, while
-the others are not.
+The last three are invocation safe while the first three are not. Since $hash$
+is the only extralogical predicate with dataflow requirements, namely on its
+first parameter `Pass`, orderings that leads to a bound mode
+(`b`) at the first parameter are well-moded, while the others are not.
 
 The obvious problem is if there are $n$ subgoals we may need to adorn $n$
 factorial orderings to find a suitable ordering. But perhaps that's not a big
-problem in practice if programmers stick to 3 to 5 subgoals per clause. The real
-problem is that we cannot isolate clauses.
+problem, if in practice programmers stick to 3 to 5 subgoals per rule. The
+real problem is that we cannot isolate rules.
 
 #### Example 5
 
 Let's say we do some software engineering and factor
 `hash_+?(Pass,Hash)`{.prolog} and `valid_??(User,Hash)`{.prolog} into a new
-clause with head predicate $check$ as follows:
+rule with head predicate $check$ as follows:
 
 ```prolog
-?- auth_x(User)
-auth_x(User) :- check_xx(User,Pass), password_??(User,Pass).
+?- auth_xx(User,Pass)
+
+auth_xx(User,Pass) :- check_xx(User,Pass), password_??(User,Pass).
 check_xx(User,Pass) :- hash_+?(Pass,Hash), valid_??(User,Hash).
 ```
 
@@ -440,49 +442,55 @@ Now let's try adorning this program while considering different orderings of
 $check$ as that is where the extralogical predicate $hash$ occurs.
 
 ```prolog
-?- auth_x_f(User)
-auth_x_f(User) :- check_xx_ff(User,Pass), password_??_bb(User,Pass).
+?- auth_xx_ff(User,Pass)
+
+auth_xx_ff(User,Pass) :-
+  check_xx_ff(User,Pass), password_??_bb(User,Pass).
 
 check_xx_ff(User,Pass) :- hash_+?_ff(Pass,Hash), valid_??_fb(User,Hash).
-check_xx_ff(User,Pass) :- valid_??_bf(User,Hash), hash_+?_fb(Pass,Hash).
+check_xx_ff(User,Pass) :- valid_??_ff(User,Hash), hash_+?_fb(Pass,Hash).
 ```
 
-This looks like bad news because when we reorder $check$ alone, neither of the
-orderings lead to an adornment that makes invocation of $hash$ safe. They both
-are make the first parameter free.
+This looks bad because when we reorder $check$ rule alone, neither of the
+orderings lead to an adornment that makes the invocation of $hash$ safe. They
+both lead to a free first argument.
 
 At this point we can just say that we have a sound but incomplete analysis,
 tough luck. Alternatively, we recognise that the first parameter of the subgoal
-with $hash$ is `Pass` which appear in the head of the clause. As we learn in
+with $hash$ is `Pass` which appear in the head of the rule. As we learn in
 [adornment transformation rules](#adornments-summarising-binding-of-parameters),
 if a parameter is bound in the head then it is also bound in the body. So all we
 need is to turn the `ff` binding pattern of the head to `fb` or `bb`. This is
-indeed possible if we reorder the use of $check$ within the $auth$ clause as
+indeed possible if we reorder the use of $check$ within the $auth$ rule as
 follows:
 
 ```prolog
-?- auth_x_f(User)
-auth_x_f(User) :- password_??_ff(User,Pass), check_xx_bb(User,Pass).
+?- auth_xx_ff(User,Pass)
+auth_xx_ff(User,Pass) :-
+  password_??_ff(User,Pass), check_xx_bb(User,Pass).
 
 check_xx_bb(User,Pass) :- hash_+?_bf(Pass,Hash), valid_??_bb(User,Hash).
 check_xx_bb(User,Pass) :- valid_??_bf(User,Hash), hash_+?_bb(Pass,Hash).
 ```
 
-After permuting subgoals with $password$ and $check$, we end up with `bb`
+After permuting the subgoals with $password$ and $check$, we end up with `bb`
 adornment for the head of $check$ and regardless the order of subgoals in the
 body $check$. This makes invocations of $hash$ safe in both cases.
 Computationally, however, this is problematic. Search space is exponential not
 only in the size of individual bodies but it is a multiplication of all possible
-orderings of all clauses from query down to the relevant clause. This is
-intractable even for small more programs. Now we tackle this problem.
+orderings of all rules from query down to the relevant rule. This is
+intractable even for small programs. We address this not with elegance but with
+some greed.
 
 ### Greed is good
 
 We can't do better than exponential asymptotically, but we can make it
-exponential the way Hindley-Milner type inference is---only in degenerate cases.
+exponential the way [Hindley-Milner type
+inference](https://en.wikipedia.org/wiki/Hindley-Milner_type_system) is---only
+in degenerate cases.
 
 **The most important insight** to our solution is the following: although
-dataflow requirements are inherent to the predicates, they are conceptual. That
+dataflow requirements are inherent to the predicates, they are contextual. That
 is to say if a predicate parameter has mode `+` (requiring it to be bound) and
 the subgoal using that predicate has the variable `V` at that parameter, if a
 preceding subgoal already binds `V`, we can safely pretend as if the predicate
@@ -504,13 +512,14 @@ be freely placed anywhere in the body as they are always safe to execute. So we
 **adopt a greedy approach** and schedule subgoals with such predicates as early
 as possible.
 
-The benefits of this approach are two fold:
+The benefits of this approach are twofold:
 
  1. Combinatorially, there are fewer orderings to consider as placement of
  logical subgoals are restricted.
- 2. Variables of scheduled subgoals are propagated to the remaining alternatives
- to relax the dataflow constraints as described above. This would lead to
- further opportunities to apply the greedy schedule.
+ 2. More importantly, variables of scheduled subgoals are propagated to the
+ remaining alternatives to relax the dataflow constraints as described above.
+ This would lead to further opportunities to apply the greedy scheduling
+ principle.
 
 Scheduling of subgoals fit nicely into a graph where the edges are labelled with
 subgoals to schedule and orderings are the paths from the root to vertices with
@@ -521,7 +530,7 @@ no successors.
 Let's apply this strategy to [Example 1](#example-1):
 
 ```prolog
-auth_x(User) :-
+auth_xx(User,Pass) :-
   password_??(User,Pass), hash_+?(Pass,Hash), valid_??(User,Hash).
 ```
 
@@ -533,16 +542,17 @@ V0 --------------------> V1 -------------------> V2
 
 This graph stores orderings where subgoals with predicates $password$ and
 $valid$ are scheduled first and it doesn't matter in which order, only then the
-subgoal with predicate $hash$ is scheduled.
+$hash$ subgoal is scheduled.
 
 The subgoals with predicates $password$ and $valid$ could be scheduled first
 because they have no dataflow requirements (indicated by `??` mode pattern).
 The subgoal with $hash$ could not be scheduled at that point due to `+?` mode
 pattern. However, as we established earlier in this section, mode
-patterns can be relaxed at a given context. So if we treat the vertex `V1` in
-the graph as a context, `hash_+?(Pass,Hash)` behaves as `hash_??(Pass,Hash)`
-because on this path the subgoal `password(User,Pass)` precedes it and binds
-`Pass`, thus we can schedule it at that point using the greedy principle.
+patterns can be relaxed in the right context. So if we treat the vertex `V1` in
+the graph as a context, `hash_+?(Pass,Hash)`{.prolog} behaves as
+`hash_??(Pass,Hash)`{.prolog} because on this path the subgoal
+`password(User,Pass)`{.prolog} precedes it and binds `Pass`, thus we can
+schedule it at that point using the greedy principle.
 
 More concretely, this leads to the following orderings:
 
@@ -551,11 +561,10 @@ password_??(User,Pass), valid_??(User,Hash), hash_+?(Pass,Hash).
 valid_??(User,Hash), password_??(User,Pass), hash_+?(Pass,Hash).
 ```
 
-These are the two of three well-moded orderings found through brute-force search
-in [naïve solution](#naïve-solution) described above. Compared to that solution,
-we are missing one valid ordering. The ordering we miss have
-`valid_??(User,Hash)` at the end of the body. Greedy scheduling prevents us to
-discover this ordering.
+These are the two of the three well-moded orderings found through brute-force
+search in the [naïve solution](#naïve-solution) described above.  The ordering
+we miss has `valid_??(User,Hash)` at the end of the body. Greedy scheduling
+prevents us from discovering this ordering.
 
 This raises the question **"are there cases in which we discard the only safe
 ordering?"** The answer is no. If there is at least one safe ordering that can
@@ -563,44 +572,48 @@ be found by reordering, greedy scheduling will also find at least one valid
 ordering. Surprisingly, _greed is good_[^greed] and it doesn't compromise
 completeness.
 
-Before we move on to other examples of scheduling graphs, we can finally answer
-the pending question of mode patterns for user-defined predicates posed [where
-modes are introduced](#modes-summarising-dataflow-requirements).
+Before we move on to other examples of scheduling graphs, we can finally address
+the pending problem of determining mode patterns for user-defined predicates posed where
+[modes are introduced](#modes-summarising-dataflow-requirements).
 
 ### Modes of user-defined predicates
 
-Let's continue with [Example 6](#example-6) and deduce what `x` in
-`auth_x(User)` should be.
+Let's continue with [Example 6](#example-6) and deduce what `xx` in
+`auth_xx(User,Pass)` should be.
 
-Since a mode marks a requirement of boundness, `x` should be `+` if `User` needs
-to be bound for the invocation to be safe and it should be `?` if invocation of
-all predicates in the body are safe regardless binding status of `User`.
-Technically, if it is safe with a `?` mode, then it is also safe with a `+`
-modes, so we are looking for the most relaxed mode[^principal-moding]. The
-orderings from the graph above didn't make any conditional reasoning about
-boundedness of `User`, hence `?` is suitable for $auth$. We can revise the two
-versions of the rule as follows:
+Since a mode marks a requirement of boundness, the first `x` should be `+` if
+`User` needs to be bound for the invocation to be safe and it should be `?` if
+invocation of all predicates in the body are safe regardless binding status of
+`User`.  The same reasoning applies to the second parameter. If invocation is
+safe with a `?` mode, then it is also safe with a `+` mode, so we are looking
+for the most relaxed mode[^principal-moding]. The orderings from the graph above
+didn't make any conditional reasoning about boundedness of `User` or `Pass`,
+hence `??` is suitable for $auth$. We can revise the two versions of the rule as
+follows:
 
 ```prolog
-auth_?(User) :-
+auth_??(User,Pass) :-
   password_??(User,Pass), valid_??(User,Hash), hash_+?(Pass,Hash).
-auth_?(User) :-
+auth_??(User,Pass) :-
   valid_??(User,Hash), password_??(User,Pass), hash_+?(Pass,Hash).
 ```
 
+Here's **the beauty of this analysis result**: despite the fact that we defined
+`auth` with the use an extralogical predicate, we manage to make it behave as a
+logical predicate wherever it is invoked. We just restored some of the lost
+declarative promise!
+
 #### Example 7
 
-Let's now look at [Example 5](#example-5) again:
+We first look at [Example 5](#example-5) again:
 
 ```prolog
-?- auth_x(User)
-
-auth_x(User) :- check_xx(User,Pass), password_??(User,Pass).
+auth_xx(User,Pass) :- check_xx(User,Pass), password_??(User,Pass).
 check_xx(User,Pass) :- hash_+?(Pass,Hash), valid_??(User,Hash).
 ```
 
-Let's look at the interesting scheduling graph first that is the one for for
-`check` at the head.
+Let's examine the interesting scheduling graph first that is the one for `check`
+rule.
 
 ```
      {valid}        {hash}
@@ -610,22 +623,21 @@ V1 ----------> V2 ---------> V3
 This graph looks similar to the previous one. We apply the greedy principle and
 schedule `valid_??(User,Hash)`{.prolog} first. The difference is the variable
 bound by this subgoal (`User` and `Hash`) don't include `Pass` which is the
-variable at the dataflow restricted parameter of `hash_+?(Pass,Hash)`{.prolog}.
-So the only way we can schedule $hash$ is that we require `Pass` to be bound
-from the moment we start evaluating the rule. This is same as saying the second
-parameter of $check$ (which is `Pass`) has to be bound. For the first parameter,
-there are no restrictions posed. Then the overall mode pattern for check is
-`?+`.
+dataflow restricted argument of `hash_+?(Pass,Hash)`{.prolog}.  So the only way
+we can schedule $hash$ is if `Pass` is already bound at the moment we start
+evaluating the rule. This is same as saying the second parameter of $check$
+(which is `Pass`) has to be bound at the caller. For the first parameter, there
+are no restrictions posed. Then, the overall mode pattern for check is `?+`.
 
 In the description above, we kept track of which variables on the path has to be
-resolved by the invoker of the predicate being defined. This information can
-naturally be stored in the vertices as an accumulator. This is indeed how it is
-done in the paper but we elide the details here to simplify the presentation.
+resolved by the invoker of the predicate being defined. This information
+naturally fits in the vertices of the graph. This is how we do it in the paper,
+but we elide the details here to simplify the presentation.
 
 Now that we know the mode pattern for $check$, we can draw a scheduling graph
 for the rule that defines $auth$ and deduce its predicate (again). This time we
 do not give a detailed explanation. It'd be a good exercise to see why we
-scheduled which predicate and why and what the mode pattern of $auth$ is.
+scheduled which predicate and what the mode pattern of $auth$ is.
 
 ```
      {password}        {check}
@@ -634,11 +646,11 @@ V1 -------------> V2 ----------> V3
 
 We cheat here a bit and impose an order on building the graphs. In general, we
 can't find such an order because rules can refer to themselves recursively or be
-mutually recursive with other clauses. Proper way of handling that situation is
-to assume `?` in place of `x` for modes of user-define predicates initially, and
-repeatedly apply this graph-based analysis to update the patterns until we reach
-stable mode patterns (fixpoint) for all user-define predicates. You can refer to
-the paper on why this works and why it terminates at all.
+mutually recursive with other rules. Proper way of handling that situation is
+to assume `?` in place of `x` for modes of user-defined predicates initially,
+and repeatedly apply this graph-based analysis to update the mode patterns until
+they stabilise (fixpoint) for all user-defined predicates. You can refer to the
+paper on why this works and why it terminates at all.
 
 #### Example 8
 
@@ -670,17 +682,16 @@ Let's inspect the branch we try scheduling `hash_+?(Pass,Hash)`{.prolog} first.
 In this path, scheduling the subgoal with $hash$ predicate binds `Pass` and
 `Hash`, as a result at the context of $V2$, rainbow behaves like a logical
 predicate (the dataflow constrained second parameter has `Pass` which is already
-bound). Since we couldn't schedule hash the subgoal with $hash$ for free, it
-seems we need to constraint the first parameter (`Pass`) of $weak$ leading `+?`
-mode pattern.
+bound). Since we couldn't schedule the $hash$ subgoal for free, it seems we need
+to constraint the first parameter (`Pass`) of $weak$ leading `+?` mode pattern.
 
 But wait a second! if we inspect the other branch instead, we commit to
 requiring `Hash` to be bound in the head of the rule (and consequently dealt
 with by the caller) instead. This suggests a mode pattern `?+`.
 
-So which is it? In a way, it is both. Depending on the ordering of the clauses
+So which is it? In a way, it is both. Depending on the ordering of the rules
 we have different dataflow requirements. This is good! Now we can just select a
-representative ordering for each mode pattern. When the clause is used
+representative ordering for each mode pattern. When the rule is used
 differently, we use the appropriate ordering. So the overall mode pattern of
 $weak$ is `+?/?+` to signify either of them can be used.
 
@@ -693,8 +704,8 @@ store fewer orderings. We say more about that in the paper.
 
 So far we have been assuming that a predicate is defined by a single rule. Now
 we look at those defined by multiple rules. Let's extend [Example 8](#example-8)
-to have a custom extralogical predicate that checks weakness of a password hash
-pair and requires both of them to execute safely.
+to have a custom extralogical predicate that checks weakness of a password &
+hash pair and requires both of its parameters to be bound to execute safely.
 
 ```prolog
 weak_xx(Pass,Hash) :- hash_+?(Pass,Hash), rainbow_?+(Pass,Hash).
@@ -710,23 +721,12 @@ Now what does it mean to invoke a predicate in Datalog? It means we are going to
 try each of its defining rules to collect all possible conclusions. This implies
 any invocation of $weak$ is going to evaluate both rules. Therefore, the only
 thing we can do to ensure safety is to satisfy the dataflow requirements of each
-clause simultaneously. What this means for our example is that we generate all
+rule simultaneously. What this means in our example is that we generate all
 possible combinations that is `++` & `+?` and `++` & `?+`. In each case, `++` is
 stricter for every parameter, so it shadows the other. Hence, we end up with
 `++/++`, but since both alternatives are identical, the overall mode pattern for
-$weak$ is `++`.
-
-This is the second time we are combining mode patterns and there is a form of
-subsumption going on. When we consider two alternative dataflow requirements and
-their combination leads to a more relaxed mode pattern. When we combine two mode
-patterns that need to be satisfied simultaneously, the combination is more
-strict. You must have noticed that these two operations sound very algebraic.
-Indeed, to our surprise, they form [Martelli's
-semiring](https://www.cl.cam.ac.uk/teaching/0910/L11/L11_04_08.pdf) (sorry,
-there aren't any non-academic resources I could find) originally used to compute
-cut-sets of a graph. To the best of my knowledge this hasn't been used in
-dataflow context before and seems general enough to be used beyond Datalog and
-extralogical predicates.
+$weak$ is `++`. Here this sounds _ad hoc_, but there is an _algebraic_ method to
+this madness[^martelli]. The details of which are in the paper.
 
 ### Generalised adornment
 
@@ -736,15 +736,15 @@ does not help very much with our definition of [invocation
 safety](#relating-adornments-to-modes-aka.-invocation-safety). The reason is
 that definition rely on adorning a program in the given order of subgoals. This
 is already in the result of [Example 4](#example-4) with two different versions
-of the $weak$ clause with different adornments but static ordering of subgoals.
+of the $weak$ rule with different adornments but static ordering of subgoals.
 
 So the final step in our quest to invocation safety is to generalise adornment
 procedure such that it can take reorderings into the account.
 
 We modify the adornment procedure in a single way. We let the procedure take a
-reordering function that given a clause and a binding pattern produces an
+reordering function that given a rule and a binding pattern produces an
 ordering. Of course, we compute these orderings through scheduling graphs as
-above. Then, right before we start adorning the body of a clause, we apply the
+above. Then, right before we start adorning the body of a rule, we apply the
 reordering first, then adorn from left to right as usual.
 
 #### Example 9
@@ -757,11 +757,11 @@ Consider the following example adapted from [Example 4](#example-4).
 weak_+?/?+(Pass,Hash) :- hash_+?(Pass,Hash), rainbow_?+(Pass,Hash).
 ```
 
-So the head of $weak$ clause will have the adornment `fb` due to the query. We
+So the head of $weak$ rule will have the adornment `fb` due to the query. We
 almost computed the ordering function for $weak$ in [Example 8](#example-8). For
 `?+` mode pattern alternative which is the only alternative compatible with `fb`
 binding pattern, we have an ordering in which the subgoal with $rainbow$ comes
-first and the subgoal with $hash$ come second. So we reorder the body first and
+first and the subgoal with $hash$ comes second. So we reorder the body first and
 then perform the adornment and that leads to the following adorned program:
 
 ```prolog
@@ -773,7 +773,7 @@ weak_+?/?+_fb(Pass,Hash) :- rainbow_?+_fb(Pass,Hash), hash_+?_bb(Pass,Hash).
 And voilà, we have a $rainbow$ subgoal with an adornment for its second
 parameter `b` and $hash$ subgoal with an adornment for its first parameter `b`
 as required. As all extralogical predicates are used in subgoals with adornments
-that match their modes, the program is safe to invoke.
+that match their modes, the program is safe to execute.
 
 ### Checking invocation safety
 
@@ -810,9 +810,9 @@ their proofs nor the mathematical details, but it would be amiss to omit them
 entirely:
 
  1. Soundness: if the algorithm finds a reordering function for a program, the
- the reordered rules won't have invocation safety.
- 2. Completeness: if there are any orderings of clauses that ensure invocation
- safety, then the algorithm will find a (possible different) set of orderings
+ the reordered rules will be safe to invoke.
+ 2. Completeness: if there are any orderings of rules that ensure invocation
+ safety, then the algorithm will find a (possibly different) set of orderings
  that ensure invocation safety.
  3. Incremental computation: addition of new rules don't invalidate the old
  results, hence the mode patterns of existing user-defined predicates can be
@@ -835,7 +835,7 @@ completely eliminates this and restores the promise of declarative programming!
 
 The analysis relies on computing dataflow requirements (modes) of user-defined
 predicates and verifying their consistency with respect to the actual bindings
-(adornments) of the program and query pairs.
+(adornments) of the program & query pairs.
 
 We avoid inefficiency through a greedy scheduling algorithm, but we don't
 sacrifice completeness. Additionally, our analysis is incremental and thus
@@ -847,18 +847,19 @@ Here are few reasons why you might like to read the paper:
  * gaining insights into about an implementation (paper is effectively
  executable maths),
  * need more advanced examples (illustrating omitted aspects of the algorithm),
- * and looking for generalisation from Datalog to other contexts.
+ * looking for generalisation from Datalog to other contexts,
+ * and seeing how this algorithm behaves with common Datalog examples such as
+ negation, aggregation, and effectful extralogical predicates.
 
-There are number of directions this work may go. I believe the constraint-based
-approach of the paper can be generalised to other declarative languages which
+There is a number of directions this work may go. I believe the constraint-based
+approach of the work can be generalised to other declarative languages which
 need more sophisticated modes. I firmly believe there is a fundamental link
-between Martelli's semiring and dataflow in general. We didn't discuss
-user-level annotations as you noticed. There are interesting design questions
-about an annotation language for modes that might work exploring. Finally (and a
-bit more abstractly), extralogical predicates are inevitable in logic
-programming but they are afterthoughts to clear declarative semantics. I'd like
-them to be first-class citizens so we can reason about them and analyse them
-better.
+between the mode operations we defined and dataflow in general. We didn't
+discuss user-level annotations as you noticed. There are interesting design
+questions about an annotation language for modes that might work exploring.
+Finally (and a bit more abstractly), extralogical predicates are inevitable in
+logic programming but they are afterthoughts to the semantics of the language.
+I'd like them to be first-class citizens, so we can reason about them better.
 
 [^existential]: `Pass` in this rule is an existentially quantified variable, so
 there is indeed nothing that could have bound it out of the rule context.
@@ -882,3 +883,16 @@ talk about _principal moding_ or _sub moding_, but they are only relevant if we
 have explicit annotations for modes which are not strictly necessary for safety
 checking and automated reordering. Perhaps another paper? Feel free to contact
 me if you want to discuss this more.
+
+[^martelli]:
+This is the second time we are combining mode patterns and there is a form of
+subsumption going on. When we consider two alternative dataflow requirements and
+their combination leads to a more relaxed mode pattern. When we combine two mode
+patterns that need to be satisfied simultaneously, the combination is more
+strict. You must have noticed that these two operations sound very algebraic.
+Indeed, to our surprise, they form [Martelli's
+semiring](https://www.cl.cam.ac.uk/teaching/0910/L11/L11_04_08.pdf) (sorry,
+there aren't any non-academic resources I could find) originally used to compute
+cut-sets of a graph. To the best of my knowledge this hasn't been used in
+dataflow context before and seems general enough to be used beyond Datalog and
+extralogical predicates.
