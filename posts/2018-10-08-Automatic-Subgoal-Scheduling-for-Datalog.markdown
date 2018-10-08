@@ -152,10 +152,8 @@ weak_server(Pass,Hash) :- rainbow(Pass,Hash), hash(Pass,Hash).
 
 If you're still not sold on the idea, I have one final motivating example. Even
 in the purely logical implementations of Datalog, dataflow problems exist.
-Stratified negation is indispensable in Datalog programming. When discussing
-negation, the emphasis is always on the lack of cyclic dependencies between
-predicates used negatively. However, there is another syntactic problem.
-Consider the following rule:
+Negation is indispensable in logic programming. However, there is a difficulty
+with it. Consider the following rule:
 
 ```prolog
 accessed("Mistral").
@@ -170,15 +168,13 @@ guest(User) :- not password(User,Pass).
 ?- accessed(User), guest(User).
 ```
 
-This program poses the query "out of those who are known to access the
-system, which ones are guests?". Being a guest is defined as not having a
-password recorded for the given user identifier. This is a stratified program,
-so semantically negation should be fine. Yet most implementations would reject
-this program because Datalog semantics is also based on [Herbrand
-Universes](https://en.wikipedia.org/wiki/Herbrand_structure#Herbrand_universe).
-This means we can only conclude facts about constants that are known to the
-system. In this example, we can only conclude positive or negative negative
-facts about Mistral, Rebecca, and Hattie, but not about Jessica.
+This program poses the query "out of those who are known to access the system,
+which ones are guests?". Being a guest is defined as not having a password
+recorded for the given user identifier. Most implementations would reject this
+program because of something called _allowedness_. This means we can only
+conclude facts about constants that are known to the system. In this example, we
+can only conclude positive or negative facts about Mistral, Rebecca, and Hattie,
+but not about Alice.
 
 In principle, this should be fine because the values `User` variable can take
 are already restricted by the `accessed(User)`{.prolog} subgoal in the query.
