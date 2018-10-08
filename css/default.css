@@ -64,10 +64,12 @@ p.in-which span.drop {
     border-top: 1px solid gray;
 }
 
+/*
 div.archive-column {
     width: 390px;
     display: inline-block;
 }
+*/
 
 p {
     text-align: justify;
