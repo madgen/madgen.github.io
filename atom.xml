@@ -8,8 +8,16 @@
         <name>Mistral Contrastin</name>
         <email>madgenhetic@gmail.com</email>
     </author>
-    <updated>2018-01-28T00:00:00Z</updated>
+    <updated>2018-10-08T00:00:00Z</updated>
     <entry>
+    <title>Automatic Subgoal Scheduling for Datalog</title>
+    <link href="https://dodisturb.me/posts/2018-10-08-Automatic-Subgoal-Scheduling-for-Datalog.html" />
+    <id>https://dodisturb.me/posts/2018-10-08-Automatic-Subgoal-Scheduling-for-Datalog.html</id>
+    <published>2018-10-08T00:00:00Z</published>
+    <updated>2018-10-08T00:00:00Z</updated>
+    <summary type="html"><![CDATA[In which we investigate dataflow in declarative programs and talk about how to make Datalog safer by statically reordering goals when predicates with dataflow constraints are involved.]]></summary>
+</entry>
+<entry>
     <title>Cellular Christmas Tree</title>
     <link href="https://dodisturb.me/posts/2018-01-28-Cellular-Christmas-Tree.html" />
     <id>https://dodisturb.me/posts/2018-01-28-Cellular-Christmas-Tree.html</id>
