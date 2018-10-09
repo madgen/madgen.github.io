@@ -127,7 +127,7 @@ beneficial for both the client and the server to check if a hash is weak, but
 the client shouldn't know the hash of a given password (otherwise it can
 construct a rainbow table of its own!) and the server shouldn't know the
 password (in case it gets stolen). Hence, there are two predicates
-$check_client$ that takes a password and $check_server$ that takes a hash that
+$check\_client$ that takes a password and $check\_server$ that takes a hash that
 can be used by the client and server respectively.
 
 This example is worse than the previous one because regardless how careful the
