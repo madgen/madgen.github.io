@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-41394820-3');
+        </script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="description" content="Mistral Contrastin's thought bubble,
+          blog, and personal revelations." />
+        <meta name="author" content="Mistral Contrastin" />
+        <title>Do disturb me | Concepts in Programming Languages II</title>
+        <link href="https://fonts.googleapis.com/css?family=Noto+Serif" rel="stylesheet">
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+        <link rel="alternate" type="application/atom+xml" href="../atom.xml" />
+    </head>
+    <body>
+        <div id="header">
+            <div class="top-container">
+              <div id="logo">
+                  <a href="../">Do Disturb Me</a>
+              </div>
+              <div id="navigation">
+                  <a href="../archive.html">Blog</a>
+                  <a href="../teaching.html">Teaching</a>
+              </div>
+            </div>
+            <div id="mandelbrot"></div>
+        </div>
+
+        <div id="content">
+            <div class="info">
+  Posted on April 29, 2018
+  
+  
+</div>
+
+<h1>Concepts in Programming Languages II</h1>
+
+
+
+<div class="post"><ol>
+<li><p>Do type inference (by hand or typesetter) for the following ML function:</p>
+<div class="sourceCode"><pre class="sourceCode ml"><code class="sourceCode ocaml">fn f =&gt; fn g =&gt; fn x =&gt; f (g (f x))
+    </code></pre></div>
+<p>This involves providing a derivation tree as well as the constraint generated and their unification.</p></li>
+<li><p>This question is about ML module system.</p>
+<ol style="list-style-type: lower-alpha">
+<li><p>Provide two implementations using SML module system for the following signature for stack abstract data type:</p>
+<div class="sourceCode"><pre class="sourceCode ml"><code class="sourceCode ocaml">signature STACK =
+  <span class="kw">sig</span>
+    <span class="kw">type</span> 'a t
+    <span class="kw">exception</span> E;
+
+    <span class="kw">val</span> empty : 'a t
+    <span class="kw">val</span> push  : ('a t * 'a) -&gt; 'a t
+    <span class="kw">val</span> pop   : 'a t -&gt; 'a t
+    <span class="kw">val</span> top   : 'a t -&gt; 'a
+  <span class="kw">end</span>
+      </code></pre></div>
+<p>The first structure implementing the signature should use a list for its internal representation and the second one should use a new data type with constructors <code>push</code> and <code>empty</code>.</p></li>
+<li><p>With a separate structure assignment create an abstract data type out of the second stack structure. This one must implement the signature opaquely. In comments explain what this means and what operation(s) is prohibited compared to transparent implementation.</p></li>
+<li><p>Define a functor that takes a STACK and generates an EVALUATOR as defined below. Your functor should generate a reverse polish adder.</p>
+<div class="sourceCode"><pre class="sourceCode ml"><code class="sourceCode ocaml">datatype StackElement = OpPlus | OpInt <span class="kw">of</span> <span class="dt">int</span>;
+
+signature EVALUATOR =
+  <span class="kw">sig</span>
+    <span class="kw">type</span> t
+    <span class="kw">val</span> empty   : t
+    <span class="kw">val</span> push    : (t * StackElement) -&gt; t
+    <span class="kw">val</span> top     : t -&gt; <span class="dt">int</span>
+  <span class="kw">end</span>
+        </code></pre></div></li>
+</ol></li>
+<li><p>What is the difference between parallelism and concurrency? Under which circumstances each of them improve performance benefits?</p>
+<p>How a pthreads different from Erlang processes?</p></li>
+<li><p>How are recent (last 15 years) advances in hardware have blurred the distinction between distributed systems and single machine parallelism? Give example technologies/language constructs from the course that illustrate your answer.</p></li>
+<li><p>Please read <span class="citation">Wadler (1995)</span> up to and including Section 3. This is the paper I found most useful when I was first learning about monads.</p>
+<p>If you don't find this paper helpful, google ``Monad tutorial'' and you'll be presented with hundreds of blog posts each often employs some form of an analogy to explain. Be warned, they might misrepresented the concept, or confuse you due to over simplification.</p></li>
+<li><p>As many tripos questions as you’d like me to mark.</p></li>
+</ol>
+<div id="refs" class="references">
+<div id="ref-wadler1995monads">
+<p>Wadler, P., 1995. Monads for functional programming, in: International School on Advanced Functional Programming. Springer, pp. 24–52.</p>
+</div>
+</div></div>
+
+<script>
+var figures =
+  Array.prototype.slice.call(document.getElementsByClassName("figure"),0)
+  .concat(
+    Array.prototype.slice.call(document.getElementsByTagName("figure"),0));
+
+for (var i = 0; i < figures.length; i++) {
+  var figure = figures[i];
+  var imgs = figure.getElementsByTagName("img");
+  if (imgs.length > 0) {
+    classes = imgs[0].classList;
+    for (var j = 0; j < classes.length; j++) {
+      figure.classList.add(classes[j] + "-figure");
+    }
+  }
+}
+</script>
+
+        </div>
+        <div id="footer">
+          <div class="top-container">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+          </div>
+        </div>
+    </body>
+</html>

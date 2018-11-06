@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-41394820-3');
+        </script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="description" content="Mistral Contrastin's thought bubble,
+          blog, and personal revelations." />
+        <meta name="author" content="Mistral Contrastin" />
+        <title>Do disturb me | Concepts in Programming Languages I</title>
+        <link href="https://fonts.googleapis.com/css?family=Noto+Serif" rel="stylesheet">
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+        <link rel="alternate" type="application/atom+xml" href="../atom.xml" />
+    </head>
+    <body>
+        <div id="header">
+            <div class="top-container">
+              <div id="logo">
+                  <a href="../">Do Disturb Me</a>
+              </div>
+              <div id="navigation">
+                  <a href="../archive.html">Blog</a>
+                  <a href="../teaching.html">Teaching</a>
+              </div>
+            </div>
+            <div id="mandelbrot"></div>
+        </div>
+
+        <div id="content">
+            <div class="info">
+  Posted on April 29, 2018
+  
+  
+</div>
+
+<h1>Concepts in Programming Languages I</h1>
+
+
+
+<div class="post"><ol>
+<li><p>Read and make notes on chapters 3 (on <span style="font-variant: small-caps;">LISP</span>) &amp; 5 (on <span style="font-variant: small-caps;">ALGOL</span>) of <span class="citation">Mitchell (2003)</span>. In your notes, pay particular attention to motivation and new innovations of the language.</p></li>
+<li><p>An author writes</p>
+<p>Most successful language design efforts share three important characteristics:</p>
+<ul>
+<li><p>Motivating Application: The language was designed so that a specific kind of program could be written more easily,</p></li>
+<li><p>Abstract Machine: There is a simple and unambiguous program execution model, and</p></li>
+<li><p>Theoretical Foundations: Theoretical understanding was the basis for including certain capabilities and omitting others.</p></li>
+</ul>
+<p>Briefly discuss the merits and/or shortcomings of the above three statements, giving examples and/or counterexamples from procedural, applicative, logical, and/or object-oriented programming languages.</p></li>
+<li><p>For the programming languages <span style="font-variant: small-caps;">FORTRAN</span>, <span style="font-variant: small-caps;">LISP</span>, <span style="font-variant: small-caps;">Java</span>, <span style="font-variant: small-caps;">C</span>, <span style="font-variant: small-caps;">C++</span> and <span style="font-variant: small-caps;">ML</span> briefly discuss and evaluate their typing disciplines.</p></li>
+<li><p>Consider the following two program fragments:</p>
+<div class="sourceCode"><pre class="sourceCode lisp"><code class="sourceCode commonlisp">( <span class="kw">defvar</span><span class="fu"> x </span><span class="dv">1</span> )
+( <span class="kw">defun</span><span class="fu"> g</span>(z) (<span class="op">+</span> x z) )
+( <span class="kw">defun</span><span class="fu"> f</span>(y)
+ (<span class="op">+</span> (g <span class="dv">1</span>)
+    ( <span class="kw">let</span>
+       ( ( x (<span class="op">+</span> y <span class="dv">3</span>) ) )
+       (
+           g(<span class="op">+</span> y x)
+           ) ) ) )
+( f <span class="dv">2</span> )
+    </code></pre></div>
+<div class="sourceCode"><pre class="sourceCode ml"><code class="sourceCode ocaml"><span class="kw">val</span> x = <span class="dv">1</span> ;
+<span class="kw">fun</span> g(z) = x + z ;
+<span class="kw">fun</span> f(y)
+= g(<span class="dv">1</span>) +
+  <span class="kw">let</span>
+     <span class="kw">val</span> x = y + <span class="dv">3</span>
+  <span class="kw">in</span>
+     g(y+x)
+  <span class="kw">end</span> ;
+f(<span class="dv">2</span>) ;
+    </code></pre></div>
+<p>What are their respective output values when run in their corresponding interpreters? Justify your answer, relating it to the concepts in the course.</p></li>
+<li><p>Give an overview of the LISP abstract machine (or execution model) and comment on its merits and drawbacks from the viewpoints of programming, compilation, execution, etc.</p></li>
+<li><p>Define the following parameter-passing mechanisms: pass-by-value,pass-by-reference, pass-by value/result, and pass-by-name. Briefly comment on their merits and drawbacks.</p></li>
+<li><p>What is aliasing in the context of programming languages? Explain the contexts in which it arises and provide examples of the phenomenon.</p></li>
+<li><p>As many exam questions as you would like me to mark.</p></li>
+</ol>
+<div id="refs" class="references">
+<div id="ref-mitchell2003concepts">
+<p>Mitchell, J.C., 2003. Concepts in programming languages. Cambridge University Press.</p>
+</div>
+</div></div>
+
+<script>
+var figures =
+  Array.prototype.slice.call(document.getElementsByClassName("figure"),0)
+  .concat(
+    Array.prototype.slice.call(document.getElementsByTagName("figure"),0));
+
+for (var i = 0; i < figures.length; i++) {
+  var figure = figures[i];
+  var imgs = figure.getElementsByTagName("img");
+  if (imgs.length > 0) {
+    classes = imgs[0].classList;
+    for (var j = 0; j < classes.length; j++) {
+      figure.classList.add(classes[j] + "-figure");
+    }
+  }
+}
+</script>
+
+        </div>
+        <div id="footer">
+          <div class="top-container">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+          </div>
+        </div>
+    </body>
+</html>
