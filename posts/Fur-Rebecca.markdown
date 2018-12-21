@@ -5,6 +5,19 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 21st of December, 2018
+
+  - We're sufficiently close to the end of the year that I can announce Kingdoms
+    in Colour by Maribou State as the best album of the year. You can start with
+    Feel Good, then Kama, followed by Part Time Glory, but you should really
+    listen to the whole thing. It's a real treat.
+  - Just in case you're craving some electronic jazz blend, you can try Amateur
+    Girlfriends Go Proskirt Agents by Xploding Plastix. I swear I haven't
+    noticed the ridiculous album and band names until now. Within the album
+    Sports, Not Heavy Crime would be a good start.
+  - Also, I trust you're in warm company that pierces through the cold and dark
+    days we are going through. Do enjoy the festive season.
+
 ### 3rd of December, 2018
 
   - Bertolucci died two weeks after I recommended you the Sheltering Sky. Call
