@@ -1,5 +1,5 @@
 ---
-title: The essence of Datalog
+title: The Essence of Datalog
 postType: Technical
 inWhich: we implement a simple Datalog engine in not many lines of Haskell and
   discuss its semantics.
