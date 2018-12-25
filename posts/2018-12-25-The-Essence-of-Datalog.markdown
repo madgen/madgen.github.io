@@ -592,7 +592,7 @@ tips for more efficient implementation as possible which is probably more useful
 than a short program.
 
 If you want to look at Datalog further.
-[Souffle](https://souffle-lang.github.io) is a modern variant geared towards
+[Soufflé](https://souffle-lang.github.io) is a modern variant geared towards
 program analysis and is blazingly fast.
 
 If you are interested in a more formal treatment of Datalog as well as some of
