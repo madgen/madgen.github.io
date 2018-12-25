@@ -7,7 +7,7 @@ published: true
 ---
 
 Datalog is arguably the simplest logic programming language there is. Depending
-on your background, you can see it as a principled SQL or a Prolog wih manners.
+on your background, you can see it as a principled SQL or a Prolog with manners.
 It has recently become popular among the scalable program analysis crowd.
 Semantically, it is simple and clean, so it doesn't take many lines of Haskell
 to produce an (inefficient) implementation. I'll follow Richard Feynman's maxim:
@@ -33,23 +33,23 @@ The litmus test for any logic programming language is to be able to compute a
 variation of the following ancestry program.
 
 ```prolog
-advisor("Andrew Rice",     "Mistral Contrastin").
-advisor("Dominic Orchard", "Andrew Rice").
-advisor("Andy Hopper",     "Andrew Rice").
-advisor("Alan Mycroft",    "Dominic Orchard").
-advisor("David Wheeler",   "Andy Hopper").
-advisor("Rod Burstall",    "Alan Mycroft").
-advisor("Robin Milner",    "Alan Mycroft").
+adviser("Andrew Rice",     "Mistral Contrastin").
+adviser("Dominic Orchard", "Andrew Rice").
+adviser("Andy Hopper",     "Andrew Rice").
+adviser("Alan Mycroft",    "Dominic Orchard").
+adviser("David Wheeler",   "Andy Hopper").
+adviser("Rod Burstall",    "Alan Mycroft").
+adviser("Robin Milner",    "Alan Mycroft").
 
-academicAncestor(X,Y) :- advisor(X,Y).
-academicAncestor(X,Z) :- advisor(X,Y), academicAncestor(Y,Z).
+academicAncestor(X,Y) :- adviser(X,Y).
+academicAncestor(X,Z) :- adviser(X,Y), academicAncestor(Y,Z).
 ```
 
-This program encodes some facts about my academic geneology encoded in the
-`advisor` relation and has some basic rules that define what it means to be an
+This program encodes some facts about my academic genealogy encoded in the
+`adviser` relation and has some basic rules that define what it means to be an
 `academicAncestor`. The facts effectively constitute a database table.  Rules
-allow us to deduce new knowledge. The first rule says that an advisor is an
-ancestor. The second says the advisor of a known ancestor is also an ancestor.
+allow us to deduce new knowledge. The first rule says that an adviser is an
+ancestor. The second says the adviser of a known ancestor is also an ancestor.
 This ability to use recursion to specify relationships in data was one of the
 original selling points of Datalog.
 
@@ -63,7 +63,7 @@ are some example queries:
 ?- academicAncestor("David Wheeler", "Mistral Contrastin").
 ```
 
-The first one says "is there an academic ancestarial connection between Robin
+The first one says "is there an academic ancestorial connection between Robin
 Milner and I and if so who?". The second one says "is Alan Turing my academic
 ancestor?" and the third one is the same question but for David Wheeler.
 
@@ -93,7 +93,7 @@ simpler code.
 
 A rule consists of a head and a body. A head is an atom and so are the comma
 separated items in the body. An atom then consists of a predicate name like
-`advisor` and a list of terms. We have two kinds of terms: variables and
+`adviser` and a list of terms. We have two kinds of terms: variables and
 symbols. This corresponds to few simple datatype declarations.
 
 ```haskell
@@ -105,27 +105,27 @@ data Term = Var String | Sym String deriving Eq
 The following rule
 
 ```prolog
-academicAncestor(X,Z) :- advisor(X,Y), academicAncestor(Y,Z).
+academicAncestor(X,Z) :- adviser(X,Y), academicAncestor(Y,Z).
 ```
 
 corresponds to
 
 ```haskell
 Rule (Atom "academicAncestor" [ Var "X", Var "Z" ])
-  [ Atom "advisor"          [ Var "X", Var "Y" ]
+  [ Atom "adviser"          [ Var "X", Var "Y" ]
   , Atom "academicAncestor" [ Var "Y", Var "Z" ] ]
 ```
 
 Facts are just bodiless rules. For example,
 
 ```prolog
-advisor("Andrew Rice", "Mistral Contrastin").
+adviser("Andrew Rice", "Mistral Contrastin").
 ```
 
 corresponds to
 
 ```haskell
-Rule (Atom "advisor" [ Sym "Andrew Rice", Sym "Mistral Contrastin" ]) []
+Rule (Atom "adviser" [ Sym "Andrew Rice", Sym "Mistral Contrastin" ]) []
 ```
 
 You might be thinking but what about the queries, the `Rule` datatype doesn't
@@ -193,18 +193,18 @@ Mind-blowing, I know.
 Let's focus on evaluating a single rule from our example program.
 
 ```prolog
-academicAncestor(X,Z) :- advisor(X,Y), academicAncestor(Y,Z).
+academicAncestor(X,Z) :- adviser(X,Y), academicAncestor(Y,Z).
 ```
 
 We know some facts about the world and using this rule, we want to know some
 more. There are two ways. One is to gather everything we know about
-`advisor` and `academicAncestor` separately and _join_ them together making
-sure the second parameter (`Y`) of `advisor` matches the first parameter (`Y`)
+`adviser` and `academicAncestor` separately and _join_ them together making
+sure the second parameter (`Y`) of `adviser` matches the first parameter (`Y`)
 of `academicAncestor`. Another way is to look at any one of the atoms and
 find assignments to its variables and substitute them in the other atom, only
 then we look for assignments to the remaining variables of this second atom.
 This approach would work for the example above as follows: find possible
-assignments to `X` and `Y` through `advisor`, substitute the values of `Y` in
+assignments to `X` and `Y` through `adviser`, substitute the values of `Y` in
 `academicAncestor`, and finally look for values of `academicAncestor` in the
 knowledge base that agree on the newly substituted value of `Y` to obtain values
 for `Z`.
@@ -259,7 +259,7 @@ requires failing in case of a contradictory variable assignment.  Consider
 unifying `p(X,X)` with `p("a","b")`.
 
 Next we evaluate an atom into a list of substitutions by finding facts that fit
-the template provided by a body attom and capturing the assignments to its
+the template provided by a body atom and capturing the assignments to its
 variables. Those assignments to variables are just the substitutions we are
 looking for.
 
@@ -388,7 +388,7 @@ terminates.
 The termination argument is pretty simple. Immediate consequence function is
 _monotone_ that is the facts it produces encompasses the facts it starts with.
 Further, the number of facts that can be produced is _bounded_ if we start with
-a finite database. Our initial set of facts used to kickstart `solve` is empty.
+a finite database. Our initial set of facts used to kick-start `solve` is empty.
 Hence, as long as our program is finite, we have finite number of
 facts.[^infinite-programs] As an upper bound, if we have $N$ constants
 throughout the program, then for each relation of arity $k$, we can have at most
@@ -403,7 +403,7 @@ of each element in the list. Since we prepend the already known facts before
 calling `nub`, `==` behaves as if it is set equality.
 
 If you want to sound smart explaining all of this and reduce the size of your
-audience to a group of people who would understand this without you mentionning
+audience to a group of people who would understand this without you mentioning
 anyway, you can just say the following. We have a non-empty finite lattice which
 means it is complete and [Knaster-Tarski
 theorem](https://en.wikipedia.org/wiki/Knaster–Tarski_theorem) (which is a very
@@ -412,14 +412,14 @@ complete lattice implies that it has a least fixpoint.
 
 ## Quality assurance
 
-Time for the litmus test. We can now translate the ancestory program into
+Time for the litmus test. We can now translate the ancestry program into
 Haskell.
 
 ```haskell
 ancestor :: Program
 ancestor =
   -- Facts
-  fmap (\terms -> Rule (Atom "advisor" terms) [])
+  fmap (\terms -> Rule (Atom "adviser" terms) [])
     [ [ Sym "Andrew Rice",     Sym "Mistral Contrastin" ]
     , [ Sym "Dominic Orchard", Sym "Mistral Contrastin" ]
     , [ Sym "Andy Hopper",     Sym "Andrew Rice" ]
@@ -430,9 +430,9 @@ ancestor =
     ] <>
   -- Actual rules
   [ Rule (Atom "academicAncestor" [ Var "X", Var "Y" ])
-      [ Atom "advisor" [ Var "X", Var "Y" ] ]
+      [ Atom "adviser" [ Var "X", Var "Y" ] ]
   , Rule (Atom "academicAncestor" [ Var "X", Var "Z" ])
-      [ Atom "advisor"          [ Var "X", Var "Y" ]
+      [ Atom "adviser"          [ Var "X", Var "Y" ]
       , Atom "academicAncestor" [ Var "Y", Var "Z" ] ]
   ] <>
   -- Queries
@@ -503,7 +503,7 @@ to find a resource that discusses Datalog evaluation the way I do because the
 semantics are always defined with respect to a query. So what we really need is
 a program query pair. What we compute here is much stronger and also
 unnecessary. For example, if the queries we are interested in only involved the
-`advisor` relation, computing `academicAncestors` would be a waste of time.
+`adviser` relation, computing `academicAncestors` would be a waste of time.
 
 One way of dealing with this is to use a top-down evaluator which starts from
 the query and uses _resolution_ which is a proof technique. This allows only the
@@ -569,7 +569,7 @@ to rely on `nub` function's internals for termination as discussed
 ### Dependency graphs
 
 We evaluate all rules in one pot but that is also very inefficient. We can
-partition the program by determening dependencies between predicates. This
+partition the program by determining dependencies between predicates. This
 allows us to treat evaluated dependencies as static knowledge, so we have to
 deal with a smaller collection of changing facts at any one time.
 
@@ -579,15 +579,15 @@ loops around. Meaning we can compute the fixpoint for `ancestor` rules first,
 then forget about those rules and compute the fixpoint of `academicAncestor`.
 
 Also if your Datalog variant has _stratified negation_ which is a popular way of
-incorprating negated atoms, you already have to do the dependency analysis and
+incorporating negated atoms, you already have to do the dependency analysis and
 partition your program. So engineering-wise, this optimisation comes for free.
 
-### Paralellisation & distributed computation
+### Parallelisation & distributed computation
 
-Datalog evaluation is great for data-paralel computation. Even in our
+Datalog evaluation is great for data-parallel computation. Even in our
 implementation, evaluating all the rules in a given iteration is an
-embarassingly parallel problem. The dependency graph can be used to further
-paralellise the evaluation using work queues. Similarly, the workload can be
+embarrassingly parallel problem. The dependency graph can be used to further
+parallelise the evaluation using work queues. Similarly, the workload can be
 separated over multiple machines, a bit like
 [MapReduce](https://en.wikipedia.org/wiki/MapReduce).
 
@@ -695,16 +695,16 @@ unify (Atom predSym ts) (Atom predSym' ts')
   go ((_, Var{}) : _) = error "The second atom is assumed to be ground."
 
 {-
-- advisor("Andrew Rice",     "Mistral Contrastin").
-- advisor("Dominic Orchard", "Andrew Rice").
-- advisor("Andy Hopper",     "Andrew Rice").
-- advisor("Alan Mycroft",    "Dominic Orchard").
-- advisor("David Wheeler",   "Andy Hopper").
-- advisor("Rod Burstall",    "Alan Mycroft").
-- advisor("Robin Milner",    "Alan Mycroft").
+- adviser("Andrew Rice",     "Mistral Contrastin").
+- adviser("Dominic Orchard", "Andrew Rice").
+- adviser("Andy Hopper",     "Andrew Rice").
+- adviser("Alan Mycroft",    "Dominic Orchard").
+- adviser("David Wheeler",   "Andy Hopper").
+- adviser("Rod Burstall",    "Alan Mycroft").
+- adviser("Robin Milner",    "Alan Mycroft").
 -
-- academicAncestor(X,Y) :- advisor(X,Y).
-- academicAncestor(X,Z) :- advisor(X,Y), academicAncestor(Y,Z).
+- academicAncestor(X,Y) :- adviser(X,Y).
+- academicAncestor(X,Z) :- adviser(X,Y), academicAncestor(Y,Z).
 -
 - ?- academicAncestor("Robin Milner", Intermediate),
 -    academicAncestor(Intermediate, "Mistral Contrastin").
@@ -714,7 +714,7 @@ unify (Atom predSym ts) (Atom predSym' ts')
 ancestor :: Program
 ancestor =
   -- Facts
-  fmap (\terms -> Rule (Atom "advisor" terms) [])
+  fmap (\terms -> Rule (Atom "adviser" terms) [])
     [ [ Sym "Andrew Rice",     Sym "Mistral Contrastin" ]
     , [ Sym "Dominic Orchard", Sym "Mistral Contrastin" ]
     , [ Sym "Andy Hopper",     Sym "Andrew Rice" ]
@@ -725,9 +725,9 @@ ancestor =
     ] <>
   -- Actual rules
   [ Rule (Atom "academicAncestor" [ Var "X", Var "Y" ])
-      [ Atom "advisor" [ Var "X", Var "Y" ] ]
+      [ Atom "adviser" [ Var "X", Var "Y" ] ]
   , Rule (Atom "academicAncestor" [ Var "X", Var "Z" ])
-      [ Atom "advisor"          [ Var "X", Var "Y" ]
+      [ Atom "adviser"          [ Var "X", Var "Y" ]
       , Atom "academicAncestor" [ Var "Y", Var "Z" ] ]
   ] <>
   -- Queries
