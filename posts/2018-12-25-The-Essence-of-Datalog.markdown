@@ -479,9 +479,10 @@ to its arguments. Let's execute all three queries.
 [[]]
 ```
 
-Empty list of variable bindings, `[]`, mean there are no possible assignments
-that satisfy the query, whereas the singleton `[[]]` mean that the query is
-satisfied, it just didn't have any variables that need to be bound to values.
+The empty list of variable bindings, `[]`, mean there are no possible
+assignments that satisfy the query, whereas the singleton empty binding, `[[]]`,
+means the query is satisfied. It just didn't have any variables that need to be
+bound to values.
 
 All three queries return the expected results. Dominic Orchard and Alan Mycroft
 are between me and Robin Milner. I am not an academic descendant of Alan Turing,
@@ -495,14 +496,17 @@ here is bug-free.
 As I mentioned before, this evaluator is inefficient. Discussing the reasons why
 and what we can do to make it better is not only a software engineering
 exercise, but also another way of highlighting why Datalog is a good language.
+The optimisations I discuss here are quite major, but they are not a complete
+list. There are many other optimisations that draw both from programming
+languages and database theory literatures.
 
 ### Optimise for the query
 
 Basically, all I told you about Datalog semantics is incomplete. You'll struggle
 to find a resource that discusses Datalog evaluation the way I do because the
 semantics are always defined with respect to a query. So what we really need is
-a program query pair. What we compute here is much stronger and also
-unnecessary. For example, if the queries we are interested in only involved the
+a program query pair. What we compute here is much stronger and is also
+unnecessary. For example, if the queries we were interested in only involved the
 `adviser` relation, computing `academicAncestors` would be a waste of time.
 
 One way of dealing with this is to use a top-down evaluator which starts from
@@ -573,9 +577,9 @@ partition the program by determining dependencies between predicates. This
 allows us to treat evaluated dependencies as static knowledge, so we have to
 deal with a smaller collection of changing facts at any one time.
 
-For example, in the ancestor program we would have a graph with `ancestor` and
+For example in the ancestor program, we would have a graph with `adviser` and
 `academicAncestor` nodes where the former points to the latter and the latter
-loops around. Meaning we can compute the fixpoint for `ancestor` rules first,
+loops around. Meaning we can compute the fixpoint for `adviser` rules first,
 then forget about those rules and compute the fixpoint of `academicAncestor`.
 
 Also if your Datalog variant has _stratified negation_ which is a popular way of
@@ -584,11 +588,11 @@ partition your program. So engineering-wise, this optimisation comes for free.
 
 ### Parallelisation & distributed computation
 
-Datalog evaluation is great for data-parallel computation. Even in our
-implementation, evaluating all the rules in a given iteration is an
-embarrassingly parallel problem. The dependency graph can be used to further
-parallelise the evaluation using work queues. Similarly, the workload can be
-separated over multiple machines, a bit like
+Datalog evaluation is great for data-parallel computation. Even by inspecting
+our implementation, it is evident that evaluating all the rules in a given
+iteration is an embarrassingly parallel problem. The dependency graph can be
+used to further parallelise the evaluation using work queues. Similarly, the
+workload can be separated over multiple machines, a bit like
 [MapReduce](https://en.wikipedia.org/wiki/MapReduce).
 
 ## Closing remarks
@@ -760,9 +764,9 @@ query predSym pr =
 [^extensions]: My impression is, as time goes on, λ-calculus variants try to
 tame λ-calculus (simply typed, linear, dependent, etc.) while Datalog variants
 (relaxed range-restriction, functional symbols, explicit quantification, etc.)
-lets it run wild.
+let it run wild.
 
-[^select-before-join]: As it happens, select before join is usually (but
+[^select-before-join]: As it happens, select-before-join is usually (but
 certainly not always) the faster approach in real world. However, this doesn't
 affect us at all because the performance benefit requires an indexed database
 for the columns that are grounded by substitution.
