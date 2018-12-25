@@ -1,25 +1,31 @@
 ---
 title: The Essence of Datalog
 postType: Technical
-inWhich: we implement a simple Datalog engine in not many lines of Haskell and
-  discuss its semantics.
+inWhich: we implement a simple Datalog engine in not many lines of Haskell to
+  understand its semantics.
 published: true
 ---
 
 Datalog is arguably the simplest logic programming language there is. Depending
-on your background, you can see it as a declarative SQL or a Prolog wih manners.
-It has recently become popular among people who analyse programs at scale.
+on your background, you can see it as a principled SQL or a Prolog wih manners.
+It has recently become popular among the scalable program analysis crowd.
 Semantically, it is simple and clean, so it doesn't take many lines of Haskell
-to produce an (inefficient) implementation. Hopefully, this post should give you
-some feel for logic programming and relational programming and also demonstrate
-that λ-calculus is not the only language you can implement with ease in Haskell.
+to produce an (inefficient) implementation. I'll follow Richard Feynman's maxim:
+"What I cannot create, I do not understand." Hopefully, this post should give
+you some feel for logic and relational programming and also demonstrate that
+λ-calculus is not the only language you can implement with ease in Haskell.
 
-We start by explaining a simple program and then implement an evaluator for it.
+We start by looking at a simple program and implement an evaluator for it.
 Along with the implementation, we give a lightweight discussion of semantic
 concerns, in particular about its termination. Later, we try quenching the
 thirst for efficiency a little by giving some avenues for optimisation and
 conclude with where to go next for those interested. There is a copy of the full
 implementation at the end of the post.
+
+I want this post to be accessible to everyone, not only to the programming
+language people. For that reason, all uses of theory terms are auxiliary. If you
+feel that's not the case at any point, give me a shout on Twitter or email me
+(both available in [my homepage](https://dodisturb.me)) and I'll fix it.
 
 ## A crash course in logic programming
 
@@ -39,18 +45,16 @@ academicAncestor(X,Y) :- advisor(X,Y).
 academicAncestor(X,Z) :- advisor(X,Y), academicAncestor(Y,Z).
 ```
 
-This particular variation has some facts about my academic geneology encoded in
-the `advisor` relation and has some basic rules that defines what it means to
-be an `academicAncestor`. The facts are no different than a database table. The
-allow us to deduce new knowledge out using the facts. The first rule says that
-an advisor is an ancestor. The second one says the advisor of a known ancestor
-is an advisor.
-
-The ability to use recursion to specify relationships in data was one of the
+This program encodes some facts about my academic geneology encoded in the
+`advisor` relation and has some basic rules that define what it means to be an
+`academicAncestor`. The facts effectively constitute a database table.  Rules
+allow us to deduce new knowledge. The first rule says that an advisor is an
+ancestor. The second says the advisor of a known ancestor is also an ancestor.
+This ability to use recursion to specify relationships in data was one of the
 original selling points of Datalog.
 
-We need to be able to query the data explicitly and implicitly represented in
-this program. Here are some example queries:
+We want to query the data that is represented explicitly and implicitly. Here
+are some example queries:
 
 ```prolog
 ?- academicAncestor("Robin Milner", Intermediate),
@@ -61,15 +65,15 @@ this program. Here are some example queries:
 
 The first one says "is there an academic ancestarial connection between Robin
 Milner and I and if so who?". The second one says "is Alan Turing my academic
-ancestor" and the third one is the same question but for David Wheeler.
+ancestor?" and the third one is the same question but for David Wheeler.
 
-Another appeal of Datalog can be seen in these queries. See how the first query
-varies the binding in different uses of the same predicate. In Datalog,
-everything is really just relations (hence the name relational programming).
-This means there are no inherent inputs and outputs. You can leave a variable in
-place of the knowledge you want to know and the system fills it for you. This
-often means you can write a program for a particular input and output
-relationship in mind and you get the opposite program for free.
+Another appeal of Datalog can be seen in these queries. Datalog is mostly
+relations (hence the name relational programming). This means there are no
+inherent inputs and outputs. That's why we can fill in or leave out either
+parameter of `academicAncestor`. You leave a variable in place of the knowledge
+you want to know and the system fills it for you. This also means you can write
+a program for a particular input and output relationship in mind and you get the
+opposite program for free.
 
 ## Evaluating a Datalog
 
@@ -82,8 +86,8 @@ We'll implement the engine the way we evaluate Datalog programs: _initially, one
 rule at a time, then all at once_. Since Datalog is deeply rooted in database
 theory, it is usually implemented as relational algebra concepts such as joins
 and selections. I have a programming language background, so I'll use
-substitutions instead. They are entirely equivalent, but use of subsitutions
-leads to simpler code.
+substitutions instead. This will be entirely equivalent, but also lead to
+simpler code.
 
 ### Representing Datalog
 
@@ -124,8 +128,8 @@ corresponds to
 Rule (Atom "advisor" [ Sym "Andrew Rice", Sym "Mistral Contrastin" ]) []
 ```
 
-You might be thinking but what about the queries, the Rule datatype doesn't
-allow headless bodies. That's true but the dirty secret about queries is that
+You might be thinking but what about the queries, the `Rule` datatype doesn't
+allow headless bodies. That's true, but the dirty secret about queries is that
 they get rewritten as rules with the head atom generated from the query. The
 predicate symbol for each query is fresh and the terms of the head are just the
 variables in the body. For example,
@@ -164,12 +168,15 @@ type Substitution = [ (Term, Term) ]
 ```
 
 Our substitutions are simpler than those that are used in λ-calculus. A Haskell
-tuple `(x,c)` represents the substituion `[c/x]`. Here, `x` is always a variable
-and `c` is always a constant (symbol). The variable restriction is usual; it is
-just not reflected in the type. The constant restriction, however, is not.
-Datalog doesn't have function symbols and as we'll see substituting a variable
-is anywhere in the evaluation. Like the variable restriction, the constant
-restriction is also not reflected in the type.
+tuple `(x,c)` represents the substitution `[c/x]` meaning we replace `c` for
+`x`. Here, `x` is always a variable and `c` is always a constant (symbol). The
+variable restriction is usual; it is just not reflected in the type. The
+constant restriction, however, is not. Datalog doesn't have function symbols and
+substituting a variable is not necessary for its evaluation.  Like the variable
+restriction, the constant restriction is also not reflected in the type.
+
+Applying a substitution to an atom or a variable (potentially) makes it _ground_
+that is it replaces the variable with a constant.
 
 We can also define the only constant that will be used in the evaluator: the
 empty substitution.
@@ -192,8 +199,8 @@ academicAncestor(X,Z) :- advisor(X,Y), academicAncestor(Y,Z).
 We know some facts about the world and using this rule, we want to know some
 more. There are two ways. One is to gather everything we know about
 `advisor` and `academicAncestor` separately and _join_ them together making
-sure the second parameter of `advisor` (`Y`) matches the first parameter of
-`academicAncestor` (`Y`). Another way is to look at any one of the atoms and
+sure the second parameter (`Y`) of `advisor` matches the first parameter (`Y`)
+of `academicAncestor`. Another way is to look at any one of the atoms and
 find assignments to its variables and substitute them in the other atom, only
 then we look for assignments to the remaining variables of this second atom.
 This approach would work for the example above as follows: find possible
@@ -202,9 +209,9 @@ assignments to `X` and `Y` through `advisor`, substitute the values of `Y` in
 knowledge base that agree on the newly substituted value of `Y` to obtain values
 for `Z`.
 
-In database context, the first is called _join before select_ and the second is,
-not so surprisingly, _select before join_.  We'll implement the latter because
-it makes the code simpler.[^select-before-join]
+In the context of databases, the first is called _join-before-select_ and the
+second, not so surprisingly, _select-before-join_.  We'll implement the
+latter because it is simpler.[^select-before-join]
 
 Since we need unification to obtain substitutions from facts & body atoms and
 substitution to ground further atoms. We start by implementing those.
@@ -242,10 +249,10 @@ Unification is also simple, in fact, too simple. For one thing, we cheat and
 unify whenever we have two atoms that have the same predicate symbol. In
 Datalog, a predicate is determined by its predicate symbol _and_ arity
 (the number of terms). Here, we assume each predicate symbol determines
-the arity. More importantly, we throw an error when the second argument atom is
-a variable. The reason is unification only occurs between a body atom and an
-atom that appears as a fact. Since facts cannot have variables, this is safe.
-This is consistent with our earlier assumptions about the form of substitutions.
+the arity. More importantly, we throw an error when a term from the second
+atom is a variable. The reason is unification only occurs between a body atom
+and a fact. Since facts cannot have variables, this is safe.  This is consistent
+with our earlier assumptions about the form of substitutions.
 
 We take special care of unification of atoms with repeated variables. It
 requires failing in case of a contradictory variable assignment.  Consider
@@ -269,7 +276,7 @@ Here we do exactly what is described above but build the substitutions by
 accumulation. This means we have substitutions that we use on the body atom to
 ground its variables, but then unifying this more down to earth atom (it's more
 ground, get it?) with the facts we know gives us extensions to the substitution
-we start with. Thus, we extend and accumulate substitutions.
+we started with. Thus, we extend and accumulate substitutions.
 
 Now all we need to do is to walk the body and accumulate substitutions, then
 using these substitutions we deduce new facts based on the head of the rule.
@@ -306,7 +313,8 @@ solve rules =
     then fix step []
     else error "The input program is not range-restricted."
   where
-  step :: (KnowledgeBase -> KnowledgeBase) -> (KnowledgeBase -> KnowledgeBase)
+  step :: (KnowledgeBase -> KnowledgeBase)
+       -> (KnowledgeBase -> KnowledgeBase)
   step f currentKB | nextKB <- immediateConsequence rules currentKB =
     if nextKB == currentKB
       then currentKB
@@ -317,20 +325,22 @@ The `immediateConsequence` function does the bundling step and `solve` computes
 the fixpoint from an empty set of facts.
 
 The only thing left unexplained is the `isRangeRestricted` predicate which
-ensures the program is well-formed and is explained next.
+ensures the program is well-formed.
 
-### Correctness, termination, and testing
+### Semantic considerations
 
-Now that we have something that almost compiles we can talk about correctness.
-Starting with the last missing piece: the range restriction predicate.
+Now that we have something that almost compiles we can talk about semantics.
+Starting with the last missing piece: the range restriction predicate followed
+by termination.
 
-#### Range restriction
+#### Range restriction and domain independence
 
 In a rule, if every variable in the head appears somewhere in the body, we call
-the rule range-restricted. We check if the program is range-restricted before
-evaluating it with `solve`.[^dependent-range-restriction] This is why while
-evaluating a rule (using `evalRule`), we didn't have to check if there are any
-variables left in the head after substitution.
+the rule range-restricted. We check if every rule is range-restricted before
+evaluating them in `solve`.[^dependent-range-restriction] This is why we didn't
+have to check if there were any variables left in the head after substitution in
+`evalRule`. If we can get to the stage of substituting into head, we are
+guaranteed to find values for each head variable.
 
 ```haskell
 isRangeRestricted :: Rule -> Bool
@@ -346,33 +356,27 @@ all, the ability to deduce generic facts seems useful. For example, stating
 
 The problem is something called _domain independence_. It basically means if
 the set of values a variable can take changes from one database to another (but
-not the instances itself), the query should still compute the same thing. In
+not the instance itself), queries still compute the same thing. In
 other words, it prevents your program's result to change under your feet if the
 values in your database are the same. Since checking domain independence in
-general is undecidable, we use range restriction as a safe syntactic
-approximation achieves domain independence.
+general is undecidable, using range restriction as a safe syntactic
+approximation.
 
-So in this implementation what this means is if I change the definition of
-datatype `Term` such that the symbols do not use `String` but instead a type for
-strings up to length 10, if my initial ground facts were all strings of length
-up to 10, then the results to all queries remain the same. We can't guarantee
-the same thing if there is domain dependence.
+In this implementation what this means is if I change the definition of datatype
+`Term` such that the symbols do not use `String` but instead a type for strings
+up to length 10, if my initial ground facts were all strings of length up to 10,
+then the results to all queries remain the same. We can't guarantee the same
+thing without domain independence.
 
 Another problem is that when a query is posed with free variables, we expect
 values to be filled for that variable. If we can deduce a generic fact such as
-`p(X,X)`, then asking for what values `X` might have well be the set of infinite
+`p(X,X)`, then asking for the values of `X` would enumerate the set of infinite
 strings.
 
-Bear in mind, there are Datalog's that lifts this restriction and it is not too
-much work. We just need a notion of α-equivalence, a store that can handle
-non-ground values, and a unification algorithm that handles variables.
-
-#### Does the immediate consequence function have redundancy?
-
-Prepending already known facts may look redundant at first since our
-implementation is so inefficient that it will rederive all the known facts in
-each iteration. You are right, but it allows us to use list equality in place of
-set equality as the termination condition which we dive more into next.
+Bear in mind, there are Datalog variants that lift this restriction. In fact, it
+wouldn't be too much work to implement it here. We just need a notion of
+α-equivalence, a store that can handle non-ground values, and a unification
+algorithm that handles variables.
 
 #### Every good thing must come to an end
 
@@ -387,15 +391,15 @@ Further, the number of facts that can be produced is _bounded_ if we start with
 a finite database. Our initial set of facts used to kickstart `solve` is empty.
 Hence, as long as our program is finite, we have finite number of
 facts.[^infinite-programs] As an upper bound, if we have $N$ constants
-throughout the program, then for each relation $r$ of arity $k$, we can have at
-most $N^k$ facts. So the number of facts we can produce is also finite.
+throughout the program, then for each relation of arity $k$, we can have at most
+$N^k$ facts. So the number of facts we can produce is also finite.
 
 One place I'm being a bit loose is the monotone bit. What I said makes sense
 with sets, but we're working here with lists. Although `[1,2,3]` and `[2,1,3]`
 encompass each other, they don't compare equal using `==`. The reason this
 implementation never gets in a cycle is because `nub` function called on the
-amalgemation of facts in `immediateConsequence` preserves the first occurrence
-of each element in the list and since we prepend the already known facts before
+amalgamation of facts in `immediateConsequence` preserves the first occurrence
+of each element in the list. Since we prepend the already known facts before
 calling `nub`, `==` behaves as if it is set equality.
 
 If you want to sound smart explaining all of this and reduce the size of your
@@ -406,10 +410,10 @@ theorem](https://en.wikipedia.org/wiki/Knaster–Tarski_theorem) (which is a ver
 cool theorem ❤️) applied to the immediate consequence monotone function over this
 complete lattice implies that it has a least fixpoint.
 
-#### Quality assurance
+## Quality assurance
 
-Time for the litmus test. We can now translate the ancestory program from
-earlier into Haskell.
+Time for the litmus test. We can now translate the ancestory program into
+Haskell.
 
 ```haskell
 ancestor :: Program
@@ -475,6 +479,10 @@ to its arguments. Let's execute all three queries.
 [[]]
 ```
 
+Empty list of variable bindings, `[]`, mean there are no possible assignments
+that satisfy the query, whereas the singleton `[[]]` mean that the query is
+satisfied, it just didn't have any variables that need to be bound to values.
+
 All three queries return the expected results. Dominic Orchard and Alan Mycroft
 are between me and Robin Milner. I am not an academic descendant of Alan Turing,
 but I am of David Wheeler.
@@ -498,22 +506,20 @@ unnecessary. For example, if the queries we are interested in only involved the
 `advisor` relation, computing `academicAncestors` would be a waste of time.
 
 One way of dealing with this is to use a top-down evaluator which starts from
-the query and uses something called _resolution_ which is a proof technique.
-This allows (pretty easily) only the relevant facts to be derived along the way.
-Most Prolog interpreters use a similar top-down evaluation strategy. It is not
-preferred in Datalog for various reasons. One of which is that the naïve
-implementation allows infinite loops.
+the query and uses _resolution_ which is a proof technique. This allows only the
+relevant facts to be derived. Most Prolog interpreters use a similar top-down
+evaluation strategy. It is not preferred in Datalog for various reasons. One of
+which is that the naïve implementation of it brings non-termination.
 
-We can achieve in a bottom-up evaluator (like ours) the same thing using _magic
-set transformation_. The very long story short, based on the input program, it
+We can achieve the same in a bottom-up evaluator (like ours) using _magic set
+transformation_. The very long story short, based on the input program, it
 generates magic rules based on the dataflow of the program and inserts atoms
 defined by these rules into the original rule bodies to restrict what can be
-derived.  Its effectiveness varies from program to program and there are
+derived. Its effectiveness varies from program to program and there are
 alternatives to it. If you want to learn more about it, you can look at [On the
 Power of
-Magic](https://www.sciencedirect.com/science/article/pii/074310669190038Q) by
-Beeri and Ramakrishnan which you must admit is the best name for an academic
-paper.
+Magic](https://www.sciencedirect.com/science/article/pii/074310669190038Q) (you
+must admit, it is a catchy title) by Beeri and Ramakrishnan.
 
 ### Semi-naïve evaluation
 
@@ -524,13 +530,12 @@ named semi-naïve evaluation. It exploits a simple observation. In order to
 derive a new fact from a rule, at least one new fact of the previous iteration
 needs to be used.
 
-The way this gets implemented is that we maintain a delta of facts and as well
-as an accumulator and rewrite the rules to make versions of them that uses the
-deltas.
+The way this gets implemented is that we maintain a delta of facts as well as an
+accumulator and rewrite the rules to make versions of them that use the deltas.
 
 This is particularly effective for the so called _linear rules_ such as the
 recursive `academicAncestor` rule which only has one derived predicate in its
-body. In that case, the semi-naïve evaluation turns a quadratic evaluation into
+body. In that case, the semi-naïve evaluation turns a quadratic computation into
 a linear one.
 
 ### Incremental evaluation
@@ -564,32 +569,34 @@ to rely on `nub` function's internals for termination as discussed
 ### Dependency graphs
 
 We evaluate all rules in one pot but that is also very inefficient. We can
-partition the program by determening dependencies between predicates. Then we
-compute the fixpoint of the rules with no unevaluated dependencies. This allows
-us to consider fewer rules that already have reached their fixpoints.
+partition the program by determening dependencies between predicates. This
+allows us to treat evaluated dependencies as static knowledge, so we have to
+deal with a smaller collection of changing facts at any one time.
 
 For example, in the ancestor program we would have a graph with `ancestor` and
-`academicAncestor` notes where the former points to the latter and the latter
+`academicAncestor` nodes where the former points to the latter and the latter
 loops around. Meaning we can compute the fixpoint for `ancestor` rules first,
-then forget about those rules and compute the ones for `academicAncestor`.
+then forget about those rules and compute the fixpoint of `academicAncestor`.
 
 Also if your Datalog variant has _stratified negation_ which is a popular way of
-incorprating negatom atoms, you already have to do the dependency analysis and
+incorprating negated atoms, you already have to do the dependency analysis and
 partition your program. So engineering-wise, this optimisation comes for free.
 
-### Paralellisation
+### Paralellisation & distributed computation
 
 Datalog evaluation is great for data-paralel computation. Even in our
 implementation, evaluating all the rules in a given iteration is an
 embarassingly parallel problem. The dependency graph can be used to further
-paralellise the evaluation using work queues.
+paralellise the evaluation using work queues. Similarly, the workload can be
+separated over multiple machines, a bit like
+[MapReduce](https://en.wikipedia.org/wiki/MapReduce).
 
 ## Closing remarks
 
-Short program, long prose is the theme. I hope I managed to give some idea about
-how a simple Datalog variant works. I tried to squeeze in as much semantics and
-tips for more efficient implementation as possible which is probably more useful
-than a short program.
+Short program, long prose is the theme. I hope I managed to give some ideas
+about how Datalog works. I tried to squeeze in as much semantics and tips for
+more efficient implementation as possible which is probably more useful than a
+short program.
 
 If you want to look at Datalog further.
 [Soufflé](https://souffle-lang.github.io) is a modern variant geared towards
@@ -636,7 +643,8 @@ solve rules =
     then fix step []
     else error "The input program is not range-restricted."
   where
-  step :: (KnowledgeBase -> KnowledgeBase) -> (KnowledgeBase -> KnowledgeBase)
+  step :: (KnowledgeBase -> KnowledgeBase)
+       -> (KnowledgeBase -> KnowledgeBase)
   step f currentKB | nextKB <- immediateConsequence rules currentKB =
     if nextKB == currentKB
       then currentKB
@@ -646,7 +654,7 @@ isRangeRestricted :: Rule -> Bool
 isRangeRestricted Rule{..} =
   vars _head `isSubsequenceOf` concatMap vars _body
   where
-  vars Atom{..} = nub . filter (\case { Var{} -> True; _ -> False }) $ _terms
+  vars Atom{..} = nub $ filter (\case {Var{} -> True; _ -> False}) _terms
 
 immediateConsequence :: Program -> KnowledgeBase -> KnowledgeBase
 immediateConsequence rules kb =
