@@ -359,11 +359,10 @@ the set of values a variable can take changes from one database to another (but
 not the instance itself), queries still compute the same thing. In
 other words, it prevents your program's result to change under your feet if the
 values in your database are the same. Since checking domain independence in
-general is undecidable, using range restriction as a safe syntactic
-approximation.
+general is undecidable, range restriction is a safe syntactic approximation.
 
 In this implementation what this means is if I change the definition of datatype
-`Term` such that the symbols do not use `String` but instead a type for strings
+`Term` so that the symbols do not use `String` but instead a type for strings
 up to length 10, if my initial ground facts were all strings of length up to 10,
 then the results to all queries remain the same. We can't guarantee the same
 thing without domain independence.
@@ -506,8 +505,8 @@ Basically, all I told you about Datalog semantics is incomplete. You'll struggle
 to find a resource that discusses Datalog evaluation the way I do because the
 semantics are always defined with respect to a query. So what we really need is
 a program query pair. What we compute here is much stronger and is also
-unnecessary. For example, if the queries we were interested in only involved the
-`adviser` relation, computing `academicAncestors` would be a waste of time.
+unnecessary. For example, if the queries were interested only in the `adviser`
+relation, computing `academicAncestors` would be a waste of time.
 
 One way of dealing with this is to use a top-down evaluator which starts from
 the query and uses _resolution_ which is a proof technique. This allows only the
