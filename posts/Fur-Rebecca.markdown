@@ -5,6 +5,15 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 15th of January, 2019
+
+  - Persona (1966) by Ingmar Bergman. There is no doubt, you'll love this film.
+    They are showing it in the Picturehouse on Thursday. I know you're not
+    reading this, but I wish you did and... You should give him a go some time.
+  - Winter Sleep by Bongbeck. As it happens, Winter Sleep is also the name of my
+    favourite Nuri Bilge Ceylan film.
+  - Maa'asalama by Traumer
+
 ### 21st of December, 2018
 
   - We're sufficiently close to the end of the year that I can announce Kingdoms
