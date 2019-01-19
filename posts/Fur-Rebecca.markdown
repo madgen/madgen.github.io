@@ -5,6 +5,13 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 19th of January, 2019
+
+  - There is a new album of Thylacine called ROADS, Vol. 1. In nature, when a
+    force is acted upon a body at its natural frequency, the body resonates with
+    greater intensity. This describes nicely how this album makes me feel. You
+    can start with El Alba.
+
 ### 15th of January, 2019
 
   - Persona (1966) by Ingmar Bergman. There is no doubt, you'll love this film.
