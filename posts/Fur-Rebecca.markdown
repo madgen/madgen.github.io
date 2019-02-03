@@ -5,6 +5,14 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 3rd of February, 2019
+
+  - Travel Alone by Dr. DAD. Not only it puts me at ease as I'm listening to it
+    right now but also, just a moment ago, as I was still listening to it, I
+    created something elegant. If I'm right, its effects will echo way beyond my
+    PhD. From now on, at least in my mind and completely incidentally,
+    everything that follows from it is going to be linked to this song.
+
 ### 19th of January, 2019
 
   - There is a new album of Thylacine called ROADS, Vol. 1. In nature, when a
