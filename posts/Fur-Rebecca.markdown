@@ -12,6 +12,10 @@ inWhich: I provide a not-so-awkward recommendation service for her.
     created something elegant. If I'm right, its effects will echo way beyond my
     PhD. From now on, at least in my mind and completely incidentally,
     everything that follows from it is going to be linked to this song.
+  - [To Save the Sound of a Stradivarius, a Whole City Must Keep
+    Quiet](https://www.nytimes.com/2019/01/17/arts/music/stradivarius-sound-bank-recording-cremona.html)
+    by Max Paradiso. The decadence in this story is going to make you a bit
+    uncomfortable, but it'd be difficult for you not to like it deep down.
 
 ### 19th of January, 2019
 
