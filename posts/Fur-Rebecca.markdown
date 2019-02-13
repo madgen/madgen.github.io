@@ -5,6 +5,14 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 13th of February, 2019
+
+  - Before You Love by Frenic, so that you can dance on your own.
+  - Summon the Fire by The Comet is Coming. Just some good modern Jazz.
+  - Finally, there's a song by a good friend of mine. It has no lyrics, but the
+    journey it takes you could not have been clearer if it was spelled out. I'd
+    have liked you to listen to it, but I don't know how.
+
 ### 3rd of February, 2019
 
   - Travel Alone by Dr. DAD. Not only it puts me at ease as I'm listening to it
