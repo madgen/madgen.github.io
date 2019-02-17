@@ -5,6 +5,17 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 17th of February, 2019
+  - You mentioning poetry reminded me of Paterson (2016) by Jim Jarmusch. It is
+    a slow-burning film about a poet. I told you this before, I cannot feel
+    poetry unless it is in Turkish. Some recitations in this movie are
+    exceptions to that. Jarmusch is also the director of Only Lovers Left Alive,
+    Dead Man, and Coffee & Cigarettes (more like the last short film that we
+    liked and less like the others). Hopefully, that gives you an idea.
+  - What I said about not talking about our lives is a good principle, but when
+    you _need_ me to be there for you, just tell me and I'll listen.
+  - It felt good.
+
 ### 13th of February, 2019
 
   - Before You Love by Frenic, so that you can dance on your own.
