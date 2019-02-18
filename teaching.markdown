@@ -21,6 +21,9 @@ Sobel over Michaelmas.
    [II](example-sheets/Compiler-Construction-II.html),
    [III](example-sheets/Compiler-Construction-III.html), and
    [IV](example-sheets/Compiler-Construction-IV.html))
+ - Prolog (Example sheets
+   [I](example-sheets/Prolog-I.html) and
+   [II](example-sheets/Prolog-II.html))
  - Concepts in Programming Languages (Example sheets
    [I](example-sheets/Concepts-in-Programming-Languages-I.html) and
    [II](example-sheets/Concepts-in-Programming-Languages-II.html))
@@ -32,9 +35,6 @@ Sobel over Michaelmas.
    [II](example-sheets/Hoare-Logic-and-Model-Checking-II.html), and
    [III](example-sheets/Hoare-Logic-and-Model-Checking-III.html))
 
-### Practical
- - Further Java
-
 ## Past
 
 ### Part IB
@@ -44,5 +44,6 @@ Sobel over Michaelmas.
  - Information Theory
 
 ### Practical
+ - Further Java
  - Algorithms
  - SML
