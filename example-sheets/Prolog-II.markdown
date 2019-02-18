@@ -1,6 +1,7 @@
 ---
 title: Prolog Example Sheet II
 date: 2019-02-18
+lastUpdated: 2019-02-18
 ---
 
 Exercises from the course
@@ -11,3 +12,4 @@ Exercises from the course
   - 24S.1
   - 26S.1, 26S.2, 26S.3
   - 28S.1, 28S.2, 28S.3, 28S.4, 28S.5, 28S.6, 28S.7, 28S.8
+  - 32S.1, 32S.2, 32S.3
