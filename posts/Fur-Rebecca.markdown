@@ -5,6 +5,12 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 25th of February, 2019
+  - Aquarius (Let the Sunshine in) by the 5th Dimension and Her Morning Elegance
+    by Oren Lavie. I know you know them both, but they fit the day and you so
+    well, wouldn't you say?
+  - Enjoy the sunshine.
+
 ### 17th of February, 2019
   - You mentioning poetry reminded me of Paterson (2016) by Jim Jarmusch. It is
     a slow-burning film about a poet. I told you this before, I cannot feel
