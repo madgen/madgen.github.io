@@ -6,8 +6,8 @@ inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
 ### 26th of February, 2019
-  - It's another sunny day and that calls for another song. California Dreamin'
-    by The Mamas & The Papas.
+  - It's another sunny day and that calls for another song from the past.
+    California Dreamin' by The Mamas & The Papas.
 
 ### 25th of February, 2019
   - Aquarius (Let the Sunshine in) by the 5th Dimension and Her Morning Elegance
