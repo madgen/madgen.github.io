@@ -5,6 +5,16 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 29th of February, 2019
+
+  - Le Roi et l'Oiseau (1980) directed by Paul Grimault. This is an animated
+    movie that took more than 20 years to complete for various reasons. It is
+    done in collaboration with the poet Jacques Prévert. More than a dozen
+    times, the movie manages to invoke the sublime through its artwork. The
+    interactions between its bizarre characters are captivating despite the
+    simplicity of the plot. To me, it is one of the more tasteful surrealist
+    works of cinema.
+
 ### 26th of February, 2019
   - It's another sunny day and that calls for another song from the past.
     California Dreamin' by The Mamas & The Papas.
