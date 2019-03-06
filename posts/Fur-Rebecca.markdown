@@ -5,6 +5,24 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 6th of March, 2019
+
+  - I can hear the music today. It's so gloomy outside, yet everything I see
+    shines a bit brighter.
+
+    I can't believe I haven't recommended you any Four Tet songs so far. Maybe
+    because I thought you'd find them _too_ electronic.  The problem with not
+    seeing someone for a long time is that you start losing the provenance of
+    impressions, which is the best bit of knowing anyone or anything, don't you
+    think?
+
+    Anyway, here are three: She Moves She, Locked, and Two Thousand and
+    Seventeen. If I were to see these as an envelope produced by a single
+    synthesiser and not as individual songs (and in a sense that is the case),
+    they'd correspond to _attack_, _sustain_, and _release_. They work well in
+    that order. It should really have _decay_ between attack and sustain, but we
+    have too much of that elsewhere.
+
 ### 29th of February, 2019
 
   - Le Roi et l'Oiseau (1980) directed by Paul Grimault. This is an animated
