@@ -5,6 +5,11 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 24th of March, 2019
+
+  - _Aurora_ by Zero 7
+  - _Curls_ and _Petals_ by Bibio
+
 ### 15th of March, 2019
 
   - They don't know what I know.
