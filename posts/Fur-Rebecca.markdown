@@ -5,6 +5,20 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 26th of March, 2019
+
+  - _Zima Blue_ is the 9th episode of the short animation anthology on Netflix.
+    It's based on a short story written by Alastair Reynolds. I like the message
+    of course, but I think you'd enjoy the narration more.
+
+    A secondary message is looking is not seeing, and seeing is not
+    understanding, and what you understand is sometimes not at all the meaning.
+    You can relate to that, can't you?
+  - I found the perfect song to suggest to you on your birthday.
+
+PS. Honestly, I have a lot to say about your recent story, but not here. At
+least, I can say that I read it all with a genuine smile on my face.
+
 ### 24th of March, 2019
 
   - _Aurora_ by Zero 7
