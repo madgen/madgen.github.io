@@ -11,8 +11,8 @@ inWhich: I provide a not-so-awkward recommendation service for her.
     It's based on a short story written by Alastair Reynolds. I like the message
     of course, but I think you'd enjoy the narration more.
 
-    A less pronounced message is that our reasoning and perceptions are noisy
-    and often far from the reality. You can relate to that, can't you?
+    A less pronounced message is that our reasoning and perception are noisy and
+    often far from the reality. You can relate to that, can't you?
   - _Ayayay_ by Tony Tonite
   - I found the perfect song to suggest to you on your birthday.
 
