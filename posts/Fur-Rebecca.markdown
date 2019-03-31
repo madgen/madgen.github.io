@@ -5,6 +5,17 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 31st of March, 2019
+
+  - _The Fall_ directed by Tarsem Singh. I don't know how it hasn't occurred to
+    me to suggest it to you until now. I think it is dramatic just in the way
+    you'd like. The trailer on Youtube reveals too much though. So may be take a
+    leap of faith with this one?
+  - _Black Sands_ by Bonobo
+  - _Champion Sound_ by Crystal Fighters. This one is when you're in a good
+    mood. It'll boost it, I promise. The whole album is interesting, the lyrics
+    are not always uplifting, but the melodies are.
+
 ### 26th of March, 2019
 
   - _Zima Blue_ is the 9th episode of the short animation anthology on Netflix.
