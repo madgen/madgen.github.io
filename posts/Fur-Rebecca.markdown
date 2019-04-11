@@ -5,6 +5,21 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 11th of April, 2019
+
+  - _Asturias_ by [Isaac Albeniz](https://www.youtube.com/watch?v=oEfFbuT3I6A).
+    I'm sure you listened to it many times before, but I just realised how much
+    the player influences the emotional outcome. Here's the father of classical
+    guitar [Andres Segovia](https://www.youtube.com/watch?v=lCeebWgjrrU) playing
+    it.  He lacks Albeniz's vigour but adds tranquility. Then there is [Ana
+    Vidovic](https://www.youtube.com/watch?v=inBKFMB-yPg) not so much playing
+    distinct notes, but gliding from one to another.
+  - _The Song of the Golden Dragon_ by Estas Tonne. A piece not to enjoy but to
+    be overwhelmed.
+  - _Celestial Intoxication_ by Shpongle. Maybe not the most skilfull, but to me
+    the most interesting one. It covers the largest emotional ground. I'm sure
+    you know when to listen to this one.
+
 ### 5th of April, 2019
 
   - _Caprice_ by Worakls. Not your genre, but it fits the first week of April
