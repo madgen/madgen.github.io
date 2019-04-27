@@ -5,6 +5,20 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 27th of April, 2019
+
+  - [_How Anna Delvey tricked New
+    York_](https://www.thecut.com/2018/05/how-anna-delvey-tricked-new-york.html)
+    by Jessica Pressler. The writing is mediocre at best, but the story is
+    silver and it is shined by its reality. It would be a delight if you lended
+    your voice to a fictional Anna Delvey.
+  - The natural follow up recommendation would be my favourite film in the whole
+    world. I've already told you about it in person and you weren't terribly
+    interested, so maybe I should spare you. In any case, although you didn't
+    realise it at the time, my sharing of that film with anyone is deeply
+    personal. I wouldn't write it down anywhere---I realise as I write that,
+    this is the polar opposite of what you'd do.
+
 ### 20th of April, 2019
 
   - _Microhabitat_ directed by Jeon Go-Woon. It's an honest story. The
