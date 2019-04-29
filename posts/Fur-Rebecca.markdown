@@ -5,6 +5,11 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 29th of April, 2019
+
+  - Machin Feast at Queens' on 10th of May. The deadline for applications is
+    tomorrow 10pm.
+
 ### 28th of April, 2019
 
   - _A Dream within a Dream_ by Oren Lavie. Have a peaceful Sunday darling.
