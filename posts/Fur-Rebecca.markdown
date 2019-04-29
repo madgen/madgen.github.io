@@ -8,7 +8,7 @@ inWhich: I provide a not-so-awkward recommendation service for her.
 ### 29th of April, 2019
 
   - Machin Feast at Queens' on 10th of May. The deadline for applications is
-    tomorrow 10pm.
+    tomorrow 10pm. I hear there is good company.
 
 ### 28th of April, 2019
 
