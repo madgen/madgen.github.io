@@ -7,8 +7,8 @@ inWhich: I provide a not-so-awkward recommendation service for her.
 
 ### 4th of May, 2019
 
-  - I favour Nina Simone's _Don't Let Me Be Misunderstood's_ over any other by
-    her, even _Feeling Good_.
+  - I think I favour Nina Simone's _Don't Let Me Be Misunderstood's_ over
+    _Feeling Good_.
 
 ### 29th of April, 2019
 
