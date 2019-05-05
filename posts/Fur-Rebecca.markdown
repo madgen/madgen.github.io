@@ -5,6 +5,21 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 6th of May, 2019
+
+  - _Sunny_ by Bobby Hebb
+
+    I wanted today to do justice to the song, but to no avail. My celestial
+    powers fell short. Luckily, you don't lack imagination, so perhaps picture
+    yourself in a serene summer's day either chilling under the shade of a tree
+    or having a coffee in a little Italian town.
+
+    I think a good birthday message is less about the wishes and more about
+    celebrating the highlights of your past age. For me, this makes finding the
+    source material a rather difficult task, so I'll keep it short. It puts my
+    _heart_ at ease to know that you have achieved, in your words, a happy
+    ending.  My wish is that it trancends to a happy being.
+
 ### 4th of May, 2019
 
   - I think I favour Nina Simone's _Don't Let Me Be Misunderstood_ over
