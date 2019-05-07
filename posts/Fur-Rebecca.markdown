@@ -5,6 +5,16 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 8th of May, 2019
+
+  - I realised I never asked if you like _Cloud Atlas_. I only saw the film
+    (maybe four times, twice in the cinema just for good measure) and I love the
+    story---how can I not? It's so intertwined and it features Cambridge.
+    Moreover, it has one of the gentlest scores I know of. In particular, I'm
+    fond of _Cloud Atlas Opening Title_, _Travel to Edinburgh_, _Kesselring_,
+    and _Cloud Atlas End Title_. I wonder if it is obvious to you which one
+    appeals to me the most.
+
 ### 6th of May, 2019
 
   - _Sunny_ by Bobby Hebb
