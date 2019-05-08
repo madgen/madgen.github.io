@@ -9,10 +9,10 @@ inWhich: I provide a not-so-awkward recommendation service for her.
 
   - I saw _Cloud Atlas_ maybe four times (twice in the cinema for good measure)
     and I love the story---how can I not? It's so intertwined and it features
-    Cambridge.  Moreover, it has one of the gentlest scores I know of.  In
-    particular, I'm fond of _Cloud Atlas Opening Title_, _Travel to Edinburgh_,
-    _Kesselring_, and _Cloud Atlas End Title_. I wonder if it is obvious to you
-    which one appeals to me the most.
+    Cambridge.  Moreover, it has one of the gentlest scores I know of. I'm fond
+    of _Cloud Atlas Opening Title_, _Travel to Edinburgh_, _Kesselring_, and
+    _Cloud Atlas End Title_ in particular. I wonder if it is obvious to you
+    which of those appeals to me the most.
 
 ### 6th of May, 2019
 
