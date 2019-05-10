@@ -5,6 +5,12 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 10th of May, 2019
+
+  - _Otto_ by Woodkid
+  - _Einstein On the Beach: Knee Play 5_ by The Philip Glass Ensemble.
+    Here's weird for you. This is from the only opera I want to see.
+
 ### 8th of May, 2019
 
   - I saw _Cloud Atlas_ maybe four times (twice in the cinema for good measure)
