@@ -12,7 +12,7 @@ date: 2018-04-30
 
   - [2018/7/9](https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2018p9q7.pdf):
     (a-f) only
-  - [2014/7/7](https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2011p7q6.pdf)
+  - [2014/7/7](https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2014p7q7.pdf)
 
 ## Exam safety tips
 
