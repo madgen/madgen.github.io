@@ -5,6 +5,32 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 14th of May, 2019
+
+```
+Not so much of a recommendation,
+but a little old fact
+you'll either like
+or hate.
+
+People in my group
+will
+read _your_ name
+for a decade.
+
+There is a poster
+of the paper
+that I can truly call
+_my_ own.
+
+On it,
+there is an example:
+_Rebecca_.
+Hung on a wall
+in our group corridor
+where the turnaround is a decade.
+```
+
 ### 10th of May, 2019
 
   - _Otto_ by Woodkid
