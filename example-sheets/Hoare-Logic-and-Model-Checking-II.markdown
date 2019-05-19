@@ -1,13 +1,16 @@
 ---
 title: Hoare Logic and Model Checking II
 date: 2018-05-17
+lastUpdated: 2019-05-19
 ---
 
 ## From the example sheets on the course web page
 
 For Separation Logic,
 
-  - From Kasper Svendsen's [additional exercises](http://www.cl.cam.ac.uk/teaching/current/HLog+ModC/part1-exercises-updated.pdf): 5, 6, 7
+  - From [the main exercise sheet](https://www.cl.cam.ac.uk/teaching/1819/HLog+ModC/part1-exercises.pdf): 
+    23, 26, 28, 36, 43, 48, 50
+
 
 For model checking,
 
@@ -21,7 +24,6 @@ For Separation Logic,
   - [2012/8/8](https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2012p8q8.pdf): (a) and (b) only
 
 For model checking,
-
 
   - [2014/8/8](https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2014p8q8.pdf): (a) only
   - [2012/7/13](https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2012p7q13.pdf): (a) only
