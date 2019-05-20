@@ -5,6 +5,9 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### Always
+ - I love you and I miss you.
+
 ### 18th of May, 2019
 
  - _Motion_ by Rone
