@@ -5,6 +5,13 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 24th of May, 2019
+
+ - Beggarstaffs exhibition at Fitzwilliam. It is worth going for their earlier
+   works alone. They are effortless and timeless. The later works involving
+   architecture are also pleasing. Structures can be more expressive than
+   us mortals.
+
 ### Always
  - I love you and I miss you.
 
