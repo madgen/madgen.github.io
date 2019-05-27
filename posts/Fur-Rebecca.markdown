@@ -7,9 +7,9 @@ inWhich: I provide a not-so-awkward recommendation service for her.
 
 ### 27th of May, 2019
 
- - _La Double Vie de Véronique_ by Krzysztof Kieślowski. There are many reasons
-   why you'd like this movie, but reaching the scene where they play _Van den
-   Budenmayer: Concerto en mi mineur (Version de 1798)_ by Zbigniew Preisner
+ - _La Double Vie de Véronique_ by Krzysztof Kieślowski. There are no shortage
+   of reasons why you'd like this movie, but the scene where they play _Van den
+   Budenmayer: Concerto en mi mineur_ by Zbigniew Preisner
    should be enough on its own.
 
 ### 24th of May, 2019
