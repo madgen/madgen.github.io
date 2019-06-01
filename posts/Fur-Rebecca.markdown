@@ -5,22 +5,48 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 1st of June, 2019
+
+  - _Edvard Munch: love and angst_ exhibition in British Museum. I attempted
+    writing this entry and failed. I find it surprisingly difficult to be honest
+    and if I'm not being honest, what's the point?
+
+    I desperately want to say I understand how Munch feels and that his soul
+    through his work resonates with me. I look at the other museum visitors as
+    if they are not worthy of enjoying the same artwork I'm looking at, the way
+    someone like Holden Caulfield would do. Then again who am I to understand
+    Munch? I haven't lost my mother at two or my sister at thirteen. Their
+    memory haven't haunted me for years to come. Yet it connects with me when
+    he says "sickness, insanity and death were the angels that surrounded my
+    cradle and they have followed me throughout my life."
+
+    I also know the feeling of a lover facing away from me as her hair extends
+    to my heart (_Separation II_). I know the fusion and the intensity of _The
+    Kiss_. I also saw brilliance through darkness as he did when he painted Eva
+    Mudocci in _The Brooch_. If you just look at the corner of her mouth, you
+    can see how much he loved her.
+
+    I'm sure you'll enjoy it for entirely different set of reasons. Perhaps for
+    his poetry that binds all his works or the intensity eminating from his
+    female figures. In any case, it's worth your time.
+
 ### 27th of May, 2019
 
- - _La Double Vie de Véronique_ by Krzysztof Kieślowski. There are no shortage
-   of reasons why you'd like this movie, but its poetry and the scene she sings
-   _Van den Budenmayer: Concerto en mi mineur_ by Zbigniew Preisner should be
-   enough on their own.
+  - _La Double Vie de Véronique_ by Krzysztof Kieślowski. There are no shortage
+    of reasons why you'd like this movie, but its poetry and the scene she sings
+    _Van den Budenmayer: Concerto en mi mineur_ by Zbigniew Preisner should be
+    enough on their own.
 
 ### 24th of May, 2019
 
- - Beggarstaffs exhibition at Fitzwilliam. It is worth going for their earlier
-   works alone. They are effortless and timeless. The later works involving
-   architecture are also pleasing. Structures can be more expressive than
-   us mortals.
+  - Beggarstaffs exhibition at Fitzwilliam. It is worth going for their earlier
+    works alone. They are effortless and timeless. The later works involving
+    architecture are also pleasing. Structures can be more expressive than
+    us mortals.
 
 ### Always
- - I love you and I miss you.
+
+  - I love you and I miss you.
 
 ### 18th of May, 2019
 
