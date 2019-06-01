@@ -16,7 +16,7 @@ inWhich: I provide a not-so-awkward recommendation service for her.
     if they are not worthy of enjoying the same artwork I'm looking at, the way
     someone like Holden Caulfield would do. Then again who am I to understand
     Munch? I haven't lost my mother at two or my sister at thirteen. Their
-    memory haven't haunted me for years to come. Yet it connects with me when
+    memory hasn't haunted me for years to come. Yet it connects with me when
     he says "sickness, insanity and death were the angels that surrounded my
     cradle and they have followed me throughout my life."
 
