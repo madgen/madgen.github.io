@@ -5,6 +5,32 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 2nd of June, 2019
+
+  - I don't know if you have any idea why I maintain this page. I personally
+    have eight reasons on odd days and more on even days and today is an even
+    day. I'll give you one.
+
+    If I were a fire, the entries on this page would be the little cracking bits
+    that leave the main body of the fire. Not because they want to, but because
+    they have to. They are the bits that could not be contained. But a little
+    cracking bit of the fire is not the fire, merely a fraction of a
+    fraction of a fraction.
+
+    The reason I'm telling this right now is I won't have an Internet connection
+    next week. I'll be up in the mountains and down by the bays and back up
+    again, walking. An eroding unfaithful copy of your self that is in my mind
+    will be there too (without the hassle of walking of course). Without a
+    doubt, I'll see a bird, or a rock, or the glorious sea curving just right.
+    It too will be a little bit of fire that I'd like you to feel, but I can't
+    make you feel. If I could share them, I would, but you can't truly share a
+    moment in a different moment, can you?
+
+    What I'm trying to say is I wish you could see through my eyes and think my
+    thoughts.
+
+  - _Daydream_ by Wallace Collection
+
 ### 1st of June, 2019
 
   - _Edvard Munch: love and angst_ exhibition in British Museum. I attempted
