@@ -5,6 +5,13 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 14th of June, 2019
+
+  - _Plaisirs d'amour_ by René Aubry. That's the album we listened to in that
+    bay I sent you the photos of. What is not captured in pictures can be heard
+    in the melody. Maybe start with _Salento_, _Scirocco_, and _Sirtaki à
+    Helsinki_.
+
 ### 2nd of June, 2019
 
   - I don't know if you have any idea why I maintain this page. I personally
