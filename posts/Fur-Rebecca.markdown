@@ -5,6 +5,12 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 16th of June, 2019
+
+  - _Ballata dell'amore cieco_ by Fabrizio de André
+  - Good luck with the move this week. You helping me with my last move was pure
+    and very kind. I appreciate it. I hope everything goes smoothly.
+
 ### 14th of June, 2019
 
   - _Plaisirs d'amour_ by René Aubry. That's the album we listened to in that
