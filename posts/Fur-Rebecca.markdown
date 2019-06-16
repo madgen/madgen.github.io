@@ -5,7 +5,7 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
-### 16th of June, 2019
+### 16th of June 2019
 
   - _Ballata dell'amore cieco_ by Fabrizio de André
   - Good luck with the move this week. You helping me with my last move was pure
