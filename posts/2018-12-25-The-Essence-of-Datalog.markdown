@@ -4,6 +4,7 @@ postType: Technical
 inWhich: we implement a simple Datalog engine in not many lines of Haskell to
   understand its semantics.
 published: true
+lastUpdated: 2019-06-18
 ---
 
 Datalog is arguably the simplest logic programming language there is. Depending
@@ -27,6 +28,10 @@ language people. For that reason, all uses of theory terms are auxiliary. If you
 feel that's not the case at any point, give me a shout on Twitter or email me
 (both available in [my homepage](https://dodisturb.me)) and I'll fix it.
 
+## Acknowledgements
+
+Thanks to Dominic Orchard for pointing out that he did not advise Andrew Rice.
+
 ## A crash course in logic programming
 
 The litmus test for any logic programming language is to be able to compute a
@@ -34,7 +39,6 @@ variation of the following ancestry program.
 
 ```prolog
 adviser("Andrew Rice",     "Mistral Contrastin").
-adviser("Dominic Orchard", "Andrew Rice").
 adviser("Andy Hopper",     "Andrew Rice").
 adviser("Alan Mycroft",    "Dominic Orchard").
 adviser("David Wheeler",   "Andy Hopper").
