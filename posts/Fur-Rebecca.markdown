@@ -5,6 +5,66 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 19th of June, 2019
+
+  - On multiple occasions, you asked me if I resented you. You were so far off
+    the mark every time. However, about five or six months ago I did come close.
+
+    I was idly browsing titles in Waterstones and in a stroke of luck, _A Room
+    of One's Own_ caught my eye. I thought what a funny curious title it had. At
+    that point, I was still of the opinion that Virginia Woolf owes her fame to
+    being a feminist. How wrong I was. I don't think I know anyone whose use of
+    language and conviction are as captivating. Thinking that it was possible
+    (even probable) that I would have ignored her for the rest of my life out of
+    ignorance is terrifying. What a waste it would have been.
+
+    The reason I almost resented you is, out of everyone I know, you were the
+    person who should have picked up a copy of the book, smack me in the head
+    with it, and tell me to read it. I'd have read it and I'd have been
+    grateful. Having known you, my introduction to Woolf shouldn't have been by
+    chance (though I'm sure subconsciously you're partly the reason I bought _A
+    Room of One's Own_ that day).
+
+    When you told me you were going to teach and that you are sick of being
+    poor, six months ago I would have objected vehemently (not that you should
+    care) from the top of my high horse. However, as I read your message the
+    first thing that appeared in my mind was that everyone needs a room of their
+    own and £500 a year (adjusted for inflation since Woolf's time). My opinion
+    now (in part thanks to Woolf) is that maybe once you can breathe freely, you
+    can make your voice heard louder. Maybe that is all you need.
+
+    This brings me to the other title I finished reading last week, _The Death
+    of the Moth and Other Essays_. I'm weary of suggesting you a Woolf title, of
+    course. It's dangerously close to mansplaining, but it seems this collection
+    of essays is seldom found in bookshops and discussed even less. They have
+    been posthumously published by her husband.
+
+    Half the essays are about great men of letters. I don't think you'd like
+    those. They wouldn't bring tears to your eyes as reading Schopenhauer once
+    did, but I don't see you taking joy in reading them either. The other essays
+    are, however, way more fascinating. In particular, the titular essay _The
+    Death of the Moth_ is maybe the peak of modernism. She writes about the last
+    hours of a moth that she watched as it tried to escape through the window,
+    but couldn't due to the glass blocking the way. In a subject seemingly dull,
+    she fully describes life with eloquence. Joyce's quote "in the particular
+    lies the universal" fully captures this essay. A close second in the
+    collection is _Street Haunting_ which describes her wandering in the streets
+    of London at night.  It is a wonderful journey and I think it will speak to
+    you. It is the kind of wondering that would render you joyous.  Then there
+    is _Middlebrow_ and _Professions for Women_, in which fire comes out of
+    pages unapologetically. I don't think the latter essay will be useful to you
+    because you have already killed your angel, but it is still enjoyable to
+    read her go at it. Finally, there are _Why?_, _Craftsmanship_ and _A Letter
+    to a Young Poet_. As I'm sure you can tell, these are all about writing and
+    language. They may or may not have utility for you, I can't judge. However,
+    I do think you'd enjoy reading them regardless just as I enjoy reading a
+    well-written essay on mathematics even when the content is second nature.
+
+  - On other news, my move is now complete. The room speaks to me. As if all
+    these years it was calling for me. Now with my arrival, I feel the space
+    around me is in unison with my actions. The perfect place to write a book,
+    which is fortunate because that is my task for the next three months.
+
 ### 16th of June, 2019
 
   - _Ballata dell'amore cieco_ by Fabrizio de André
