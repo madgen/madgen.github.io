@@ -5,6 +5,17 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 21st of June, 2019
+
+  - _Spanish Caravan_ by The Doors.
+
+    _Carry me Caraban take me away~~ Take me to
+    Portugal, take me to Spain~~ Andalusia with fields full of grain~~ I have to
+    see you again and again~~_
+
+  - I'm off to Phoenix and then to LA, so no posts until next week. Enjoy the
+    sun for me, would you?
+
 ### 19th of June, 2019
 
   - On multiple occasions, you asked me if I resented you. You were so far off
