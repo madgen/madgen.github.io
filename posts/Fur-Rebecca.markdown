@@ -5,6 +5,11 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 29th of June, 2019
+
+  - It was nice running into you today.
+  - _The Cell_ by David Allred
+
 ### 21st of June, 2019
 
   - _Spanish Caravan_ by The Doors.
