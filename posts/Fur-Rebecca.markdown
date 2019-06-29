@@ -8,7 +8,7 @@ inWhich: I provide a not-so-awkward recommendation service for her.
 ### 29th of June, 2019
 
   - It was nice running into you today.
-  - _The Cell_ by David Allred
+  - _The Cell_ by David Allred. It is contemporary folk apparently.
 
 ### 21st of June, 2019
 
