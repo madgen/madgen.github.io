@@ -24,7 +24,7 @@ inWhich: I provide a not-so-awkward recommendation service for her.
   - Also if you look at the entry for [17th of February,
     2019](#th-of-february-2019-3), you will see my recommendation for
     [_Paterson_](https://www.youtube.com/watch?v=m8pGJBgiiDU), the movie I
-    mentioned about the bus deriver poet.
+    mentioned about the bus driver poet.
 
 ### 29th of June, 2019
 
