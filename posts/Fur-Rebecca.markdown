@@ -5,6 +5,23 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 3rd of July, 2019
+
+  - _La Joya_ and _Reframe_ by Aukai. The whole album, _Reminiscence_, is nice
+    and mellow like a summer day spent on a hammock with the exception of
+    _Reframe_. That sounds more like a love affair.
+  - There is a small village in Turkey where a [whistled
+    language](https://en.wikipedia.org/wiki/Whistled_language) is, well,
+    whistled. The village is named Kuşköy which literally means the village of
+    birds. Here's a [video](https://www.youtube.com/watch?v=mQmF7kbOrmE)
+    explaining the whole affair. It is very unreasonable of me, but I want to go
+    and learn their dialect.
+
+    Where I stand, it sounds like a thinning of spoken languages and I find it
+    fitting that it is more musical. Songs too communicate way more than their
+    lyrics alone, don't they? So maybe if we thin the whistled language further,
+    we may communicate with silence.
+
 ### 29th of June, 2019
 
   - It was nice running into you today.
