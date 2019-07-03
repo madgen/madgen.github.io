@@ -21,6 +21,10 @@ inWhich: I provide a not-so-awkward recommendation service for her.
     fitting that it is more musical. Songs too communicate way more than their
     lyrics alone, don't they? So maybe if we thin the whistled language further,
     we may communicate with silence.
+  - Also if you look at the entry for [17th of February,
+    2019](#th-of-february-2019-3), you will see my recommendation for
+    [_Paterson_](https://www.youtube.com/watch?v=m8pGJBgiiDU), the movie I
+    mentioned about the bus deriver poet.
 
 ### 29th of June, 2019
 
@@ -382,12 +386,13 @@ least, I can say that I read it all with a genuine smile on my face.
   - Enjoy the sunshine.
 
 ### 17th of February, 2019
-  - You mentioning poetry reminded me of Paterson (2016) by Jim Jarmusch. It is
-    a slow-burning film about a poet. I told you this before, I cannot feel
-    poetry unless it is in Turkish. Some recitations in this movie are
-    exceptions to that. Jarmusch is also the director of Only Lovers Left Alive,
-    Dead Man, and Coffee & Cigarettes (more like the last short film that we
-    liked and less like the others). Hopefully, that gives you an idea.
+  - You mentioning poetry reminded me of
+    [Paterson](https://www.youtube.com/watch?v=m8pGJBgiiDU) (2016) by Jim
+    Jarmusch. It is a slow-burning film about a poet. I told you this before, I
+    cannot feel poetry unless it is in Turkish. Some recitations in this movie
+    are exceptions to that. Jarmusch is also the director of Only Lovers Left
+    Alive, Dead Man, and Coffee & Cigarettes (more like the last short film that
+    we liked and less like the others). Hopefully, that gives you an idea.
   - What I said about not talking about our lives is a good principle, but when
     you _need_ me to be there for you, just tell me and I'll listen.
   - It felt good.
