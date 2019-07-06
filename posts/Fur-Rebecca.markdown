@@ -5,6 +5,18 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 5th of July, 2019
+
+  - _Cardinals_, _Hair_, _The Knowledge_, _Later_ and _I Walk Away_ by
+    Lele Marchitelli. Apparently, she is the new go-to person of _Paolo
+    Sorrentino_, the director of two of my favourite films, _La Grande Bellezza_
+    and _Youth_.
+
+  - The first four of those songs are from the soundtrack album of _The Young
+    Pope_. I've only seen the first episode, but so far it is everything we
+    would like. It is stylish, decadent, and clever both in writing, acting, and
+    cinematography.
+
 ### 3rd of July, 2019
 
   - _La Joya_ and _Reframe_ by Aukai. The whole album, _Reminiscence_, is nice
