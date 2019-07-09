@@ -5,6 +5,83 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 9th of July, 2019
+
+I apologise for the morbidity and the repetition in advance,
+
+  - Soon after we met, I finished Borges' stories and essays. Then came a
+    one-page parable called _The Witness_. That along with our conversation
+    triggered a number of thoughts, connections, and (re)recommendations.
+
+    The parable is about death and precisely the death of events and ideas that
+    are witnessed by the recently deceased. I was astonished how close that was
+    to what we talked about, people living as an image in others' minds and how
+    true death follows long after that of the body.
+  - Borges does not take it as far as I did though, his parable kills things
+    with the last person who witnessed them directly while I allow them to get
+    evolved, deformed, and passed through generations and distances far from
+    their originator.
+
+    I'd like to think that my mind went further than that of Borges, but the
+    truth is it didn't. The idea is mainly derived from _I Am A Strange Loop_ by
+    Douglas Hofstadter. This is the book that made me stop eat meat. He is
+    mathematically minded, but also emotionally elevated like Borges. The second
+    chapter is titled _On Souls and Their Sizes_, which starts with the section
+    _Soul-Shards_. You know I like analogies but the concept of a soul-shard is
+    etched into my brain the moment I laid eyes on it. The chapter talks about
+    his relationship with his wife who passed away and how an unfaithful copy of
+    her (shards of her soul) lives in him and influences his actions, so in a
+    way she keeps living.  He admits the probability of a grieving man coming up
+    with a theory of consciousness that gives him some solace, but I buy it.
+
+  - This brings me to the final scene of _The Sheltering Sky_ (and the ending of
+    the book of the same title which I have not read) directed by Bernardo
+    Bertolucci. An old man says the following passage:
+
+    > Because we don't know when we will die, we get to think of life as an
+    > inexhaustible well. Yet everything happens only a certain number of times,
+    > and a very small number really. How many more times will you remember a
+    > certain afternoon of your childhood, some afternoon that is so deeply a
+    > part of your being that you can't even conceive of your life without it?
+    > Perhaps four or five times more, perhaps not even that. How many more
+    > times will you watch the full moon rise? Perhaps twenty. And yet it all
+    > seems limitless.
+
+    I feel the urge to recite this passage in my head from time to time. I
+    haven't always behaved this way and that's a loss, but for some time now
+    (even before I knew you) I've been making mental notes of things that
+    matters. That is why I waited for your bus to leave at Parker's Piece and
+    watched you quietly. It's also why on that special Saturday as I looked at
+    you, you had all my attention, all my mental might trying to save every
+    second of the day, especially when you were quietly immersed into my
+    friend's music. All so that I can remember it faithfully for finite number
+    of times.
+
+  - Ryuichi Sakamato who scored the soundtracks for _The Sheltering Sky_ was
+    similarly moved by that passage. That's why many years after scoring the
+    movie, he recorded _fullmoon_ which has the passage read in many languages.
+    He overlays these recordings with ambient music in the background to create
+    a touching piece.
+
+  - He discusses this and his general approach to music in the documentary
+    _Ryuichi Sakamoto: Coda_. He has a kind soul and the documentary is one of
+    the best I've ever seen. Mainly because I believe in the honesty of what is
+    on the screen. It shows him deal with cancer and his spiritual devotion to
+    his work. It tells the story of the damaged piano rescued from the tsunami
+    in Japan and the concert he gave with it and why. It is a worthy portrait to
+    see.
+
+    In a way, he is similar to _Hayao Miyazaki_. Maybe there is something unique
+    in Japan's culture that bestows kind people with a wisdom that is not
+    paralleled elsewhere in the world. Maybe I'll have to learn to be kinder and
+    go there to see for myself.
+
+  That's all for now. Lights are out, music is over.
+
+  PS. I decided to curb my wings further and actively avoid looking at the
+  analytics for this page. I don't want you changing your habits because I might
+  see it.
+
 ### 5th of July, 2019
 
   - _Cardinals_, _Hair_, _The Knowledge_, _Later_ and _I Walk Away_ by
