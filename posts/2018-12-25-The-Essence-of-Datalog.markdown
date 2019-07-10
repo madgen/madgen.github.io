@@ -31,6 +31,8 @@ feel that's not the case at any point, give me a shout on Twitter or email me
 ## Acknowledgements
 
 Thanks to Dominic Orchard for pointing out that he did not advise Andrew Rice.
+Also thanks to Daniel Kröni for realising `isRangeRestricted` is too restrictive
+and providing a better implementation.
 
 ## A crash course in logic programming
 
@@ -349,8 +351,9 @@ guaranteed to find values for each head variable.
 ```haskell
 isRangeRestricted :: Rule -> Bool
 isRangeRestricted Rule{..} =
-  vars _head `isSubsequenceOf` concatMap vars _body
+  vars _head `isSubsetOf` concatMap vars _body
   where
+  isSubsetOf as bs = all (`elem` bs) as
   vars Atom{..} = nub $ filter (\case {Var{} -> True; _ -> False}) _terms
 ```
 
@@ -659,8 +662,9 @@ solve rules =
 
 isRangeRestricted :: Rule -> Bool
 isRangeRestricted Rule{..} =
-  vars _head `isSubsequenceOf` concatMap vars _body
+  vars _head `isSubsetOf` concatMap vars _body
   where
+  isSubsetOf as bs = all (`elem` bs) as
   vars Atom{..} = nub $ filter (\case {Var{} -> True; _ -> False}) _terms
 
 immediateConsequence :: Program -> KnowledgeBase -> KnowledgeBase
