@@ -32,7 +32,7 @@ feel that's not the case at any point, give me a shout on Twitter or email me
 
 Thanks to Dominic Orchard for pointing out that he did not advise Andrew Rice.
 Also thanks to Daniel Kröni for realising `isRangeRestricted` is too restrictive
-and providing a better implementation.
+and for providing a better implementation.
 
 ## A crash course in logic programming
 
