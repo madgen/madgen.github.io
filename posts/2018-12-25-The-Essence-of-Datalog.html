@@ -55,7 +55,7 @@
 <p>We start by looking at a simple program and implement an evaluator for it. Along with the implementation, we give a lightweight discussion of semantic concerns, in particular about its termination. Later, we try quenching the thirst for efficiency a little by giving some avenues for optimisation and conclude with where to go next for those interested. There is a copy of the full implementation at the end of the post.</p>
 <p>I want this post to be accessible to everyone, not only to the programming language people. For that reason, all uses of theory terms are auxiliary. If you feel that’s not the case at any point, give me a shout on Twitter or email me (both available in <a href="https://dodisturb.me">my homepage</a>) and I’ll fix it.</p>
 <h2 id="acknowledgements">Acknowledgements</h2>
-<p>Thanks to Dominic Orchard for pointing out that he did not advise Andrew Rice.</p>
+<p>Thanks to Dominic Orchard for pointing out that he did not advise Andrew Rice. Also thanks to Daniel Kröni for realising <code>isRangeRestricted</code> is too restrictive and providing a better implementation.</p>
 <h2 id="a-crash-course-in-logic-programming">A crash course in logic programming</h2>
 <p>The litmus test for any logic programming language is to be able to compute a variation of the following ancestry program.</p>
 <div class="sourceCode"><pre class="sourceCode prolog"><code class="sourceCode prolog">adviser(<span class="ot">&quot;</span><span class="er">Andrew</span><span class="al"> </span><span class="er">Rice</span><span class="ot">&quot;</span><span class="kw">,</span>     <span class="ot">&quot;</span><span class="er">Mistral</span><span class="al"> </span><span class="er">Contrastin</span><span class="ot">&quot;</span>)<span class="kw">.</span>
@@ -181,8 +181,9 @@ solve rules <span class="fu">=</span>
 <p>In a rule, if every variable in the head appears somewhere in the body, we call the rule range-restricted. We check if every rule is range-restricted before evaluating them in <code>solve</code>.<a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a> This is why we didn’t have to check if there were any variables left in the head after substitution in <code>evalRule</code>. If we can get to the stage of substituting into head, we are guaranteed to find values for each head variable.</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">isRangeRestricted ::</span> <span class="dt">Rule</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span>
 isRangeRestricted <span class="dt">Rule</span>{<span class="fu">..</span>} <span class="fu">=</span>
-  vars _head <span class="ot">`isSubsequenceOf`</span> concatMap vars _body
+  vars _head <span class="ot">`isSubsetOf`</span> concatMap vars _body
   <span class="kw">where</span>
+  isSubsetOf as bs <span class="fu">=</span> all (<span class="ot">`elem`</span> bs) as
   vars <span class="dt">Atom</span>{<span class="fu">..</span>} <span class="fu">=</span> nub <span class="fu">$</span> filter (\<span class="kw">case</span> {<span class="dt">Var</span>{} <span class="ot">-&gt;</span> <span class="dt">True</span>; _ <span class="ot">-&gt;</span> <span class="dt">False</span>}) _terms</code></pre></div>
 <p>There still remains the question of why we need range restriction at all? After all, the ability to deduce generic facts seems useful. For example, stating <code>p(X,X)</code> as a fact is a compact way of saying <code>p</code> is reflexive.</p>
 <p>The problem is something called <em>domain independence</em>. It basically means if the set of values a variable can take changes from one database to another (but not the instance itself), queries still compute the same thing. In other words, it prevents your program’s result to change under your feet if the values in your database are the same. Since checking domain independence in general is undecidable, range restriction is a safe syntactic approximation.</p>
@@ -317,8 +318,9 @@ solve rules <span class="fu">=</span>
 
 <span class="ot">isRangeRestricted ::</span> <span class="dt">Rule</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span>
 isRangeRestricted <span class="dt">Rule</span>{<span class="fu">..</span>} <span class="fu">=</span>
-  vars _head <span class="ot">`isSubsequenceOf`</span> concatMap vars _body
+  vars _head <span class="ot">`isSubsetOf`</span> concatMap vars _body
   <span class="kw">where</span>
+  isSubsetOf as bs <span class="fu">=</span> all (<span class="ot">`elem`</span> bs) as
   vars <span class="dt">Atom</span>{<span class="fu">..</span>} <span class="fu">=</span> nub <span class="fu">$</span> filter (\<span class="kw">case</span> {<span class="dt">Var</span>{} <span class="ot">-&gt;</span> <span class="dt">True</span>; _ <span class="ot">-&gt;</span> <span class="dt">False</span>}) _terms
 
 <span class="ot">immediateConsequence ::</span> <span class="dt">Program</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>
