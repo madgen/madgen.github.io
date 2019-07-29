@@ -5,6 +5,13 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 29th of July, 2019
+
+  - [_Gin, Sex, Malaria, and the Hunt for Academic
+    Prestige_](https://www.chronicle.com/interactives/20190724-king-mead?utm_source=at&utm_medium=en&cid=at&fbclid=IwAR2HjTg3nc1J0J6a1n_snTYc8LUmO0hT4Ke6WUCLo0XAe0TU78zcu6s-mgg)
+    by Charles King. Not the greatest piece of writing or the content, but some
+    interesting insights about our nature and that of our context.
+
 ### 10th of July, 2019
 
 I apologise for the morbidity and the repetition in advance,
