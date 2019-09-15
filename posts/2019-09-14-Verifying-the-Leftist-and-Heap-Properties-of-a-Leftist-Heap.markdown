@@ -42,7 +42,14 @@ listened to hundreds of people (justifiably) complain about the state of
 type-level programming in Haskell, I found the end result to be so pleasant that
 I wanted to share it.
 
-This brings us to the post at hand. Here's the itinerary: we start by looking at
+This brings us to the post at hand. The primary goal of this post is not to
+inflict my procrastination on you, but to show that verifying real properties of
+data structures using dependent types in Haskell is neither very difficult nor
+as inconvenient as people make it out to be. Along the post I'll try to share
+some advice that applies to other data structures and their invariants and not
+just to leftist heaps.
+
+Here's the itinerary: we start by looking at
 the heap interface and give a very simple and inefficient implementation of it.
 Then we'll implement a leftist heap without fancy types and explore how it works
 and why it's operations are asymptotically as efficient as the array-based
