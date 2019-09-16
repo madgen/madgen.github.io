@@ -96,9 +96,11 @@ trees](https://www.youtube.com/watch?v=n-b1PYbRUOY)
 
 # A simple heap
 
-A heap is a used to quickly access and maintain access to the maximum or the
-minimum of a collection of values. The following typeclass summarises the common
-operations.
+A heap is a (conceptually) tree-based data structure used to quickly access and
+maintain access to the maximum or the minimum of a collection of values. It
+satisfies the _heap property_, that is (for a maximum heap) the label of a node
+is bigger than or equal to that of its children. The following typeclass
+summarises the common operations on heaps.
 
 ```haskell
 class Heap heap where
@@ -128,6 +130,7 @@ class Heap heap where
   fromList xs = -- O(n) for leftist heaps
     case go (map singleton xs) of
       [ heap ] -> heap
+      [ ]      -> empty
       _        -> error "Fatal error. Did not converge to a single heap."
     where
     go [] = []
@@ -214,6 +217,91 @@ if they are functionally equivalent.
 
 # A leftist heap
 
+We now look at the data structure that we really care about. The leftist heap is
+both conceptually and implementation-wise a tree. We use the following data type
+for the unverified implementation.
+
+```haskell
+data LeftistHeap a = Leaf | Node a Int (LeftistHeap a) (LeftistHeap a)
+```
+
+The tree structure is standard except for the `Int` parameter of the node. This
+is the _rank_ of the tree. The rank of the tree is the smallest distance it
+takes to reach a `Leaf` node. The rank of a `Leaf` node is 0 and rank of a
+`Node` is the minimum of its children ranks plus 1.
+
+The leftist heap, in addition to the heap property, has the _leftist property_.
+If the rank of a given node is $R$ that is the distance from that root to the
+right-most `Leaf`. That is the rank of any left child is at least as big as a
+right child.
+
+What is the relationship between the rank and the size of a tree. A first
+question is how many elements there needs to be in the tree if its rank is $R$.
+If you want to figure this out for yourself, stop reading now. If the rank of a
+tree is $R$, then it must be the case that each path from the root has $R$
+`Node`s, otherwise the rank of the tree would be fewer. This means the tree has
+at least $2^{R} - 1$ elements. Then the followup question is, if a tree has $N$
+elements, what is its maximum rank? This is the place to stop to figure out on
+your own. Well, we know that the rank imposes a lower bound on the tree size, so
+conversely, the tree size should impose a maximum on the rank. We have
+$2^{\mathit{MaxR}} - 1 \leq N \lt 2^{\mathit{MaxR} + 1} - 1$, so $\mathit{MaxR}
+\leq \floor{\log{N} + 1} < R + 1$.
+
+It has $O(\log{n})$ complexity for insertion and deleting the maximum, while
+maintaining $O(1)$ complexity for finding the maximum. Building a heap out of a
+list is $O(n)$. Asympotically these are the same for the array-based binary heap
+implementation. But we can do one better. While the binary heap has $O(n)$
+complexity for merging, it's only $O(\log{n})$ for the leftist heap. In fact, it
+is the reason why insertion and deleting the maximum are $O(\log{n})$.
+
+Why bother with the leftist heap at all? It's operations are persistent (hence
+better suited for multi-threaded computation); more generally it is purely
+functional; it is conceptually and implementation-wise a tree; and more
+resilient against off-by-one errors. Why bother with the array-based binary
+heap? Operations are in place; it probably performs better in practice because
+arrays tend to have good locality of reference (this is a hunch, I haven't
+actually looked at its cache behaviour and I'd like to be proven wrong); it is
+the best-known implementation, so easier to communicate.
+
+## Merging two heaps
+
+## Every other operation
+
+Once we can merge, we can do everything else. Maximum is maintained at the root,
+so accessing it is easy. The `decompose` operation returns the maximum along
+with the rest of the heap with the maximum removed. It accesses the root and
+merges its two children (which are themselves leftist heaps). Insertion creates
+a singleton heap out of the value being inserted and merges it into the heap.
+
+Conversion from a list is more interesting. The obvious implementation is to
+fold over the list of elements and insert them into the heap, this turns out not
+to be the most efficient way. If we instead turn each element into a singleton
+heap and repeatedly merge two heaps at a time (with multiple passes) until one
+heap is left, conversion happens in linear time. This is the default
+implementation given in the typeclass.
+
+```haskell
+fromList :: [ Elem heap ] -> heap
+fromList xs = -- O(n) for leftist heaps
+  case go (map singleton xs) of
+    [ heap ] -> heap
+    [ ]      -> empty
+    _        -> error "Impossible. Did not converge to a single heap."
+  where
+  go [] = []
+  go [ x ] = [ x ]
+  go (x : y : rest) = go (merge x y : go rest)
+```
+
+If you want to figure out why that is for youself this is the place to stop.
+Assume for simplicity that there are $2^R$ elements in the heap. Then in the
+first pass we do $2^{R-1}$ $O(\log{2})$ operations. In the next pass, we do
+$2^{R-2}$ $O(\log{4})$ and in the next one $2^{R-3}$ $\log{8}$ operations and so
+on. So the overall complexity is $O(\sum{\log{(2^i\,)} \; 2^{R-i}}\,)$ which is
+roughly $O(\sum{i \; 2^{R-i}}\,)$ and that is $O(2^R)$ and roughly $2^R$.  That
+is the number of elements we started with, so conversion from list is done in
+linear time.
+
 # Verifying the leftist property
 
 # Verifying the heap property
@@ -221,3 +309,5 @@ if they are functionally equivalent.
 # Simulating heap operations
 
 # Conclusion
+
+# Full program
