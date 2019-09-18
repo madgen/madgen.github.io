@@ -10,6 +10,8 @@ import           Data.Time.Clock (UTCTime(..))
 import           Data.Time.Format (formatTime, parseTimeM)
 import           Data.Time.Locale.Compat (defaultTimeLocale)
 
+import           Text.Pandoc.Options
+
 import           Control.Monad (filterM, (>=>))
 
 import           Hakyll
@@ -35,7 +37,7 @@ main = hakyll $ do
 
     match "posts/*" $ do
         route $ setExtension "html"
-        compile $ pandocCompiler
+        compile $ pandocMathCompiler
             >>= loadAndApplyTemplate "templates/post.html"    postCtx
             >>= loadAndApplyTemplate "templates/default.html" postCtx
             >>= relativizeUrls
@@ -144,3 +146,17 @@ feedConf = FeedConfiguration
   , feedAuthorEmail = "madgenhetic@gmail.com"
   , feedRoot        = "https://dodisturb.me"
   }
+
+pandocMathCompiler =
+    let mathExtensions = extensionsFromList
+          [ Ext_tex_math_dollars
+          , Ext_tex_math_double_backslash
+          , Ext_latex_macros
+          ]
+        defaultExtensions = writerExtensions defaultHakyllWriterOptions
+        newExtensions = defaultExtensions <> mathExtensions
+        writerOptions = defaultHakyllWriterOptions
+                      { writerExtensions = newExtensions
+                      , writerHTMLMathMethod = MathJax ""
+                      }
+    in pandocCompilerWith defaultHakyllReaderOptions writerOptions

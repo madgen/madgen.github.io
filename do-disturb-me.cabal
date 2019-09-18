@@ -18,7 +18,8 @@ executable do-disturb-me
   default-language:    Haskell2010
   ghc-options:         -threaded
   build-depends:       base >= 4.7 && < 5,
-                       containers >= 0.5.7 && < 0.5.8,
-                       time >= 1.6 && < 1.7,
-                       time-locale-compat >= 0.1.1 && < 0.1.2,
+                       containers >= 0.5.7 && < 0.6,
+                       time >= 1.8 && < 1.10,
+                       time-locale-compat == 0.1.*,
+                       pandoc >= 2.0.5 && < 2.3,
                        hakyll
