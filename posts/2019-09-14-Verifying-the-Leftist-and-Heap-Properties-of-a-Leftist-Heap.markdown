@@ -69,11 +69,12 @@ We start by looking at the heap interface and give a very simple and inefficient
 implementation of it. Then we'll implement a leftist heap without fancy types
 and explore how it works and why it's operations are asymptotically as efficient
 as the array-based implementation. From there on, we step into the typed
-territory. Instead of verifying the leftist and heap properties all at once,
-we'll first implement a leftist heap with only the leftist property verified and
-then another one with both the leftist and the heap properties verified. Along
-the way we do some theory building for natural numbers from scratch. Finally, we
-run simulations on various heap implementations using QuickCheck to have some
+territory. We first do a quick tour of terms, types, and kinds in Haskell. Then
+instead of verifying the leftist and heap properties all at once, we first
+implement a leftist heap with only the leftist property verified and then
+another one with both the leftist and the heap properties verified. Along the
+way we do some theory building for natural numbers from scratch. Finally, we run
+simulations on various heap implementations using QuickCheck to have some
 confidence that the the various implementations in this post are functionally
 equivalent.
 
@@ -399,7 +400,185 @@ $O(\sum^{R}_{i = 1}{i \; 2^{R-i}}\,)$ and that is $O(2^{R})$.  That is the
 number of elements we started with, so conversion from list is done in linear
 time.
 
+# Terms, types, and kinds
+
+Before verifying anything with types, we need to understand terms, types, and
+kinds in Haskell. Haskell imposes a separation of the term and the type levels.
+Here's the conceptual gist: all terms have types, all types have kinds, and
+there is no distinction between types and kinds since GHC 8.0.
+
+For example, just as you can say `42 :: Int`, you can also say `Int :: Type` (or
+its synonym `Int :: *`, import `Data.Kind` for the more descriptive synonym
+`Type`) and `Type :: Type`. We can read these has the term `42` has type `Int`,
+the type `Int` has kind `Type`, and the kind `Type` has kind `Type` (yup, not a
+typo).
+
+I'll give more detail about these in the rest of this section. It may be too
+much information to soak in at once, but the broad-strokes should be enough for
+this post. More generally, one can get away without an in-depth understanding of
+these and still be able to verify data structures, but then we'd be relying on
+GHC to yell at us when certain extensions are missing and not understand why
+we're being yelled at.
+
+If you are worried about `Type :: Type`, yes, it is problematic and it leads to
+[Russel's paradox](https://en.wikipedia.org/wiki/Russell%27s_paradox). This is
+one reason, people don't like type-level programming in Haskell. It means as a
+proof system, Haskell's type system is inconsistent. What that means is that _we
+don't have the ability to tell the truth_. If you have a type-level proof of
+something and your type checker confirms it, it might just be a lie. However,
+since Haskell is not total and `let x = x in x`, `undefined`, and `error "QED"`
+already inhabit **every** type. So fallacious types representing propositions
+already have inhabitants meaning we didn't have the ability to tell the truth to
+start with. So we are not worse off with `Type :: Type`. However, it is still
+icky and it means the degree of trust you can place on an Agda proof and a
+Haskell proof are different.
+
+Now that we got that technicality out of the way, we can look at more
+interesting kinds. The constructor `(:)` has type `a -> [a] -> [a]`, similarly
+the type `Either` has kind `Type -> Type -> Type`. This makes sense because just
+as `(:)` constructs a term out of an `a` and a `[a]`, `Either` constructs a type
+out of two `Type`s. `Either` is a type constructor. In `ghci`, you can use `:t`
+to query the type of a term and `:k` to query the kind of a type.
+
+`Type` is the kind of inhabitable types, meaning types that have terms
+associated with them, meaning if we have type `T :: Type`, then there can
+potentially be a term `t :: T`. The previous sentence lacks certainty because
+there are some types despite having the kind `Type` does not have any
+inhabitants. For example, the type `Void` from `Data.Void` has no inhabitants.
+If you declare a type `data T` without any constructors, that also has no
+inhabitants. However, if a datatype does have an inhabitant, then it definitely
+has kind `Type`.
+
+The other sort of kinds that we have seen are type constructors such as
+`Either`, `Maybe`, or `[]`. But those are a bit boring, there are more to kinds
+than facilitating production of inhabitable types. With the `DataKinds`
+extension, we can create new kinds that have nothing to do with `Type` and are
+therefore not inhabitable.
+
+Consider the following `List` declaration.
+
+```haskell
+data List a = Nil | Cons a (List a)
+```
+
+In vanilla Haskell, this generates a type `List` and two data constructors `Nil`
+and `Cons`.
+
+```haskell
+List :: Type -> Type
+Nil  :: List a
+Cons :: a -> List a -> List a
+```
+
+With `DataKinds` extension enabled, you also get following.
+
+```haskell
+'Nil  :: List a
+'Cons :: a -> List a -> List a
+```
+
+Despite having precisely the same names and looking awfully similar, these are
+different beasts. Since there is no distinction between types and kinds, the
+type constructor `List` is also a kind constructor. Then, `'Nil` and `'Cons` are
+type constructors. Is there a term `t` with `t :: 'Cons Int 'Nil`? No, there
+isn't because the kind of `'Cons Int 'Nil` is `List Int` which is distinct from
+`Type` and since only `Type` is inhabitable, there is no such `t`.
+
+This promotion feature alone spawns multiple reasons why people do not like
+fancy types in Haskell:
+
+  1. The `'` prefix of promoted type-constructors is optional, but terms and
+  types are completely separate. So when I type `Nil`, GHC figures out whether
+  it is a term or a type constructor depending on the context.
+
+  2. The built-in list type `[a]` is automatically promoted. This means there is
+  `[]` which the equivalent of `Nil`. There is `[]` which is the type and kind
+  constructor equivalent to `List`. There is `'[]` which is the type constructor
+  euivalent to `'Nil`. Remember that `'` is optional. So when I use `[]`, we
+  don't know, if it is the type constructor `List` or the type constructor
+  `Nil`. Call me crazy, but this is confusing. Similar situation occurs with
+  tuples, where the term and type syntax are the same.
+
+At the term level we talk about polymorphic types such as `reverse :: [a] ->
+[a]`. You guessed it right, types can be poly-kinded. In fact, the `'Cons` type
+constructor has kind `a -> List a -> List a` where `a` is a kind variable. We
+can see this in `ghci`. If you type `:k 'Cons Int`, you get `'Cons Int :: List
+Type -> List Type`, but if you type `:k 'Cons Maybe`, you get `'Cons Maybe ::
+List (Type -> Type) -> List (Type -> Type)'` instead. In fact, you can use a
+promoted kind as well: `:k 'Cons 'Nil' gives `'Cons 'Nil :: List (List a) ->
+List (List a)`.
+
+How about the kind of the type constructor `List`? `:k List` returns `Type ->
+Type`. The return kind makes sense, it's a type constructor after all, but what
+is the reason for the input `Type`? If you look at the `Cons` data constructor,
+it has the type `a -> List a -> List a`, that first `a` is why the argument to
+`List` has to be `Type` because constructing a term `Cons x xs` means there is a
+term with `x :: a`, hence `a` must be inhabitable meaning it has to be `Type`.
+
+But what about the following datatype?
+
+```haskell
+data Proxy a = ProxyC
+```
+
+If we ask `ghci` for the kind of `Proxy`, we get `Type -> Type` again, but this
+time `a` does not appear as a type parameter to the sole constructor `ProxyC`.
+So in principle, the kind of `Proxy` could be `k -> Type` where `k` is a kind
+variable. This is another instance of poly-kindedness. GHC, by default, assumes
+that the type variables of a type constructor have the kind `Type` even if they
+can be more generic as is the case with `Proxy`. If you turn on the `PolyKinds`
+extension, GHC correctly assigns the kind `k -> Type` to `Proxy`. Later in the
+post, we define an equality type which has to be poly-kinded and which nicely
+illustrates the use of poly-kindedness.
+
+With this, you have a good bird's-eye view of Haskell types.
+
 # Verifying the leftist property
+
+Let's encode the leftist property at the type level. That is we will ensure that
+each the rank of each right child of a node is less than or equal to the rank of
+its left child. Clearly, for this we need ranks at the type-level. Our previous
+implementation used `Int`, but from the implementation, it is clear that we just
+needs natural numbers. If what we need is type-level natural numbers, we have
+two options:
+
+1. Import `GHC.TypeLits`, which uses compiler magic to define a `Nat` _kind_
+   where integer literals can be used at type-level.
+2. Define a `Nat` kind inductively.
+
+The advantage of (1) is it is efficient and most things we need are already
+proved for us. The advantage of (2) is that it is not compiler magic and we get
+to see how theorem proving works and faking dependent types in Haskell works in
+action. Hence, we'll do (2).
+
+Note that if you try to reproduce this implementation using (1), you should
+probably use the [`singletons`
+library](http://hackage.haskell.org/package/singletons) to fake dependent types
+and the fantastic GHC type checker plugin
+[ghc-typelits-natnormalise](http://hackage.haskell.org/package/ghc-typelits-natnormalise-0.7)
+to prove theorems about natural numbers. The cost of using efficient natural
+numbers is to give up the inductive definition which means proving things by
+hand is difficult.
+
+## Theory building for natural numbers
+
+Alright, let's give the unary representation of natural numbers as a datatype.
+
+```haskell
+data Nat = Z | S Nat deriving (Eq, Show)
+```
+
+What does this declaration do? It creates a type `Nat` with _kind_ `Type` and
+two constructors `Z` and `S` with types `Nat` and `Nat -> Nat` respectively. If
+you are wondering what kind is, you can think of it as the type of a type. In
+Haskell, terms and types live in a different level and terms have types
+associated with them while types have kinds. The kind `Type` or its synonym `*`
+(import `Data.Kind` to be able to use the more describe former synonym) is the
+most basic kind. For example, 
+
+If you, however, also have the
+`DataKinds` extension on, you additionally get a kind `'Nat :: Type` and types
+`Z`
 
 # Verifying the heap property
 
