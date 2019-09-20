@@ -356,7 +356,7 @@ isEmpty _    = False
 
 empty = Leaf
 
-singleton x = Node x 0 Leaf Leaf
+singleton x = Node x 1 Leaf Leaf
 
 decompose Leaf                  = Nothing
 decompose (Node x _ left right) = Just (x, merge left right)
