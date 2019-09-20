@@ -535,12 +535,11 @@ With this, you have a good bird's-eye view of Haskell types.
 
 # Verifying the leftist property
 
-Let's encode the leftist property at the type level. That is we will ensure that
-each the rank of each right child of a node is less than or equal to the rank of
-its left child. Clearly, for this we need ranks at the type-level. Our previous
-implementation used `Int`, but from the implementation, it is clear that we just
-needs natural numbers. If what we need is type-level natural numbers, we have
-two options:
+Let's encode the leftist property at the type level. That is, we will ensure
+that each the rank of each right child of a node is less than or equal to the
+rank of its left child. Clearly, for this we need ranks at the type-level. Our
+previous implementation used `Int`, but we really just need natural numbers. If
+what we need is type-level natural numbers, we have two options:
 
 1. Import `GHC.TypeLits`, which uses compiler magic to define a `Nat` _kind_
    where integer literals can be used at type-level.
@@ -548,37 +547,439 @@ two options:
 
 The advantage of (1) is it is efficient and most things we need are already
 proved for us. The advantage of (2) is that it is not compiler magic and we get
-to see how theorem proving works and faking dependent types in Haskell works in
-action. Hence, we'll do (2).
+to see how theorem proving and faking dependent types in Haskell work in action.
+Hence, we'll do (2).
 
 Note that if you try to reproduce this implementation using (1), you should
 probably use the [`singletons`
 library](http://hackage.haskell.org/package/singletons) to fake dependent types
 and the fantastic GHC type checker plugin
-[ghc-typelits-natnormalise](http://hackage.haskell.org/package/ghc-typelits-natnormalise-0.7)
+[`ghc-typelits-natnormalise`](http://hackage.haskell.org/package/ghc-typelits-natnormalise-0.7)
 to prove theorems about natural numbers. The cost of using efficient natural
 numbers is to give up the inductive definition which means proving things by
 hand is difficult.
 
-## Theory building for natural numbers
+Here's the plan. We first invent natural numbers and $\leq$. Then we forget
+about the operations on heaps and try to represent the data structure
+adequately. Then we attempt to define `merge` on our instance and fail. At which
+point we provde some lemmas about natural numbers, then try to implement `merge`
+again and succeed.
 
-Alright, let's give the unary representation of natural numbers as a datatype.
+## Natural numbers
+
+We need the type-level natural numbers and $\leq$ relation between them. So
+let's define them.
 
 ```haskell
 data Nat = Z | S Nat deriving (Eq, Show)
 ```
 
-What does this declaration do? It creates a type `Nat` with _kind_ `Type` and
-two constructors `Z` and `S` with types `Nat` and `Nat -> Nat` respectively. If
-you are wondering what kind is, you can think of it as the type of a type. In
-Haskell, terms and types live in a different level and terms have types
-associated with them while types have kinds. The kind `Type` or its synonym `*`
-(import `Data.Kind` to be able to use the more describe former synonym) is the
-most basic kind. For example, 
+This gives us a type and a kind `Nat`, data constructors `Z :: Nat` and `S ::
+Nat -> Nat` and type constructors `'Z :: Nat -> Nat` and `'S :: Nat -> Nat`.
 
-If you, however, also have the
-`DataKinds` extension on, you additionally get a kind `'Nat :: Type` and types
-`Z`
+### GADTs
+
+Good, we have type level natural numbers, now we need the `<=` relation. To
+define that, we'll need Generalised Algebraic Data Types (GADTs) enabled via
+`GADTs` extension. This gives us an alternative syntax for declaring data types
+and the ability to discriminate types based on constructors. The `Nat` data type
+above can be translated to the GADT syntax with exactly the same semantics.
+You'd need also need the `KindSignatures` extension to make the optional kind
+annotation next to `Nat` work.
+
+```haskell
+data AnotherNat :: Type where
+  AZ ::               AnotherNat
+  AS :: AnotherNat -> AnotherNat
+```
+
+This is just a more verbose way of defining `Nat`. GADTs flex their muscles,
+when they encode useful information in a type. Consider the following variant on
+natural numbers which encode whether the number is zero or not at the
+type-level.
+
+```haskell
+data Zeroness = DefinitelyZero | NonZero
+
+data TaggedNat :: Zeroness -> Type where
+  TZ ::          TaggedNat 'DefinitelyZero
+  TS :: Nat a -> TaggedNat 'NonZero
+```
+
+What this says is that if you choose the constructor `TZ`, you'll get a natural
+number tagget with `DefinitelyZero`, if you use the `TS` constructor regardless
+what kind of natural is passed to it, you get a `NonZero` natural number.
+
+This is useful because then we can write a total function a `div :: TaggedNat a
+-> TaggedNat NonZero -> TaggedNat a` and types ensure that you won't divide by
+zero.
+
+For the purposes of this post, we don't actually need naturals keeping track of
+whether their "zeroness". The vanilla data type declaration works fine, but
+introducing `(<=)` as a first `GADT` is just mean.
+
+### Less than or equal to relation
+
+With `TypeOperators` enabled to use infix operators at type level, we can define
+`(<=)`.
+
+```haskell
+data (<=) :: Nat -> Nat -> Type where
+  Base   ::             'Z <= 'Z
+  Single :: n <= m ->    n <= 'S m
+  Double :: n <= m -> 'S n <= 'S m
+```
+
+What does this say? We are defining a relation that takes two `Nat`s, so far so
+good, and it produces a data type, which might sound a bit weird. Isn't it more
+natural to produce a type of kind `Bool` to say whether it holds or not?  Well,
+we could do that using type families (a similar example will follow later on).
+But this GADT encoding of the relation (which has to produce kind `Type`)
+records a series of steps that gets us to the desired $n \leq m$ from an
+indisputable fact.
+
+The indisputable fact is $0 \leq 0$ encoded by the `Base` constructor, then by
+wrapping it with a series of `Single`s and `Double`s, we try to produce the
+desired inequality $n \leq m$. `Single` and `Double` encodes the following
+mathematical statements $n \leq m \implies n \leq m + 1$, and $n \leq m \implies
+n + 1 \leq m + 1$. Hopefully, neither are controversial as our verification claims
+hinge on these being sound.
+
+For example, to establish $1 \leq 2$ we need to give a term of the type `'S 'Z
+<= 'S ('S 'Z)`.
+
+```haskell
+oneLEQtwo :: 'S 'Z <= 'S ('S 'Z)
+oneLEQtwo = Single $ Double $ Base
+```
+
+that is to say from $0 \leq 0$, we can get to $1 \leq 1$, and from there we can
+get to $1 \leq 2$.
+
+Soundness is one question and _completeness_ is another. Is it the case that
+by applying `Single` and `Double` to `Base`, you can get to any $n \leq m$ that
+holds? The answer is yes, but we won't prove it in this post. In fact there are
+multitude of ways of proving a valid $n \leq m$. Just as an example, we'll give
+another proof of `oneLEQtwo`.
+
+```haskell
+oneLEQtwo' :: 'S 'Z <= 'S ('S 'Z)
+oneLEQtwo' = Double $ Single $ Base
+```
+
+You might have noticed that, the order at which we apply `Double` and `Single`
+does not matter. So to produce a valid $n \leq m$, we can start with `Base` that
+is $0 \leq 0$, we need to apply $m - n$ `Single`s and $n$ `Double`s in any order
+to produce $n \leq m$.
+
+### Singletons: faking dependent types
+
+We can use the algorithm for reaching to any valid $n \leq m$ to recover $n$ and
+$m$ out of a given inequality. What would be the type of a function doing that?
+We could try the following.
+
+```haskell
+recoverAttempt :: n <= m -> (n,m)
+recoverAttempt = undefined
+```
+
+This doesn't work because $n$ and $m$ have kind `Nat` but we need them to be
+`Type`s if we are going to produce a term at the value level. That is we need
+dependent typing.
+
+Sadly, Haskell is not there yet, so we need to fake it using _singletons_. The
+idea is to create an indexed data type (via GADTs), so that there is exactly one
+term for each indexing type. That is all a bit vague, let's just do it for
+natural numbers.
+
+```haskell
+data SNat :: Nat -> Type where
+  SZ :: SNat 'Z
+  SS :: SNat n -> SNat ('S n)
+```
+
+You see while the type `'Z` has kind `Nat`, the type `SNat 'Z` has kind `Type`
+and it has exactly one inhabitant that is `SZ`. This is true for all types of
+kind `Nat`. Hence, we can use the singleton type `SNat n :: Type` as the
+term-level representatives of `n :: Nat`.
+
+Now, we can write the recovery function.
+
+```haskell
+recover :: n <= m -> (SNat n, SNat m)
+recover Base = (SZ, SZ)
+recover (Single nLEQsm) | (n,m) <- recover nLEQsm = (   n, SS m)
+recover (Double nLEQm)  | (n,m) <- recover nLEQm  = (SS n, SS m)
+```
+
+We are already using the inductive structure of `n <= m`. The idea is we know
+`Single` constructor increments the right side of `<=` and `Double` increments
+both sides, so we exactly do that to recover the singletons corresponding to `n`
+and `m`.
+
+## The rank encoded leftist heap
+
+We have everything needed to encode the leftist property of a leftist heap into
+data type. Since the leftist property relates the ranks of subheaps and the
+current heap, we first create `Rank` data type that encodes the rank using a
+type-level `Nat`. We also define a helper to increment the rank for later use.
+
+```haskell
+newtype Rank n = Rank { _unRank :: SNat n }
+
+incRank :: Rank rank -> Rank ('S rank)
+incRank (Rank snat) = Rank (SS snat)
+```
+
+Since the heaps will be indexed by the heap rank, we need to use GADTs again.
+
+```haskell
+data SafeHeap :: Nat -> Type -> Type where
+  Leaf' :: SafeHeap 'Z a
+  Node' :: a -> Rank ('S m)             -- Node' data
+        -> SafeHeap n a -> SafeHeap m a -- Children
+        -> m <= n                       -- Leftist invariant
+        -> SafeHeap ('S m) a
+```
+
+After all this work, the data type declaration does not look so bad. The `Leaf'`
+constructor creates a `SafeHeap` of rank 0. The `Node'` constructor grows the
+heap only when we can show that the rank of the right subheap is less than or
+equal to that of the left subheap. Further, the resulting heap has rank one more
+than that of the right subheap.
+
+What did we just do? We created a data type whose inhabitants are either vacuous
+(infinite loop, undefined, etc.) or that it is a tree satisfying the leftist
+property. Let's try some examples.
+
+```haskell
+heap1 :: SafeHeap ('S 'Z) Int
+heap1 = Leaf'
+```
+
+This fails because the `Leaf'` constructor forces the rank to be `'Z` instead of
+`'S 'Z` as given in the type signature.
+
+```haskell
+heap2 :: SafeHeap ('S 'Z) Int
+heap2 = Node' 42 ('SS 'SZ) Leaf' Leaf' Base
+```
+
+This type checks because `Leaf'`s have rank `'Z` and `Base` proves `'Z <= 'Z`.
+
+```haskell
+heap3 :: SafeHeap ('S 'Z) Int
+heap3 = Node' 42 ('SS 'SZ) heap2' Leaf' (Single Base)
+```
+
+This also type checks because the right child still has a lower rank (`'Z`) than
+the left child (`'S 'Z`) and we can prove `'Z <= 'S 'Z` via `Single Base`.
+
+```haskell
+heap4 :: SafeHeap ('S 'Z) Int
+heap4 = Node' 42 ('SS 'SZ) Leaf' heap2' ???
+```
+
+Unless we replace `???` with a fallacious term such as `undefined`, we won't be
+able to find a proof for `'S 'Z <= 'Z`, hence whatever we put won't type check.
+This is precisely how the data type prevents us from violating the leftist
+property.
+
+We just made terms that violate the leftist property illegal. Pretty cool, huh?
+
+## Heap instance for SafeHeap
+
+So most people who read up on type-level programming gets to the previous stage
+of making property violating terms illegal. The next step is to operate on the
+data structure, which is where things get complicated. Say that we tried to make
+`SafeHeap rank a` an instance of `Heap`.
+
+```haskell
+instance Ord a => Heap (SafeHeap rank a) where ...
+```
+
+We're already in a bad place. This forces the type of `merge` to be `SafeHeap
+rank a -> SafeHeap rank a -> SafeHeap rank a`. This is not at all what we want.
+We want to be able to merge heaps of different ranks as we did in the untyped
+implementation. Further, this signature requires us to produce a heap of rank
+identical to the input heaps. This is clearly not going to fly.
+
+Let's say that we gave up on the type class and decided to define all the
+operations at the top-level. Then we could give `merge` the type `SafeHeap rank1
+a -> SafeHeap rank2 a -> SafeHeap (Fx rank1 rank2) a`. Here `Fx` is some type
+level function on `rank1` and `rank2`. This allows inputting heaps of different
+ranks, but we still need to figure out the rank of the output. This signature
+presupposes that to be a function of `rank1` and `rank2`, but in fact it
+_depends_ on the whole input heaps. The word "depend" should raise a red flag.
+Do we need to create singletons for `SafeHeap`s as well now? Normally, you get
+to this question and give up on the whole approach and revert back to vanilla
+types (at least I used to). Clearly, this line of thinking is not productive.
+
+The question we should be asking is what was our original goal? It was to
+preserve the leftist property. Does that really require establishing the effect
+of operations on the rank of the heap at type level? No, not really. If we are
+talking about the `merge` operation what we want is to input two `SafeHeap`s of
+whatever rank and produce some `SafeHeap` of whatever rank. The fact that the
+output is `SafeHeap` is enough to ensure the leftist property is preserved,
+which is our goal.
+
+The way to do that is to hide the rank. This can be done using the
+`ExistentialQuantification` extension which gives us existential types. Let's do
+that for `SafeHeap`.
+
+```haskell
+data SomeSafeHeap a = forall rank. SSH (SafeHeap rank a)
+```
+
+Although it uses the keyword `forall` what we really mean is "within
+`SomeSafeHeap a` there exists a `rank` such that `SafeHeap rank a`". Hence, the
+name existential types. So the type instance we are after is the following:
+
+```haskell
+instance Ord a => Heap (SomeSafeHeap a) where ...
+```
+
+The type of `merge` now is `SomeSafeHeap a -> SomeSafeHeap a -> SomeSafeHeap a`
+which makes no assertion about the ranks of the input or the output, yet
+everything involved is a leftist heap. This is exactly what we want.
+
+**The key take away:** if you use fancy types, reach for the existential as soon
+as possible.
+
+This is not to say that you shouldn't try to implement operations that requires
+relating ranks of inputs and outputs. If it is straightforward, it will give you
+more guarantees, which is yey! The question is whether it is worth it.
+
+The `singleton` function for `SomeSafeHeap a` is a trivial example of this. We
+know that the singleton heap should have rank 1 at compile time. Since rank
+information is hidden behind an existential, there is nothing preventing us from
+defining `singleton x` to be `empty`, which type checks fine. However, if we
+extract the `SafeHeap ('S 'Z) a` into its own definition, we can reduce the
+likelihood of such a mistake.
+
+```haskell
+singleton x = SSH singleton'
+  where
+  singleton' :: SafeHeap ('S 'Z) a
+  singleton' = Node' x (Rank (SS SZ)) Leaf' Leaf' Base
+```
+
+## Merging safe heaps
+
+Here's the partial code for the `merge` operation on safe heaps.
+
+```haskell
+merge (SSH Leaf') heap = heap
+merge heap (SSH Leaf') = heap
+merge heap1@(SSH (Node' x _ left1 right1 _))
+      heap2@(SSH (Node' y _ left2 right2 _)) =
+  if x > y
+    then mkNode x (SSH left1) (merge (SSH right1) heap2)
+    else mkNode y (SSH left2) (merge (SSH right2) heap1)
+  where
+  mkNode :: a -> SomeSafeHeap a -> SomeSafeHeap a -> SomeSafeHeap a
+  mkNode a (SSH h1) (SSH h2) = _
+```
+
+This bit is almost identical to the unverified version except for some
+unwrapping and wrapping with `SSH`. This makes sense because as we pointed in
+the unverified version, `mkNode` is where the leftist property is preserved by
+placing the heap with the smaller rank to the right.
+
+### Comparing without forgetting
+
+We used to do it using the term-level `(<=)` operator on the rank which was an
+`Int`. So it seems all we need is to provide an analogous operator for `SNat`s.
+However, this omits the fact that we also need the proof that the rank of the
+right child is less than the rank of the left child and a `compare` or `(<=)`
+like operator despite determening that at term-level forgets about it
+immediately returning an `Ordering` or a `Bool` only.
+
+What we want here is _connexity_, that is given any $n$ and $m$, either $n \leq
+m$ or $m \leq n$. This is the case as $\leq$ on natural numbers is a [total
+order](https://en.wikipedia.org/wiki/Total_order). It is also the case that this
+property is very natural to express as a function.
+
+```haskell
+lemConnexity :: SNat n -> SNat m -> Either (n <= m) (m <= n)
+lemConnexity SZ y = Left  (lemZLEQAll y)
+lemConnexity x SZ = Right (lemZLEQAll x)
+```
+
+The idea is pretty simple in the base cases, we need to show $0 \leq m$ and $0
+\leq n$. The proof of these are clearly independent of $n$ or $m$ and they do
+not look related to connexity specifically, this signals the need to make a
+separate lemma. We imagine for the moment that `lemZLEQAll :: SNat n -> Z' <= n`
+exists. This make-believe with lemmas is basically how top-down proofs work. As
+you focus on the proof at hand, you postulate reasonable looking statements.
+
+The inductive case is equally simple and gives a good opportunity to introduce
+typed-holes.
+
+```haskell
+lemConnexity (SS x) (SS y) = _
+```
+
+So the way you work with GADTs is that you pattern match and see what you got.
+At this point the type for the type hole `_` is `Either ('S n1 <= 'S n2) ('S n2
+<= 'S n1)` where `x` is `'SNat n2` and `y` is `SNat n1`. So we can recursively
+call `lemConnexivity` to obtain a proof of `Either (n1 <= n2) (n2 <= n1)` and
+pattern match.
+
+```haskell
+lemConnexity (SS x) (SS y) = _
+ case lemConnexity x y of
+   Left  xLEQy -> _
+   Right yLEQx -> _
+```
+
+Now we have two typed holes. In one case we are trying to get from `xLEQy :: n1
+<= n2` to `Either ('S n1 <= 'S n2) ('S n2 <= 'S n1)` and in the other from
+`yLEQX :: n2 <= n1`. The `Double` constructor is exactly what we need in each
+case, then we choose `Left` or `Right` depending on the direction of the
+arguments.
+
+```haskell
+lemConnexity (SS x) (SS y) =
+ case lemConnexity x y of
+   Left  xLEQy -> Left  (Double xLEQy)
+   Right yLEQx -> Right (Double yLEQx)
+```
+
+We are now almost done with `lemConnexivity`. Earlier we postulated `lemZLEQAll`
+for the base cases, we still need to prove that. That is proven by induction
+over the natural numbers.
+
+```haskell
+lemZLEQAll :: SNat n -> 'Z <= n
+lemZLEQAll SZ     = Base
+lemZLEQAll (SS x) = Single (lemZLEQAll x)
+```
+
+That's it. We have proved some facts about natural numbers. It does not feel so
+bad, mostly, it's just induction and looking at typed holes. The ergonomics of
+doing that compared to Agda, Idris, or any other proof asistant is really
+lacking. When we leave a hole, the output is cluttered, it is not easy to see
+what is available in the context which is usually how you figure out how to
+prove things. So beyond these basic facts life can be challenging, but I feel
+for most data structures, you can get good mileage out of basic facts. If
+anything Haskell forces you to make your lemmas as granular as possible.
+
+### Making nodes with maths
+
+By harnessing `lemConnexivity`, implementing `mkNode` is a breeze.
+
+```haskell
+mkNode :: a -> SomeSafeHeap a -> SomeSafeHeap a -> SomeSafeHeap a
+mkNode a (SSH h1) (SSH h2) =
+  case lemConnexity (_unRank . rank $ h1) (_unRank . rank $ h2) of
+    Left  r1LEQr2 -> SSH $ Node' a (incRank $ rank h1) h2 h1 r1LEQr2
+    Right r2LEQr1 -> SSH $ Node' a (incRank $ rank h2) h1 h2 r2LEQr1
+```
+
+The lemma tells us which heap has the lower rank (hence needs to be the right
+child) as well as giving us a proof for it which is all that is needed to
+construct a `Node'`.
 
 # Verifying the heap property
 
