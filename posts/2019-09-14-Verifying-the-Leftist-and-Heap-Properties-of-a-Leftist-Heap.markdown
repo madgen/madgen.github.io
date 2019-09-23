@@ -708,16 +708,16 @@ Now, we can write the recovery function.
 ```haskell
 recover :: n <= m -> (SNat n, SNat m)
 recover Base = (SZ, SZ)
-recover (Single nLEQsm) | (n,m) <- recover nLEQsm = (   n, SS m)
-recover (Double nLEQm)  | (n,m) <- recover nLEQm  = (SS n, SS m)
+recover (Single nLEQsm) | (x,y) <- recover nLEQsm = (   x, SS y)
+recover (Double nLEQm)  | (x,y) <- recover nLEQm  = (SS x, SS y)
 ```
 
-We are already using the inductive structure of `n <= m`. The idea is we know
-`Single` constructor increments the right side of `<=` and `Double` increments
-both sides, so we exactly do that to recover the singletons corresponding to `n`
-and `m`.
+We are already using the inductive structure of `n <= m`. The `Single`
+constructor increments the right side of `<=` and `Double` increments both
+sides, so we turn these constructors on explicit increments to recover the
+singletons corresponding to `n` and `m`.
 
-## The rank encoded leftist heap
+## Rank encoded leftist heaps
 
 We have everything needed to encode the leftist property of a leftist heap into
 data type. Since the leftist property relates the ranks of subheaps and the
@@ -727,8 +727,8 @@ type-level `Nat`. We also define a helper to increment the rank for later use.
 ```haskell
 newtype Rank n = Rank { _unRank :: SNat n }
 
-incRank :: Rank rank -> Rank ('S rank)
-incRank (Rank snat) = Rank (SS snat)
+inc :: Rank rank -> Rank ('S rank)
+inc (Rank snat) = Rank (SS snat)
 ```
 
 Since the heaps will be indexed by the heap rank, we need to use GADTs again.
@@ -749,7 +749,7 @@ equal to that of the left subheap. Further, the resulting heap has rank one more
 than that of the right subheap.
 
 What did we just do? We created a data type whose inhabitants are either vacuous
-(infinite loop, undefined, etc.) or that it is a tree satisfying the leftist
+(infinite loop, `undefined`, etc.) or that it is a tree satisfying the leftist
 property. Let's try some examples.
 
 ```haskell
@@ -795,7 +795,8 @@ data structure, which is where things get complicated. Say that we tried to make
 `SafeHeap rank a` an instance of `Heap`.
 
 ```haskell
-instance Ord a => Heap (SafeHeap rank a) where ...
+instance Ord a => Heap (SafeHeap rank a) where
+  type Elem (SafeHeap rank a) = a
 ```
 
 We're already in a bad place. This forces the type of `merge` to be `SafeHeap
@@ -828,7 +829,7 @@ The way to do that is to hide the rank. This can be done using the
 that for `SafeHeap`.
 
 ```haskell
-data SomeSafeHeap a = forall rank. SSH (SafeHeap rank a)
+data SomeSafeHeap label = forall rank. SSH (SafeHeap rank label)
 ```
 
 Although it uses the keyword `forall` what we really mean is "within
@@ -836,7 +837,8 @@ Although it uses the keyword `forall` what we really mean is "within
 name existential types. So the type instance we are after is the following:
 
 ```haskell
-instance Ord a => Heap (SomeSafeHeap a) where ...
+instance Ord label => Heap (SomeSafeHeap label) where
+  type Elem (SomeSafeHeap label) = label
 ```
 
 The type of `merge` now is `SomeSafeHeap a -> SomeSafeHeap a -> SomeSafeHeap a`
@@ -906,15 +908,14 @@ lemConnexity SZ y = Left  (lemZLEQAll y)
 lemConnexity x SZ = Right (lemZLEQAll x)
 ```
 
-The idea is pretty simple in the base cases, we need to show $0 \leq m$ and $0
-\leq n$. The proof of these are clearly independent of $n$ or $m$ and they do
-not look related to connexity specifically, this signals the need to make a
-separate lemma. We imagine for the moment that `lemZLEQAll :: SNat n -> Z' <= n`
-exists. This make-believe with lemmas is basically how top-down proofs work. As
-you focus on the proof at hand, you postulate reasonable looking statements.
+The base cases are simple, we need to show $0 \leq m$ and $0 \leq n$. Since $0
+\leq x$ holds for all $x$, we can prove a lemma to handle both. We imagine for
+the moment that `lemZLEQAll :: SNat n -> Z' <= n` exists. This make-believe with
+lemmas is basically how top-down proofs work. As you focus on the proof at hand,
+you postulate reasonable looking statements.
 
 The inductive case is equally simple and gives a good opportunity to introduce
-typed-holes.
+_typed holes_.
 
 ```haskell
 lemConnexity (SS x) (SS y) = _
@@ -923,21 +924,21 @@ lemConnexity (SS x) (SS y) = _
 So the way you work with GADTs is that you pattern match and see what you got.
 At this point the type for the type hole `_` is `Either ('S n1 <= 'S n2) ('S n2
 <= 'S n1)` where `x` is `'SNat n2` and `y` is `SNat n1`. So we can recursively
-call `lemConnexivity` to obtain a proof of `Either (n1 <= n2) (n2 <= n1)` and
+call `lemConnexity` to obtain a proof of `Either (n1 <= n2) (n2 <= n1)` and
 pattern match.
 
 ```haskell
-lemConnexity (SS x) (SS y) = _
+lemConnexity (SS x) (SS y) =
  case lemConnexity x y of
    Left  xLEQy -> _
    Right yLEQx -> _
 ```
 
-Now we have two typed holes. In one case we are trying to get from `xLEQy :: n1
-<= n2` to `Either ('S n1 <= 'S n2) ('S n2 <= 'S n1)` and in the other from
-`yLEQX :: n2 <= n1`. The `Double` constructor is exactly what we need in each
-case, then we choose `Left` or `Right` depending on the direction of the
-arguments.
+Now we have two typed holes. We are trying to get to `Either ('S n1 <= 'S n2)
+('S n2 <= 'S n1)` from `xLEQy :: n1 <= n2` and `yLEQX :: n2 <= n1` respectively.
+The `Double` constructor produces a new inequality from a valid inequality by
+incrementing both sides. Combined with `Left` or `Right` depending on the case,
+we can provide a term for the desired type in both cases.
 
 ```haskell
 lemConnexity (SS x) (SS y) =
@@ -946,7 +947,7 @@ lemConnexity (SS x) (SS y) =
    Right yLEQx -> Right (Double yLEQx)
 ```
 
-We are now almost done with `lemConnexivity`. Earlier we postulated `lemZLEQAll`
+We are now almost done with `lemConnexity`. Earlier we postulated `lemZLEQAll`
 for the base cases, we still need to prove that. That is proven by induction
 over the natural numbers.
 
@@ -965,16 +966,16 @@ prove things. So beyond these basic facts life can be challenging, but I feel
 for most data structures, you can get good mileage out of basic facts. If
 anything Haskell forces you to make your lemmas as granular as possible.
 
-### Making nodes with maths
+### Making nodes with proofs
 
-By harnessing `lemConnexivity`, implementing `mkNode` is a breeze.
+By harnessing `lemConnexity`, implementing `mkNode` is a breeze.
 
 ```haskell
 mkNode :: a -> SomeSafeHeap a -> SomeSafeHeap a -> SomeSafeHeap a
 mkNode a (SSH h1) (SSH h2) =
   case lemConnexity (_unRank . rank $ h1) (_unRank . rank $ h2) of
-    Left  r1LEQr2 -> SSH $ Node' a (incRank $ rank h1) h2 h1 r1LEQr2
-    Right r2LEQr1 -> SSH $ Node' a (incRank $ rank h2) h1 h2 r2LEQr1
+    Left  r1LEQr2 -> SSH $ Node' a (inc $ rank h1) h2 h1 r1LEQr2
+    Right r2LEQr1 -> SSH $ Node' a (inc $ rank h2) h1 h2 r2LEQr1
 ```
 
 The lemma tells us which heap has the lower rank (hence needs to be the right
@@ -983,9 +984,846 @@ construct a `Node'`.
 
 # Verifying the heap property
 
+Let's do it one last time, but this time with both the heap and the leftist
+property.
+
+So what is the heap property mathematically? For a node $n$ and its children $l$
+and $r$, we have $\mathit{label}(l) \leq \mathit{label}(n)$ and
+$\mathit{label}(r) \leq \mathit{label}(n)$.
+
+You can immediately see that in addition to having the rank available at the
+type level, we now also need the label. So far we allowed labels to be of an
+arbitrary `Type`. To simplify the situation, we now decree that the labels are
+based off of `SNat`s, allowing us to build on the existing theory of natural
+numbers.
+
+## Rank and label encoded leftist heaps
+
+To avoid confusion we wrap the label `SNat`.
+
+```haskell
+newtype Label n = Label { _unLabel :: SNat n }
+```
+
+All the machinery needed to create a data type that makes heap property
+violating terms illegal is already built. So here is the data type.
+
+```haskell
+data SaferHeap :: Nat -> Nat -> Type where
+  Leaf'' :: SaferHeap 'Z 'Z
+  Node'' :: Label a -> Rank ('S m)         -- Node' data
+         -> SaferHeap n b -> SaferHeap m c -- Children
+         -> m <= n                         -- Leftist property
+         -> b <= a -> c <= a               -- Heap property
+         -> SaferHeap ('S m) a
+```
+
+`SaferHeap` looks a lot like `SafeHeap`, except for the fancy-typed label and
+two more inequalities to ensure the heap property is satisfied in `Node''`.
+
+`Leaf''` carries a type-level label of `'Z` now. Every `SaferHeap` needs a
+type-level label to form the type. Using `'Z` is a nice work around because it
+is the least natural number, hence it doesn't inhibit construction of a `Node''`
+with any label.
+
+There are two immediate alternatives to this:
+
+ 1. Use `Maybe Nat` rather than `Nat` for the `SafeHeap` label, but that
+ requires us to change the heap property to so that rather than requiring `b <=
+ a`, we require "given `b` is `'Just b'`, `b' <= a`" and similarly for `c <= a`.
+
+ 2. Use `Maybe Nat` again, but instead of changing the heap property in
+ `Node''`, we have three `Node''` like constructors: one with both children
+ having `'Just` labels, one with only the left child having a `'Just` label, and
+ one with neither having `'Just` labels (why don't we need the fourth case?).
+ This way the heap property remains as simple inequalities.
+
+In a way, (1) and (2) are equivalent solutions. One might say they are cleaner
+than exploiting `'Z` being the least element in a total order. Both, however,
+especially (2) complicates every function that needs to scrutinise a
+`SaferHeap`.
+
+The next step is to wrap the wrap the data type in an existential like the last
+time.
+
+```haskell
+data SomeSaferHeap = forall rank label. SSH' (SaferHeap rank label)
+```
+
+At this point, you might like to construct some `SaferHeap`s to see the
+ergonomics of constructing this type by hand as well as get the satisfaction of
+type errors due to heap property violation. I think you'll agree that
+constructing nested `Node''`s is tedious, but luckily we use the nice interface
+`Heap` instead.
+
+## Heap instance for SaferHeap
+
+Just as before the instance is for the existentially wrapped type.
+
+```
+instance Heap SomeSaferHeap where
+  type Elem SomeSaferHeap = Nat
+```
+
+The `Elem` instance for `SomeSaferHeap` is interesting because, we don't
+actually store `Nat`s anywhere in the nodes, we only store `SNat`s. Then
+`insert` will require conversion from `SNat` to `Nat` and `findMax` from `Nat`
+to `SNat`. The `SNat` to `Nat` direction is easy.
+
+```haskell
+demote :: SNat n -> Nat
+demote SZ     = Z
+demote (SS n) = S (demote n)
+```
+
+But the opposite direction would have a signature `Nat -> SNat n`. Let's try to
+write that.
+
+```haskell
+promoteAttempt :: Nat -> SNat n
+promoteAttempt Z                                = SZ
+promoteAttempt (S n) | snat <- promoteAttempt n = SS snat
+```
+
+Well, this does not type check, because one branch returns `SNat 'Z` and the
+other `SNat ('S m)` for some `m`. Neither `'Z` nor `'S` unifies with the free
+variable `n`.
+
+Since our heap operations are on existentially wrapped types, we know that we
+only need the promoted type-level `n` during the course of a function definition
+only. So we do not really care what `n` is going to be so long as there is
+_some_ n that we can embed in the heap. This smells like an existential. So the
+`promote` should return an existentially wrapped `Nat`.
+
+```haskell
+data SomeNat = forall n. SomeNat (SNat n)
+
+promote :: Nat -> SomeNat
+promote Z                                 = SomeNat SZ
+promote (S n) | SomeNat snat <- promote n = SomeNat $ SS snat
+```
+
+A good exercise at this point is to try to implement `singleton` for
+`SomeSaferHeap`. It is very similar to the implementation for `SomeSafeHeap`
+except you need to use `promote` and provide evidence for the heap property. The
+answer is in [the full source code](#full-program).
+
+## Merging safer heaps
+
+The merge operation is, once again, all we care about. The overall structure is
+going to be the same, but we'll need more plumming and lemmas.
+
+### Making nodes
+
+This time let's start from `mkNode`. Here's an attempt analogous to the previous
+`mkNode`.
+
+```haskell
+mkNode :: Label c
+       -> SomeSaferHeap -> SomeSaferHeap
+       -> SomeSaferHeap
+mkNode vc (SSH hA) (SSH hB)
+  | rA <- rank hA, rB <- rank hB =
+  case lemConnexity (_unRank rA) (_unRank rB) of
+    Left  arLEQbr -> SSH $ Node'' vc (inc rA) hB hA arLEQbr ??? ???
+    Right brLEQar -> SSH $ Node'' vc (inc rB) hA hB brLEQar ??? ???
+```
+
+This attempt fails because we do not have the necessary inequalities to provide
+evidence for the heap property. We do have access to the parent label and and
+the children labels, so we could decide on whether they hold. But this approach
+would require us to give the signature to `mkNode` because we need to handle the
+case `vc` is smaller than one of the labels of the children. Besides, this
+information is already computed if we follow the structure of the previous merge
+implementation. So let's assume that the necessary inequalities are passed down
+by `merge`.
+
+```haskell
+mkNode :: Label c
+       -> SomeSaferHeap -> SomeSaferHeap
+       -> a <= c -> b <= c
+       -> SomeSaferHeap
+mkNode vc (SSH hA) (SSH hB) aLEQc bLEQc
+  | rA <- rank hA, rB <- rank hB =
+  case lemConnexity (_unRank rA) (_unRank rB) of
+    Left  arLEQbr -> SSH $ Node'' vc (inc rA) hB hA arLEQbr bLEQc aLEQc
+    Right brLEQar -> SSH $ Node'' vc (inc rB) hA hB brLEQar aLEQc bLEQc
+```
+
+This doesn't work either because we have an `a <= c` for the first
+`SomeSaferHeap`, but that type hides `a`, so as far as the type-checker is
+concerned the rank of `hA` has nothing to do with `Rank a`.
+
+It looks like we're hiding too much. Since `mkNode` is not part of the `Heap`
+typeclass, perhaps we can use `SaferHeap` instead of `SomeSaferHeap` in the
+signature of `mkNode`. Then one possible signature for `mkNode` would be the
+following.
+
+```haskell
+mkNode :: Label c
+       -> SaferHeap r1 a -> SaferHeap r2 b
+       -> a <= c -> b <= c
+       -> SaferHeap ??? c
+```
+
+This type signature relates the type-level labels of the heaps to the
+inequalities, but it also requires handling ranks. There are three viable
+choices for `???`: `r3`, `'S r1`, and `'S r2`. The first one runs into the same
+problem as `promote`, the calculated node rank won't unify with the free type
+variable `r3`. The last two can be made the work but it presupposes that the
+caller already knows which heap is going to be the right child, hence `mkNode`
+would be pointless.
+
+It looks like `SomeSaferHeap` hides too much and `SaferHeap` reveals too much.
+What we need is something in the middle. We want to hide the rank, but leave the
+type-level value visible. Once again existential types come to the rescue.
+
+```haskell
+data AlmostSomeSaferHeap label = forall rank. ASSH (SaferHeap rank label)
+```
+
+We can now proceed to write a `mkNode` that looks a lot like the implementation
+for `SomeSafeHeap`.
+
+```haskell
+mkNode :: Label c
+       -> AlmostSomeSaferHeap a -> AlmostSomeSaferHeap b
+       -> a <= c -> b <= c
+       -> AlmostSomeSaferHeap c
+mkNode vc (ASSH hA) (ASSH hB) aLEQc bLEQc
+  | rA <- rank hA, rB <- rank hB =
+  case lemConnexity (_unRank rA) (_unRank rB) of
+    Left  arLEQbr -> ASSH $ Node'' vc (inc rA) hB hA arLEQbr bLEQc aLEQc
+    Right brLEQar -> ASSH $ Node'' vc (inc rB) hA hB brLEQar aLEQc bLEQc
+```
+
+### Merging nodes
+
+We can tackle `merge` now. At the top-level interface we're using
+`SomeSaferHeap`, but the actualy merge is going to happen in
+`AlmostSomeSaferHeap`. The reason for that will become clear later.
+
+```haskell
+merge (SSH' h1) (SSH' h2) | ASSH mergedHeap <- merge' (ASSH h1) (ASSH h2) =
+  SSH' mergedHeap
+```
+
+Then the signature and the base cases of `merge'` are as follows
+
+```haskell
+merge' :: AlmostSomeSaferHeap a -> AlmostSomeSaferHeap b
+       -> AlmostSomeSaferHeap (Max a b)
+merge' (ASSH Leaf'') heap = heap
+merge' heap (ASSH Leaf'') = heap
+```
+
+This brings me to the penultimate corner stone of type-level programming in
+Haskell that I'll cover in this post: type-level functions. We have already used
+associated type families within the `Heap` and `HasRank` type classes which are
+technically type-level functions, but they are too trivial. `Max` on the other
+hand does recursion and everything!
+
+#### Type families
+
+The type-level `Max` function is defined using a closed type family enabled by
+the `TypeFamilies` extension.
+
+```haskell
+type family Max (n :: Nat) (m :: Nat) :: Nat where
+  Max 'Z m          = m
+  Max n 'Z          = n
+  Max ('S n) ('S m) = 'S (Max n m)
+```
+
+This is analogous to the following term level `max` function on `Nat`s.
+
+```haskell
+max :: Nat -> Nat -> Nat
+max Z m = m
+max n Z = n
+max (S n) (S m) = S (max n m)
+```
+
+You might be wondering why not just write that and get a promoted version of
+`max` just as we did with data types and kinds? It's an excellent question and
+this syntactic dicothomy is another reason why people don't like type-level
+programming in Haskell. In Idris or Agda, that is exactly how it works.
+
+This problem stems from multiple reasons. For one thing type families existed in
+GHC since 2007, whereas data type promotion was added in 2012, and the mandate
+for moving term and type levels closer is fairly recent. Further, adding type
+level computation into Haskell is an after-thought, so you need to retrofit
+the syntax. On top of that the behaviour of type families is different than
+functions, the patterns of a type family can do unification whereas pattern
+matches of a function can't.
+
+For example, the following returns the type `Int` if its arguments unify and
+`Char` otherwise.
+
+```haskell
+type family Same a b where
+  Same a a = Int
+  Same _ _ = Char
+
+sameInt :: Same [ a ] [ a ]
+sameInt = 42
+
+sameChar :: Same (Maybe a) [ a ]
+sameChar = 'c'
+```
+
+So although we can promote term-level functions to the type-level (`singletons`
+library allows this via Template Haskell), they are still not equivalent in
+behaviour because term-level variables act differently compared to type-level
+variables.
+
+As a result using the same syntax for both would not be possible in general as
+we'd need unification at the term level as well.
+
+#### Type families vs GADTs
+
+We could have encoded `Max` as a GADT as well and similarly we could have
+encoded `<=` as a type family.
+
+```haskell
+data AltMax :: Nat -> Nat -> Nat -> Type where
+  L ::                 AltMax n 'Z n
+  R ::                 AltMax 'Z m m
+  B :: AltMax m n r -> AltMax ('S m) ('S n) ('S r)
+
+type family n <== m :: Bool where
+  'Z     <== m      = 'True
+  n      <== 'Z     = 'False
+  ('S n) <== ('S m) = n <== m
+```
+
+These would have also worked. The proofs would have looked different and maybe
+we would have used different lemmas, but they would have worked. However, there
+are still reasons to choose one encoding over the other.
+
+ 1. If you intend to do induction over your relation, then constructors are
+ helpful, so GADTs get a point.
+
+ 2. If what you have is a function, then the GADT encoding forces you to add
+ another type variable for the result and the functional dependency between the
+ result and the arguments get lost.
+
+ 3. Conversely, if you have a relation that is not a function and you choose to
+ use a type family, since there is no clear result variable, you need to return
+ a type of kind `Bool` or something equivalent.
+
+ 4. With type families when you learn more information about the type, the
+ reduction happens automatically, whereas with GADTs you need to modify and pass
+ the relation around.
+
+ 5. More practically, you might already have some type level relations/functions
+ in your codebase and you might want to stay consistent with semantically
+ related relations. Beyond consistency, this might allow you to reuse some
+ lemmas via duality or generalisation.
+
+My choices in this post embody the first three principles. Also, I wanted to
+show one of each.
+
+#### Getting back to the merge
+
+We can now understand why the base case type checked at all.
+
+```haskell
+merge' :: AlmostSomeSaferHeap a -> AlmostSomeSaferHeap b
+       -> AlmostSomeSaferHeap (Max a b)
+merge' (ASSH Leaf'') heap = heap
+merge' heap (ASSH Leaf'') = heap
+```
+
+In the first base case, we have `Max 0 b` which is `b` by definition and `b` is
+exactly the value of `heap`. It works similarly for the other base case.
+
+In the previous version, we needed the term-level `(<=)` to see which label to
+keep on top and which spine to recurse on. We have already seen while verifying
+the leftist property that `lemConnexity` is the replacement we need for
+comparing `SNat`s. By following the unverified implementation, we can provide a
+partial implementation that doesn't type check.
+
+```haskell
+merge' (ASSH hA@(Node'' vA@(Label sA) _ aLeft aRight _ lLEQa rLEQa))
+       (ASSH hB@(Node'' vB@(Label sB) _ bLeft bRight _ lLEQb rLEQb)) =
+  case lemConnexity sA sB of
+    Left  aLEQb ->
+      let child1 = ASSH bLeft
+          c1LEQp = _
+          child2 = merge' (ASSH bRight) (ASSH hA)
+          c2LEQp = _
+      in mkNode vB child1 child2 c1LEQp c2LEQp
+    Right bLEQa ->
+      let child1 = ASSH aLeft
+          c1LEQp = _
+          child2 = merge' (ASSH aRight) (ASSH hB)
+          c2LEQp = _
+      in mkNode vA child1 child2 c1LEQp c2LEQp
+```
+
+Let's focus on the `Left` branch first. The type checker at this point complains
+about the holes, but more importantly it complains about the terms involving
+applications of `mkNode` even with the assumption that `c1LEQp` and `c2LEQp`
+have appropriate types. The exact complaint is "`Could not deduce: Max a b ~
+b`". Here `~` means types are equal.
+
+But of course! We have `aLEQb` of type `a <= b`, but the type checker is too
+stupid to know that this implies `Max a b` is just `b`. So we need to prove
+this. That brings us to _propositional equality_.
+
+#### Propositional equality
+
+The following is arguably the data type that took me longest to get my head
+around. So if you have trouble with it, just keep using it until it clicks.
+
+```haskell
+data (:~:) :: k -> k -> Type where -- Same as that in Data.Type.Equality
+  Refl :: a :~: a
+```
+
+This `(:~:)` takes two types of the same kind and is poly-kinded. When you think
+about it, it has to be. If it was restricted to `Type` or `Nat` that would make
+it a type equality suitable only for proving two `Type`s equal or two `Nat`s
+equal. This version makes no assumptions.
+
+This type allows us to prove two types in Haskell are equal and can be replace
+with one another. The idea is if you have a term with type `a :~: b` and you
+pattern match on it, the only case is the `Refl` constructor.  Just like
+previous pattern matches on GADTs, this refines the type in context. In this
+case, it reveals that `a` and `b` are one and the same, that is the type checker
+learns `a ~ b`.
+
+We need `Max n m ~ m` given `n <= m`. So we are trying to show `Max n m :~: m`.
+We can do this by induction on `n <= m`.
+
+```haskell
+lemMaxOfLEQ :: n <= m -> Max n m :~: m
+lemMaxOfLEQ Base = Refl
+```
+
+In the base case, we pattern match on `Base` which reveals both `n` and `m` to
+be 'Z. So we need to show `'Z :~: 'Z`. Since `Refl` has type `a :~: a`, we can
+trivially instantiate `a` to `'Z` to get the desired equality.
+
+Then comes the first inductive case with `Double` constructor.
+
+```haskell
+lemMaxOfLEQ (Double xLEQy) | Refl  <- lemMaxOfLEQ xLEQy = Refl
+```
+
+Here, `xLEQy` has type `n <= m` and we need to show `Max ('S n) ('S m) :~: 'S
+m`.  By definition of `Max`, the type checker already reduces the goal to `'S
+(Max n m) :~: 'S m`. Since, `xLEQy` is smaller than the original argument, we
+can recursively call `lemMaxOfLEQ` to get a term of type `Max n m :~: m`.
+Pattern matching on that tells the compiler `Max n m ~ m`, so the overall goal
+reduces to `m ~ m`. Once again `Refl` constructor trivially proves this. The
+process as you can see is fairly mechanical.
+
+The final inductive case is only a tiny bit more complicated, but still
+managable.
+
+```haskell
+lemMaxOfLEQ (Single xLEQy) =
+  case fst $ recover xLEQy of
+    SZ                                           -> Refl
+    SS _ | Refl <- lemMaxOfLEQ (lemDecLEQ xLEQy) -> Refl
+```
+
+The term `xLEQy` has type `n <= m` and we need to prove `Max n ('S m) :~: 'S m`.
+Since we don't know if `n` is built with `'S` constructor (it could be `'Z`), we
+don't get an automatic reduction of our goal like last time. We still have
+`xLEQy`, so we could apply `lemMaxOfLEQ` recursively. That would get us `Max n m
+:~: m`, but pattern matching on that doesn't get us to `Max n ('S m) :~: 'S m`.
+
+The mechanical process got stuck. It's time to take a step back and think.
+Taking inspiration from the previous case, if we knew that `n` was of the form
+`'S k`, our goal would reduce to `'S (Max k m) :~: 'S m`. Then we could show
+`Mak k m :~: m` and that would reduce the overall goal to a trivial proof
+obligation. To obtain `Max k m :~: m`, we need a recursive call to `lemMaxOfLEQ`
+with `k <= m`, but we only have `'S k <= m`. Our grade school maths intuition
+tells us $k + 1 \leq m \implies k \leq m$. So all we need is a lemma. In our
+implementation that is `lemDecLEQ` of type `'S n <= m -> n <= m`.
+
+But we forgot something! This all hinges on `n` being of the form `'S k`, what
+if it isn't?  Well, the only other thing it could be is `'Z`, but then `Max 'Z m
+:~: m` trivially reduces to `m :~: m`, so we are good.
+
+Alright, we can prove our final lemma. I'm only showing this one because it will
+allow me to complain about Haskell.
+
+```haskell
+lemDecLEQ :: 'S n <= m -> n <= m
+lemDecLEQ snLEQm = uncurry go (recover snLEQm) snLEQm
+  where
+  go :: SNat ('S n) -> SNat m -> 'S n <= m -> n <= m
+  go _            SZ     _            = error "Impossible case."
+  go _            (SS _) (Single leq) = Single (lemDecLEQ leq)
+  go (SS SZ)      y      (Double _)   = lemZLEQAll y
+  go (SS (SS _))  (SS _) (Double leq) = Double (lemDecLEQ leq)
+```
+
+There is nothing particularly difficult about this lemma apart from doing
+induction on (<=) and its constituents together. It is not particularly
+difficult given all we have seen so far. But it does contain some lessons.
+
+Haskell doesn't have a termination checker. This is a feature, but it sure feels
+like walking barefoot after you break a glass when you are trying to prove
+things. You could accidentally create an infinite loop that type checks but
+does not constitute a valid proof. This lemma's proof is particularly
+vulnerable because we are pattern matching on three different variables which
+makes it easy to construct an infinite loop.
+
+We remedy this in `lemDecLEQ` by making the recursive calls in the body of `go`
+to `lemDecLEQ` rather than `go` itself. This is less efficient but it makes it
+easy to see that each recursive call is to something strictly smaller than what
+we started with.
+
+The other interested bit is the base case of `go`.
+
+```haskell
+go :: SNat ('S n) -> SNat m -> 'S n <= m -> n <= m
+go _ SZ _ = error "Inaccessible case."
+```
+
+The reason we use `error` is not because there is an error but because of a
+syntactic deficiency of `Haskell`. If the second argument is `SZ`, then there
+are no constructors of `(<=)` that can make `'S n <= m` which we have a proof
+for, namely the third argument. We can see this easily by pattern matching on
+  the third argument.
+
+```haskell
+go :: SNat ('S n) -> SNat m -> 'S n <= m -> n <= m
+go _ SZ Base     = undefined
+go _ SZ Single{} = undefined
+go _ SZ Double{} = undefined
+```
+
+If you compile this, GHC will give you pattern match inaccessible warnings
+combined with type errors about why these arguments can't coexist together. It
+can't be a problem with our output because undefined can take any desired type.
+
+In languages like Agda and Idris, you'd make this an inaccessible case. For
+example, in `Idris` it looks like the following.
+
+```haskell
+go _ SZ _ impossible
+```
+
+Then the compiler can confirm or deny that is the case. Since we don't have this
+snytax in Haskell (there was a
+[proposal](https://gitlab.haskell.org/ghc/ghc/issues/10756#comment:4)). What if
+we omit this case altogether? The problem with that is because in an omitted
+case we don't pattern match on the second argument, GHC doesn't know that the
+pattern is inaccessible, hence it reports a non-exhaustive pattern match
+warning.
+
+This is very dangerous if you are theorem proving because you might prove a
+lemma, then tweak it slightly and not realise that the inaccessible case is now
+perfectly accessible. Because we have `error "Inaccessible case"` in the body of
+that case, it type checks just fine making the proof incomplete at best, wrong
+at worst (if there was no way of handling that particular case). We get no
+warnings about it either.
+
+How about the rest of the process, is explaining facts to the type checker also
+Haskell's fault? Yes and no.
+
+Fundamentally, it's the grand challange of interactive theorem proving to elide
+tedious details, so we can work on the big insights. We are not there yet. There
+is a lot of [ongoing
+research](https://www.cl.cam.ac.uk/~lp15/Grants/Alexandria/) especially focusing
+on combining machine learning techniques with proof search to automatically find
+little facts that would make the process more smooth. However, you need to
+recognise that this is a very general program synthesis problem which is
+undecidable in general and very difficult even in particular cases.
+
+That said, Haskell lacks the most basic facilities to this end. For example,
+basic proof search in Agda and Idris would allow you to automatically fill in
+the proof of basic propositions and even accepts hints (lemma names to use) to
+do some rudimentary search. It allows you to leave some terms implicit and tries
+to fill in the details on its own. The closes Haskell has is valid type holes,
+which are suggestions to fill typed holes in the error messages. The ability
+to interact with the compiler by pattern matching and typed hole refinements
+is also mostly missing (with the exception of `ghc-mod` without reliable
+editor support).
+
+#### Getting back to the merge again
+
+Focusing on the `Left` branch only, we make it known to the compiler that `a
+<= b` implies `Max a b ~ b` using `lemMaxOfLEQ` that we have just proved.
+
+```haskell
+merge' (ASSH hA@(Node'' vA@(Label sA) _ aLeft aRight _ lLEQa rLEQa))
+       (ASSH hB@(Node'' vB@(Label sB) _ bLeft bRight _ lLEQb rLEQb)) =
+  case lemConnexity sA sB of
+    Left  aLEQb | Refl <- lemMaxOfLEQ aLEQb ->
+      let child1 = ASSH bLeft
+          c1LEQp = _
+          child2 = merge' (ASSH bRight) (ASSH hA)
+          c2LEQp = _
+      in mkNode vB child1 child2 c1LEQp c2LEQp
+```
+
+This definition still doesn't type check because we have holes, but we no longer
+have a type error because of `mkNode` function application.
+
+At this point, what we want to do is to inspect the error messages for the typed
+holes to see what the types the terms we need to construct have. Well, according
+to GHC they both need type `t` (distinct rigid `t`s). Incredibly unhelpful.
+Honestly, I don't know what's going on there. However, if you inline the `let`
+binding, we get better results.
+
+```haskell
+mkNode vB (ASSH bLeft) (merge' (ASSH bRight) (ASSH hA)) _ _
+```
+
+The first hole needs a type `l <= b` and that's exactly the type of `lLEQb`. The
+second hole needs `Max r a <= b`, we do not yet have a term corresponding to
+this type, but we have `rLEQb :: r <= b` and `aLEQb :: a <= b`. `Max` is a
+selective function, and it doesn't matter which choice it makes, we got it
+covered. We just need a lemma to prove that. The types for the required lemma
+and the selectivity lemma needed to prove that are as follows.
+
+```haskell
+lemDoubleLEQMax :: n <= l -> m <= l -> Max n m <= l
+lemMaxSelective :: SNat n -> SNat m -> Either (Max n m :~: n) (Max n m :~: m)
+```
+
+I won't prove these. I think you are in a great position to do it yourself at
+this point. If you get stuck, the proofs are at the end of the post.
+
+We can now give the full definition of the `Left` branch.
+
+```haskell
+Left  aLEQb | Refl <- lemMaxOfLEQ aLEQb ->
+  let child1 = ASSH bLeft
+      c1LEQp = lLEQb
+      child2 = merge' (ASSH bRight) (ASSH hA)
+      c2LEQp = lemDoubleLEQMax rLEQb aLEQb
+  in mkNode vB child1 child2 c1LEQp c2LEQp
+```
+
+The right branch is analogous to the left one, so you should be able to fill it
+yourself. There is going to be a technicality requiring a simple lemma that is
+not required in the `Left` branch because of the ways we set things up. If you
+write the `Right` as we did `Left`, the type error should give you a clue what
+lemma is needed. If you can't figure it out that too is at the end of the post.
+
+#### Other operations?
+
+We are done! No more verification. We could implement the other methods but just
+as in the previous implementation, there is nothing interesting there.
+
 # Simulating heap operations
 
+So after going through all this trouble to prove properties of our code, why
+bother testing? The answer is multifaceted.
+
+ 1. We didn't verify everything. Earlier we gave the example that we could
+ satisfy type of the `singleton` function by discarding its argument and placing
+ empty. Another common theme is to discard a subpart of the data structure and
+ accidentally use the other part twice. In the case of heap property, if one
+ subtree satisfies the heap property, we could use it in the other branch as
+ well and the proof would go throug even though we discarded elements. If we had
+ linear types, we could have guarded ourselves against this.
+
+ 2. Haskell's proof system is unsound due to non-termination, `Type : Type`, and
+ other reasons. We might have a fallacious proof somewhere that makes it look
+ like a property is verified to the type checker while being incorrect.
+
+ 3. It gives me a chance to talk about another type-level computation feature:
+ visible type applications.
+
+ 4. I really want to use QuickCheck to run simulations on the heap. It's super
+ neat. I won't lie, this might be the reason why this section exists.
+
+## Generating actions
+
+We're only going to simulate insertion and deleting the min. Here's the initial
+encoding of the actions.
+
+```haskell
+data Action a = Insert a | DeleteMax deriving Show
+```
+
+Let's give `Arbitrary` instances for `Nat` and `Action`, so that we can randomly
+generate them.
+
+```haskell
+instance Arbitrary Nat where
+  arbitrary = fromInt . getPositive <$> arbitrary @(Positive Int)
+    where
+    fromInt 0 = Z
+    fromInt n = S (fromInt (n - 1))
+
+instance Arbitrary a => Arbitrary (Action a) where
+  arbitrary = do
+    n <- arbitrary @Int
+    if n `mod` 2 == 0
+      then Insert <$> arbitrary
+      else pure DeleteMax
+```
+
+Somewhat arbitrarily we choose between a deletion and an insertion with $50%$
+probability. This may or may not be a realistic simulation, but it is something
+easy to adjust. You could have multiple wrappers over `Action a` such as
+`DeleteHeavy a` and `InsertionHeavy a` so that you can simulate different
+scenarios, but we don't bother with it today.
+
+There is one type-level computation related feature in these instances that we
+haven't discussed yet. That is the `TypeApplications` extension.
+
+### There is $\Lambda$ then there is $\lambda$
+
+If someone asks for the explicitly typed lambda term for the polymorphic
+identity function (as they do), we'd probably write $\lambda x : \alpha. x$,
+where $\alpha$ is a polymorphic type variable. We'd expect this function to be a
+closed term that is to say it should be independent of the context. That term
+looks like it is independent of the term-level variables, but $\alpha$ looks
+like it is very much depends on whatever $\alpha$ is in the context. That is
+because there is nothing binding $\alpha$.
+
+Luckily, in Haskell this is not true although we write the equivalent of the
+term above syntactically (or even less thanks to type inference), what Haskell
+interprets that as is $\Lambda \alpha : \mathit{Type}. \lambda x : \alpha. x$.
+The syntax for this in Haskell is the following. Although you can't write a term
+like this in Haskell, you can explicitly put $\alpha$ in the type signature with
+`ExplicitForAll` extension.
+
+```haskell
+id :: forall a. a -> a
+id x = x
+```
+
+The `forall a` corresponds to $\Lambda \alpha$, where the kind `Type` is
+inferred.
+
+If we have type level functions with explicit type variables, then why do we
+never see type level applications? Well, it happens all the time, it is just
+behind the scenes. When you apply `id` to 42, the first thing that happens is
+that `Int` gets passed to the the type-level function. GHC relatively recently
+intorduced `TypeApplications`, which gives a syntax to do this explicitly. You
+just pass the type with a `@` prefix. For example in `ghci`, we can query `:t
+id @Int` and we get `Int -> Int`.
+
+This works as an alternative to using `::` when the type is ambiguous. Often it
+lets us get away with fewer parantheses and looks cleaner in general.
+
+What happens if there are multiple type variables? Well, the type application
+unifies the type with the first type-variable which is how term-level
+application works as well.
+
+The problem is if we don't use `ExplicitForAll` the ordering of type variables
+is determined implcitly. You can use `:type +v` to query the order of type
+variables used by GHC. I suggest you explicitly put `forall`s when it matters if
+you're going to use type applications.
+
+The type applications in the arbitrary instances are somewhat trivial uses of
+it. We'll see something more exciting momentarily.
+
+## Executing actions
+
+We can now interpret the initial representation of the actions. Nothing exciting
+here.
+
+```haskell
+execAction :: Heap heap => Action (Elem heap) -> heap -> Maybe heap
+execAction (Insert x) = Just . (x `insert`)
+execAction DeleteMax  = deleteMax
+
+carryOutActions :: Heap heap => [ Action (Elem heap) ] -> Maybe heap
+carryOutActions = foldlM (flip execAction) empty
+```
+
+## QuickChecking functional equivalence
+
+It's time to use QuickCheck. The desired property: given two data types
+implementing `Heap` and a series of actions, executing these actions on both in
+order starting from each implementation's `empty` heaps should result in the
+same maximum.
+
+```haskell
+sameMaxAfterActions :: forall heap heap'
+                     . Heap heap => Heap heap'
+                    => Elem heap ~ Elem heap'
+                    => Eq (Elem heap)
+                    => [ Action (Elem heap) ] -> Bool
+sameMaxAfterActions acts =
+  maxOfActions @heap acts == maxOfActions @heap' acts
+  where
+  maxOfActions :: forall h . Heap h
+               => [ Action (Elem h) ] -> Maybe (Maybe (Elem h))
+  maxOfActions = fmap findMax . carryOutActions @h
+```
+
+The actual computation is not very interesting, but the way we direct it is.
+First, we use an explicit `forall`, you might think this is to fix the ordering
+of heap implementations, but in this function it doesn't matter which order they
+are in since both `heap` and `heap'` are passed to the same function. The reason
+we enable it is so that we can use `ScopedTypeVariables` extension which allows
+us to refer to the type variables in the signature within the body of the
+function.
+
+The type applications `@heap` and `@heap'` determine the computation.  This is
+not just disambiguation. If both `maxOfActions` were applied to `heap` instead,
+we'd create a property that is trivially satisfied since we apply the actions to
+the same implementation and not do anything with `heap'`.
+
+Then we use a type application again in the body of `maxOfActions`. Without it,
+the list of actions would only give `Elem h` which in our case will be `Nat` or
+`Int`, but this says nothing about which implementation of `heap` to do (another
+way of phrasing this is the `Elem` type family is not injective, so we can't go
+back from `Elem h` to `h`). Hence, we use a type application again to clarify
+which implementation `carryOutActions` should use.
+
+All there remains is to actually check the property between different
+implementations.
+
+```haskell
+main :: IO ()
+main = do
+  quickCheck (sameMaxAfterActions @(LeftistHeap Int)  @[ Int ])
+  quickCheck (sameMaxAfterActions @(SomeSafeHeap Int) @[ Int ])
+  quickCheck (sameMaxAfterActions @SomeSaferHeap      @[ Nat ])
+
+  putStrLn ""
+  sampleActions <- sample' (arbitrary @(Action Int))
+  print sampleActions
+  print $ carryOutActions @[ Int ] sampleActions
+```
+
+Remember that the list based heap implementation was our reference
+implementation. Using type applications, we test functional equivalence between
+the reference implementation and the untyped leftist heaped, leftist property
+verified leftist heap, and the leftist and heap property verified leftist heap
+in that order.
+
+Then I just sample some actions and see the result of carrying them out on the
+terminal because I'm paranoid like that (the `Arbitrary` instance could also be
+buggy =)).
+
+At this point, we can be reasonable sure that these implementations are correct
+(at least for insertion and deletion and probably for merge).
+
 # Conclusion
+
+After such a long post, I'll keep the conclusion short and sweet. Here's what we
+did in a gist:
+
+ - learnt about leftist heaps a purely functional replacement to array-based
+   binary heaps;
+ - looked at all major parts of Haskell's type-level computation features;
+ - ran simulations to test functional equivalence of various implementations;
+ - gave a commentary of Haskell as an interactive theorem prover.
+
+What is the overall verdict on that last point? It's not ideal at all, but it
+works at least for simple data structures and properties. If we had used the
+`singletons` library and type checker plugins, we could have gone farther and
+get there quicker. I think the point that is overlooked in these discussions is
+that GHC provides the means for doing verification natively and also produces
+highly optimised code and has a huge ecosystem. Neither Agda nor Idris nor ATS
+can claim this. I for one am looking forward to Haskell's journey in this
+direction.
 
 ## Acknowledgements
 
@@ -996,11 +1834,11 @@ families](https://dl.acm.org/citation.cfm?id=2535856),
 [singletons](https://dl.acm.org/citation.cfm?id=2364522)), [Dr James
 Cheney](https://homepages.inf.ed.ac.uk/jcheney/), [Prof. Ralf
 Hinze](https://www.cs.ox.ac.uk/ralf.hinze/), [Dr Hongwei
-Xi](https://www.cs.bu.edu/~hwxi/)
-([GADTs 1](https://ecommons.cornell.edu/handle/1813/5614) and
-[GADTs 2](https://dl.acm.org/citation.cfm?id=604150)), and many GHC implementors.
-It also wouldn't have been as slick if it wasn't for the wonderful presentations
-by Prof. Weirich on [verifying red-black
+Xi](https://www.cs.bu.edu/~hwxi/) ([GADTs
+1](https://ecommons.cornell.edu/handle/1813/5614) and [GADTs
+2](https://dl.acm.org/citation.cfm?id=604150)), and many GHC implementors.  It
+also wouldn't have been as slick if it wasn't for the wonderful presentations by
+Prof. Weirich on [verifying red-black
 trees](https://www.youtube.com/watch?v=n-b1PYbRUOY)
 ([alternative](https://www.youtube.com/watch?v=rhWMhTjQzsU)).
 
