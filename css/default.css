@@ -1,9 +1,13 @@
 body {
-    font-family: 'Noto Serif', serif;
+    font-family: 'Noto Sans', sans-serif;
     color: black;
-    font-size: 18px;
+    font-size: 1em;
     margin: 0;
     width: 100%;
+}
+
+code {
+    font-family: 'Monaco';
 }
 
 div#content {
