@@ -1,10 +1,10 @@
 ---
-title: Verifying the Leftist and Heap Properties of a Leftist Heap
+title: Verifying Leftist and Heap Properties of a Leftist Heap
 postType: Technical
 inWhich: my job search leads me to verify the titular properties of a leftist
-  heap using Haskell's type-level features and test it by way of simulation
-  using QuickCheck. This post doesn't assume experience of type-level
-  programming.
+  heap using Haskell's type-level features and to test it by way of simulation
+  using QuickCheck. We also cover much of Haskell's type-level computation
+  features from scratch.
 published: false
 ---
 
@@ -16,71 +16,90 @@ Interview](https://amzn.to/2Q74ckU) (affiliate link), and realise that you
 haven't done much of the kind of programming that about half of the companies
 expect you to do at their job interviews (and at their job interviews only).
 
-Some point in the book it says "know how to implement these data structures by
-heart: dynamically sized arrays, hash tables, [...], **heaps**, [...]".  It
-downed on me that I remember the heap property and its interface, but not how to
-implement it. Then I looked at Wikipedia and was horrified to be reminded that
-despite conceptually being a tree, heaps are predominantly implemented using
-arrays. At that point that despite having used Haskell as my primary language,
-decided to implement it in Ruby---my prior primary language. After some time and
-indexing errors later, I got it working and having looked at it decided I can
-port this easily to Haskell using the [`ST`
+At some point in the book, it says "know how to implement these data structures
+by heart: dynamically sized arrays, hash tables, [...], **binary heaps**,
+[...]". It downed on me that I remember the heap property and heap interface,
+but not how to implement it. I was horrified when I remembered despite
+conceptually being a tree, binary heaps are implemented using arrays. Despite
+having used Haskell as my primary language, decided to implement it in Ruby---my
+prior primary language. After some time and indexing errors later, I got it
+working. Then ported it to Haskell's using the [`ST`
 monad](http://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html).
 After writing `STRef` one too many times, I got that working too, but it left
 much to be desired. "Save the trees" yelled my terminal!
 
-Then I consulted Dr Chris Okasaki's [Purely Functional Data
+Finally, I consulted Dr Chris Okasaki's [Purely Functional Data
 Structures](https://amzn.to/34ICTAM) (affiliate link). A leftist heap is one of
-the first data structures discussed in the book. It has better asymptotic
-complexity than the binary heap implementation, but is represented as a tree and
-doesn't make use of mutation. Great. Having implemented that I was pleased to
-have a heap under my belt that was much easier to remember and much more
-difficult to get its implementation wrong.
+the first data structures discussed in the book. It has better worst-case
+asymptotic complexity than the binary heap, is represented as
+a tree, and doesn't need mutation. Great! I was pleased to have a heap under my
+belt that was much easier to remember and much more difficult to get its
+implementation wrong.
 
-Staring at it for a while (and being bored while trying to find various kind of
-substrings in linear time and constant space), I got the burning desire to
-encode the titular properties of a leftist heap using fancy types. Having
-listened to hundreds of people (justifiably) complain about the state of
-type-level programming in Haskell, I found the process to be pleasant enough
-that I wanted to share it.
+Staring at it for a while (and being bored while trying to find various
+substrings with various properties in linear time and constant space under an
+hour over the phone), I got a burning desire to encode the titular properties
+of a leftist heap using fancy types. Having listened to hundreds of people
+complain about the state of type-level programming in Haskell, I found the
+process to be rough around the edges, but functional (see what I did there) that
+I wanted to share it.
 
 ## The spiel
 
-This brings us to the post at hand. The primary goal of this post is _not_ to
-further my procrastination in your expense, but to show that verifying real
-properties of data structures using dependent types in Haskell is not a
-pipedream. Through the example of leftist heaps, we discuss verification in
-Haskell in general. Point out its rough edges but also give some practical
-advice to avoid pitfalls.
+This brings us to the post at hand. This post is a bit long, but the upside is
+there is something for everybody. Hopefully, some of the following piques your
+interest:
 
-Since leftist heaps are not as common as binary heaps, I'll explain how they
-work and how to derive the asymptotic complexities of its operations. So even if
-you are not sold on the whole verification via fancy types in Haskell, you can
-walk away from this post with a truly beautiful data structure.
+ - leftist heaps as a purely functional alternative to array-based binary heaps,
+ - complexity analysis of operations on leftist heaps,
+ - a case study on the internalist approach to verifying data structures,
+ - a tutorial on most major features of type-level programming in Haskell,
+ - a commentary on the ergonomics of verification using fancy types in Haskell,
+ - and practical advice on avoiding pitfalls when using fancy types.
 
 Beginners beware! Type-level programming can be daunting. It certainly was for
-me for a long time. I'll do my best to explain type-level computations from
-scratch. If you find yourself getting confused, it's almost certainly my fault
-and if you let me know, I'll update the post and do better.
+me for a long time. I'll attempt to explain fancy types from scratch. If you
+find yourself getting confused, it's almost certainly my fault. Just let me know
+(contact details on my [homepage](/)) and I'll clarify the post.
 
 ## The itinerary
 
-We start by looking at the heap interface and give a very simple and inefficient
-implementation of it. Then we'll implement a leftist heap without fancy types
-and explore how it works and why it's operations are asymptotically as efficient
-as the array-based implementation. From there on, we step into the typed
-territory. We first do a quick tour of terms, types, and kinds in Haskell. Then
-instead of verifying the leftist and heap properties all at once, we first
-implement a leftist heap with only the leftist property verified and then
-another one with both the leftist and the heap properties verified. Along the
-way we do some theory building for natural numbers from scratch. Finally, we run
-simulations on various heap implementations using QuickCheck to have some
-confidence that the the various implementations in this post are functionally
-equivalent.
+Here are the sections and what to expect from them.
 
-The exposition of the code won't be well-organised due to pedagogical reasons,
-but I provide the full source at [the very end of the post](#full-program).
-We'll use no libraries apart from
+ - [A simple heap](#a-simple-heap) covers the generic heap interface through a
+   typeclass and a trivial instance for it. Type-level features: associated type
+   families;
+ - [A leftist heap](#a-leftist-heap) describes a datatype for leftist heaps
+   without using fancy types and discusses the asymptotic complexities of its
+   operations;
+ - [Terms, types, and kinds](#terms-types-and-kinds) covers the basic entities
+   in modern Haskell and how they relate to each other. Type-level features:
+   datatype promotion and kind polymorphism;
+ - [Verifying the leftist property](#verifying-the-leftist-property) explains
+   the datatype encoding the leftist property and the implementation of its
+   property preserving operations. Type-level features: generalised algebraic
+   data types, singletons, kind signatures through the example of [natural
+   numbers](#natural-numbers), and existential types through [the heap instance
+   for our datatype](#heap-instance-for-safeheap). We also introduce [theorem
+     proving](#comparing-without-forgetting) in Haskell.
+ - [Verifying the heap property](#verifying-the-heap-property) encodes both the
+   leftist and the heap properties into a datatype. Most of this section is on
+   the property preserving merge. Type-level features: [closed type
+   families](#type-families) and [propositional equality](#propositional
+   equality). Additionally, it extends on theorem proving and use of existential
+   types.
+ - [Simulating heap operations](#simulating-heap-operations) tests the
+   functional equivalence of the heap implementations in this post. We use
+   QuickCheck to simulate evaluation of _arbitrary_ sequence of insertions and
+   deletions. Type-level features: [visible type-applications, explicit
+   foralls](#there-is-lambda-then-there-is-lambda), and [scoped type
+   variables](#quickchecking-functional-equivalence).
+ - [Conclusion](#conclusion) acknowledges people who made this post possible and
+   reminds some take aways.
+
+The exposition of the code is fragmented and out of order, but I provide the
+well-organised source code at [the very end of the post](#full-program). We
+won't use any libraries except
 [QuickCheck](http://hackage.haskell.org/package/QuickCheck-2.13.2).
 
 # A simple heap
