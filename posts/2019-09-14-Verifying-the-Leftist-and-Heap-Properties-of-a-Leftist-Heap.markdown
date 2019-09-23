@@ -169,27 +169,28 @@ class Heap heap where
   deleteMax = fmap snd <$> decompose
 ```
 
-This typeclass is a bit mouthful because many operations are inter-definable as
-reflected in the `MINIMAL` pragma.
+This is a bit mouthful because many operations are interdefinable as reflected
+by the `MINIMAL` pragma.
 
-The `Elem` type-family (enabled by `TypeFamilies`) associated with the class
-gives the type of the element of that heap. It is nothing but a function from
-types of containers to types of their elements. We could have equally used
-`MultiParamTypeClasses` and `FunctionalDependencies` extensions to establish the
-same container-element relationship. Because I will be using type families in a
-moment for different reasons anyway and because I find that `Elem heap` has less
-cognitive overhead than remembering functional dependencies between type
-variables, I opted for a type-family here.
+The `Elem` _type family_ (enabled by `TypeFamilies` extension) associated with
+`Heap` gives the type of elements for a particular instance. This is nothing but
+a function from types of containers to types of their elements. We could have
+equally used `MultiParamTypeClasses` and `FunctionalDependencies` extensions to
+establish the same container-element relationship. I chose a type family here
+because we will use type families in a moment anyway and because I think `Elem
+heap` has less cognitive overhead than remembering functional dependencies
+between type variables.
 
-Although `insert`, `findMax` and `deleteMax` are probably the most used
-operations of the interface, `merge` is the one that we care about the most. The
-default implementations in the typeclass gives a hint why. The `isEmpty`
-predicate, `findMax`, `singleton`, and `empty` are all trivial to implement for
-all data structures we use as heaps today. Then with `merge`, we can implement
-`insert`, `fromList`, `decompose`, and `deleteMax`.
+Although `insert`, `findMax` and `deleteMax` are the most commonly used
+operations of `Heap`, `merge` is the one that we care the most about. For all
+data structures we'll use as heaps today, implementing `isEmpty`, `findMax`,
+`singleton`, and `empty` are trivial.  Then with `merge`, we can implement
+`insert`, `fromList`, `decompose`, and `deleteMax`. As we see in the next
+section, implementing `merge` and deriving the rest is not only optimal in terms
+of productivity but also in terms of performance for leftist heaps.
 
 Before implementing this interface for a leftist heap, let's look at a much
-simpler implementation of a heap using lists.
+simpler instance.
 
 ```haskell
 instance Ord a => Heap [ a ] where
@@ -212,18 +213,17 @@ instance Ord a => Heap [ a ] where
     (left, right) = span (/= heapMax) xs
 ```
 
-This is possibly one of the easiest heap implementations. Insertion is $O(1)$,
-merging is $O(n)$, conversion from a list is $O(1)$, decomposing (and
-subsequently finding and deleting the maximum) is $O(n)$. If it wasn't for that
-last linear time complexity, it would have been a perfectly fine heap
-implementation, alas here we are.
+This may be the easiest heap implementation. Insertion is $O(1)$, merging is
+$O(n)$, conversion from a list is $O(1)$, and decomposing (and subsequently
+finding and deleting the maximum) is $O(n)$. If it wasn't for that last $O(n)$,
+this would have been a perfectly fine heap implementation, alas here we are.
 
-This implementation is _obviously_ correct. As such any other correct heap
-implementation should be _functionally equivalent_ to it. That is to say if we
-perform the same heap operations on two implementations holding the same set of
-elements, the maximum of both heaps should be the same. Then this obviously
-correct heap implementation is useful for [testing other heap implementations by
-way of simulation](#simulating-heap-operations).
+This implementation is obviously correct, thus any other correct heap
+implementation should be _functionally equivalent_ to it. This means performing
+the same operations on two empty heaps of different implementations should
+result in two heaps with the same maximum. Hence, this simple heap
+implementation is perfect for [testing other implementations'
+correctness](#simulating-heap-operations).
 
 # A leftist heap
 
