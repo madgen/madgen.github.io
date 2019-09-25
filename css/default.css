@@ -10,6 +10,40 @@ code {
     font-family: 'Monaco';
 }
 
+blockquote{
+  font-size: 1em;
+  margin:10px 0 0 0;
+  font-style:italic;
+  color: #555555;
+  padding:0.2em 30px 0.2em 50px;
+  border-left:8px solid gray ;
+  line-height:1;
+  position: relative;
+  background:whitesmoke;
+}
+
+blockquote::before{
+  font-family:Arial;
+  content: "\201C";
+  color:black;
+  font-size:3em;
+  position: absolute;
+  left: 10px;
+  top:0.1em;
+}
+
+blockquote::after{
+  content: '';
+}
+
+blockquote span{
+  display:block;
+  color:#333333;
+  font-style: normal;
+  font-weight: bold;
+  margin-top:1em;
+}
+
 div#content {
     position: relative;
     max-width: 800px;
