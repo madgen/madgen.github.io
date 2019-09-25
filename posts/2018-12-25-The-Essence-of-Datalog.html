@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-41394820-3');
+        </script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="description" content="Mistral Contrastin's thought bubble,
+          blog, and personal revelations." />
+        <meta name="author" content="Mistral Contrastin" />
+        <title>Do disturb me | The Essence of Datalog</title>
+        <link href="https://fonts.googleapis.com/css?family=Noto+Serif" rel="stylesheet">
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+        <link rel="alternate" type="application/atom+xml" href="../atom.xml" />
+
+        <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
+    </head>
+    <body>
+        <div id="header">
+            <div class="top-container">
+              <div id="logo">
+                  <a href="../">Do Disturb Me</a>
+              </div>
+              <div id="navigation">
+                  <a href="../archive.html">Blog</a>
+                  <a href="../teaching.html">Teaching</a>
+              </div>
+            </div>
+            <div id="mandelbrot"></div>
+        </div>
+
+        <div id="content">
+            <div class="info">
+  Posted on December 25, 2018
+  
+  
+    and last updated on June 18, 2019
+  
+</div>
+
+<h1>The Essence of Datalog</h1>
+
+
+<p class="in-which">In which we implement a simple Datalog engine in not many lines of Haskell to understand its semantics.</p>
+
+
+<div class="post"><p>Datalog is arguably the simplest logic programming language there is. Depending on your background, you can see it as a principled SQL or a Prolog with manners. It has recently become popular among the scalable program analysis crowd. Semantically, it is simple and clean, so it doesn’t take many lines of Haskell to produce an (inefficient) implementation. I’ll follow Richard Feynman’s maxim: “What I cannot create, I do not understand.” Hopefully, this post should give you some feel for logic and relational programming and also demonstrate that λ-calculus is not the only language you can implement with ease in Haskell.</p>
+<p>We start by looking at a simple program and implement an evaluator for it. Along with the implementation, we give a lightweight discussion of semantic concerns, in particular about its termination. Later, we try quenching the thirst for efficiency a little by giving some avenues for optimisation and conclude with where to go next for those interested. There is a copy of the full implementation at the end of the post.</p>
+<p>I want this post to be accessible to everyone, not only to the programming language people. For that reason, all uses of theory terms are auxiliary. If you feel that’s not the case at any point, give me a shout on Twitter or email me (both available in <a href="https://dodisturb.me">my homepage</a>) and I’ll fix it.</p>
+<h2 id="acknowledgements">Acknowledgements</h2>
+<p>Thanks to Dominic Orchard for pointing out that he did not advise Andrew Rice. Also thanks to Daniel Kröni for realising <code>isRangeRestricted</code> is too restrictive and for providing a better implementation.</p>
+<h2 id="a-crash-course-in-logic-programming">A crash course in logic programming</h2>
+<p>The litmus test for any logic programming language is to be able to compute a variation of the following ancestry program.</p>
+<div class="sourceCode"><pre class="sourceCode prolog"><code class="sourceCode prolog">adviser(<span class="ot">&quot;</span><span class="er">Andrew</span><span class="al"> </span><span class="er">Rice</span><span class="ot">&quot;</span><span class="kw">,</span>     <span class="ot">&quot;</span><span class="er">Mistral</span><span class="al"> </span><span class="er">Contrastin</span><span class="ot">&quot;</span>)<span class="kw">.</span>
+adviser(<span class="ot">&quot;</span><span class="er">Andy</span><span class="al"> </span><span class="er">Hopper</span><span class="ot">&quot;</span><span class="kw">,</span>     <span class="ot">&quot;</span><span class="er">Andrew</span><span class="al"> </span><span class="er">Rice</span><span class="ot">&quot;</span>)<span class="kw">.</span>
+adviser(<span class="ot">&quot;</span><span class="er">Alan</span><span class="al"> </span><span class="er">Mycroft</span><span class="ot">&quot;</span><span class="kw">,</span>    <span class="ot">&quot;</span><span class="er">Dominic</span><span class="al"> </span><span class="er">Orchard</span><span class="ot">&quot;</span>)<span class="kw">.</span>
+adviser(<span class="ot">&quot;</span><span class="er">David</span><span class="al"> </span><span class="er">Wheeler</span><span class="ot">&quot;</span><span class="kw">,</span>   <span class="ot">&quot;</span><span class="er">Andy</span><span class="al"> </span><span class="er">Hopper</span><span class="ot">&quot;</span>)<span class="kw">.</span>
+adviser(<span class="ot">&quot;</span><span class="er">Rod</span><span class="al"> </span><span class="er">Burstall</span><span class="ot">&quot;</span><span class="kw">,</span>    <span class="ot">&quot;</span><span class="er">Alan</span><span class="al"> </span><span class="er">Mycroft</span><span class="ot">&quot;</span>)<span class="kw">.</span>
+adviser(<span class="ot">&quot;</span><span class="er">Robin</span><span class="al"> </span><span class="er">Milner</span><span class="ot">&quot;</span><span class="kw">,</span>    <span class="ot">&quot;</span><span class="er">Alan</span><span class="al"> </span><span class="er">Mycroft</span><span class="ot">&quot;</span>)<span class="kw">.</span>
+
+academicAncestor(<span class="dt">X</span><span class="kw">,</span><span class="dt">Y</span>) <span class="kw">:-</span> adviser(<span class="dt">X</span><span class="kw">,</span><span class="dt">Y</span>)<span class="kw">.</span>
+academicAncestor(<span class="dt">X</span><span class="kw">,</span><span class="dt">Z</span>) <span class="kw">:-</span> adviser(<span class="dt">X</span><span class="kw">,</span><span class="dt">Y</span>)<span class="kw">,</span> academicAncestor(<span class="dt">Y</span><span class="kw">,</span><span class="dt">Z</span>)<span class="kw">.</span></code></pre></div>
+<p>This program encodes some facts about my academic genealogy encoded in the <code>adviser</code> relation and has some basic rules that define what it means to be an <code>academicAncestor</code>. The facts effectively constitute a database table. Rules allow us to deduce new knowledge. The first rule says that an adviser is an ancestor. The second says the adviser of a known ancestor is also an ancestor. This ability to use recursion to specify relationships in data was one of the original selling points of Datalog.</p>
+<p>We want to query the data that is represented explicitly and implicitly. Here are some example queries:</p>
+<div class="sourceCode"><pre class="sourceCode prolog"><code class="sourceCode prolog"><span class="fu">?-</span> academicAncestor(<span class="ot">&quot;</span><span class="er">Robin</span><span class="al"> </span><span class="er">Milner</span><span class="ot">&quot;</span><span class="kw">,</span> <span class="dt">Intermediate</span>)<span class="kw">,</span>
+   academicAncestor(<span class="dt">Intermediate</span><span class="kw">,</span> <span class="ot">&quot;</span><span class="er">Mistral</span><span class="al"> </span><span class="er">Contrastin</span><span class="ot">&quot;</span>)<span class="kw">.</span>
+<span class="fu">?-</span> academicAncestor(<span class="ot">&quot;</span><span class="er">Alan</span><span class="al"> </span><span class="er">Turing</span><span class="ot">&quot;</span><span class="kw">,</span> <span class="ot">&quot;</span><span class="er">Mistral</span><span class="al"> </span><span class="er">Contrastin</span><span class="ot">&quot;</span>)<span class="kw">.</span>
+<span class="fu">?-</span> academicAncestor(<span class="ot">&quot;</span><span class="er">David</span><span class="al"> </span><span class="er">Wheeler</span><span class="ot">&quot;</span><span class="kw">,</span> <span class="ot">&quot;</span><span class="er">Mistral</span><span class="al"> </span><span class="er">Contrastin</span><span class="ot">&quot;</span>)<span class="kw">.</span></code></pre></div>
+<p>The first one says “is there an academic ancestorial connection between Robin Milner and I and if so who?”. The second one says “is Alan Turing my academic ancestor?” and the third one is the same question but for David Wheeler.</p>
+<p>Another appeal of Datalog can be seen in these queries. Datalog is mostly relations (hence the name relational programming). This means there are no inherent inputs and outputs. That’s why we can fill in or leave out either parameter of <code>academicAncestor</code>. You leave a variable in place of the knowledge you want to know and the system fills it for you. This also means you can write a program for a particular input and output relationship in mind and you get the opposite program for free.</p>
+<h2 id="evaluating-a-datalog">Evaluating a Datalog</h2>
+<p>Datalog is similar to λ-calculus in the sense that there are as many variants of both as there are sands in a beach.<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a> The variation we are going to implement today is the simplest one there is. The bits and pieces you see in the previous section are all you get.</p>
+<p>We’ll implement the engine the way we evaluate Datalog programs: <em>initially, one rule at a time, then all at once</em>. Since Datalog is deeply rooted in database theory, it is usually implemented as relational algebra concepts such as joins and selections. I have a programming language background, so I’ll use substitutions instead. This will be entirely equivalent, but also lead to simpler code.</p>
+<h3 id="representing-datalog">Representing Datalog</h3>
+<p>A rule consists of a head and a body. A head is an atom and so are the comma separated items in the body. An atom then consists of a predicate name like <code>adviser</code> and a list of terms. We have two kinds of terms: variables and symbols. This corresponds to few simple datatype declarations.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Rule</span> <span class="fu">=</span> <span class="dt">Rule</span> {<span class="ot"> _head ::</span> <span class="dt">Atom</span>,<span class="ot"> _body ::</span> [ <span class="dt">Atom</span> ] }
+<span class="kw">data</span> <span class="dt">Atom</span> <span class="fu">=</span> <span class="dt">Atom</span> {<span class="ot"> _predSym ::</span> <span class="dt">String</span>,<span class="ot"> _terms ::</span> [ <span class="dt">Term</span> ] } <span class="kw">deriving</span> <span class="dt">Eq</span>
+<span class="kw">data</span> <span class="dt">Term</span> <span class="fu">=</span> <span class="dt">Var</span> <span class="dt">String</span> <span class="fu">|</span> <span class="dt">Sym</span> <span class="dt">String</span> <span class="kw">deriving</span> <span class="dt">Eq</span></code></pre></div>
+<p>The following rule</p>
+<div class="sourceCode"><pre class="sourceCode prolog"><code class="sourceCode prolog">academicAncestor(<span class="dt">X</span><span class="kw">,</span><span class="dt">Z</span>) <span class="kw">:-</span> adviser(<span class="dt">X</span><span class="kw">,</span><span class="dt">Y</span>)<span class="kw">,</span> academicAncestor(<span class="dt">Y</span><span class="kw">,</span><span class="dt">Z</span>)<span class="kw">.</span></code></pre></div>
+<p>corresponds to</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;X&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Z&quot;</span> ])
+  [ <span class="dt">Atom</span> <span class="st">&quot;adviser&quot;</span>          [ <span class="dt">Var</span> <span class="st">&quot;X&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Y&quot;</span> ]
+  , <span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;Y&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Z&quot;</span> ] ]</code></pre></div>
+<p>Facts are just bodiless rules. For example,</p>
+<div class="sourceCode"><pre class="sourceCode prolog"><code class="sourceCode prolog">adviser(<span class="ot">&quot;</span><span class="er">Andrew</span><span class="al"> </span><span class="er">Rice</span><span class="ot">&quot;</span><span class="kw">,</span> <span class="ot">&quot;</span><span class="er">Mistral</span><span class="al"> </span><span class="er">Contrastin</span><span class="ot">&quot;</span>)<span class="kw">.</span></code></pre></div>
+<p>corresponds to</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;adviser&quot;</span> [ <span class="dt">Sym</span> <span class="st">&quot;Andrew Rice&quot;</span>, <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ]) []</code></pre></div>
+<p>You might be thinking but what about the queries, the <code>Rule</code> datatype doesn’t allow headless bodies. That’s true, but the dirty secret about queries is that they get rewritten as rules with the head atom generated from the query. The predicate symbol for each query is fresh and the terms of the head are just the variables in the body. For example,</p>
+<div class="sourceCode"><pre class="sourceCode prolog"><code class="sourceCode prolog"><span class="fu">?-</span> academicAncestor(<span class="ot">&quot;</span><span class="er">Robin</span><span class="al"> </span><span class="er">Milner</span><span class="ot">&quot;</span><span class="kw">,</span> <span class="dt">Intermediate</span>)<span class="kw">,</span>
+   academicAncestor(<span class="dt">Intermediate</span><span class="kw">,</span> <span class="ot">&quot;</span><span class="er">Mistral</span><span class="al"> </span><span class="er">Contrastin</span><span class="ot">&quot;</span>)<span class="kw">.</span></code></pre></div>
+<p>gets fresh head atom <code>query1(Intermediate)</code> and can be thought of as</p>
+<div class="sourceCode"><pre class="sourceCode prolog"><code class="sourceCode prolog">query1(<span class="dt">Intermediate</span>) <span class="kw">:-</span>
+  academicAncestor(<span class="ot">&quot;</span><span class="er">Robin</span><span class="al"> </span><span class="er">Milner</span><span class="ot">&quot;</span><span class="kw">,</span> <span class="dt">Intermediate</span>)<span class="kw">,</span>
+  academicAncestor(<span class="dt">Intermediate</span><span class="kw">,</span> <span class="ot">&quot;</span><span class="er">Mistral</span><span class="al"> </span><span class="er">Contrastin</span><span class="ot">&quot;</span>)<span class="kw">.</span></code></pre></div>
+<p>An entire Datalog program is nothing but a collection of rules.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Program</span> <span class="fu">=</span> [ <span class="dt">Rule</span> ]</code></pre></div>
+<p>We also need a way of representing the known facts about the universe. We can call this our <em>knowledge base</em>. For simplicity, we use a horribly inefficient list of atoms.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">KnowledgeBase</span> <span class="fu">=</span> [ <span class="dt">Atom</span> ]</code></pre></div>
+<p>Since we’ll use substitutions to evaluate atoms, we can define that here too.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Substitution</span> <span class="fu">=</span> [ (<span class="dt">Term</span>, <span class="dt">Term</span>) ]</code></pre></div>
+<p>Our substitutions are simpler than those that are used in λ-calculus. A Haskell tuple <code>(x,c)</code> represents the substitution <code>[c/x]</code> meaning we replace <code>c</code> for <code>x</code>. Here, <code>x</code> is always a variable and <code>c</code> is always a constant (symbol). The variable restriction is usual; it is just not reflected in the type. The constant restriction, however, is not. Datalog doesn’t have function symbols and substituting a variable is not necessary for its evaluation. Like the variable restriction, the constant restriction is also not reflected in the type.</p>
+<p>Applying a substitution to an atom or a variable (potentially) makes it <em>ground</em> that is it replaces the variable with a constant.</p>
+<p>We can also define the only constant that will be used in the evaluator: the empty substitution.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">emptySubstitution ::</span> <span class="dt">Substitution</span>
+emptySubstitution <span class="fu">=</span> []</code></pre></div>
+<p>Mind-blowing, I know.</p>
+<h3 id="one-rule-at-a-time">One rule at a time</h3>
+<p>Let’s focus on evaluating a single rule from our example program.</p>
+<div class="sourceCode"><pre class="sourceCode prolog"><code class="sourceCode prolog">academicAncestor(<span class="dt">X</span><span class="kw">,</span><span class="dt">Z</span>) <span class="kw">:-</span> adviser(<span class="dt">X</span><span class="kw">,</span><span class="dt">Y</span>)<span class="kw">,</span> academicAncestor(<span class="dt">Y</span><span class="kw">,</span><span class="dt">Z</span>)<span class="kw">.</span></code></pre></div>
+<p>We know some facts about the world and using this rule, we want to know some more. There are two ways. One is to gather everything we know about <code>adviser</code> and <code>academicAncestor</code> separately and <em>join</em> them together making sure the second parameter (<code>Y</code>) of <code>adviser</code> matches the first parameter (<code>Y</code>) of <code>academicAncestor</code>. Another way is to look at any one of the atoms and find assignments to its variables and substitute them in the other atom, only then we look for assignments to the remaining variables of this second atom. This approach would work for the example above as follows: find possible assignments to <code>X</code> and <code>Y</code> through <code>adviser</code>, substitute the values of <code>Y</code> in <code>academicAncestor</code>, and finally look for values of <code>academicAncestor</code> in the knowledge base that agree on the newly substituted value of <code>Y</code> to obtain values for <code>Z</code>.</p>
+<p>In the context of databases, the first is called <em>join-before-select</em> and the second, not so surprisingly, <em>select-before-join</em>. We’ll implement the latter because it is simpler.<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a></p>
+<p>Since we need unification to obtain substitutions from facts &amp; body atoms and substitution to ground further atoms. We start by implementing those.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">substitute ::</span> <span class="dt">Atom</span> <span class="ot">-&gt;</span> <span class="dt">Substitution</span> <span class="ot">-&gt;</span> <span class="dt">Atom</span>
+substitute atom substitution <span class="fu">=</span> atom { _terms <span class="fu">=</span> map go (_terms atom) }
+  <span class="kw">where</span>
+  go sym<span class="fu">@</span><span class="dt">Sym</span>{} <span class="fu">=</span> sym
+  go var<span class="fu">@</span><span class="dt">Var</span>{} <span class="fu">=</span> fromMaybe var (var <span class="ot">`lookup`</span> substitution)</code></pre></div>
+<p>Substitution is pretty much what you would expect looking up what to substitute for variables and do it whenever it can find a binding otherwise leaving the variable alone.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">unify ::</span> <span class="dt">Atom</span> <span class="ot">-&gt;</span> <span class="dt">Atom</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> <span class="dt">Substitution</span>
+unify (<span class="dt">Atom</span> predSym ts) (<span class="dt">Atom</span> predSym' ts')
+  <span class="fu">|</span> predSym <span class="fu">==</span> predSym' <span class="fu">=</span> go <span class="fu">$</span> zip ts ts'
+  <span class="fu">|</span> otherwise           <span class="fu">=</span> <span class="dt">Nothing</span>
+  <span class="kw">where</span>
+<span class="ot">  go ::</span> [ (<span class="dt">Term</span>, <span class="dt">Term</span>) ] <span class="ot">-&gt;</span> <span class="dt">Maybe</span> <span class="dt">Substitution</span>
+  go []                           <span class="fu">=</span> <span class="dt">Just</span> emptySubstitution
+  go ((s<span class="fu">@</span><span class="dt">Sym</span>{}, s'<span class="fu">@</span><span class="dt">Sym</span>{}) <span class="fu">:</span> rest) <span class="fu">=</span> <span class="kw">if</span> s <span class="fu">==</span> s' <span class="kw">then</span> go rest <span class="kw">else</span> <span class="dt">Nothing</span>
+  go ((v<span class="fu">@</span><span class="dt">Var</span>{}, s<span class="fu">@</span><span class="dt">Sym</span>{})  <span class="fu">:</span> rest) <span class="fu">=</span> <span class="kw">do</span>
+    incompleteSubstitution <span class="ot">&lt;-</span> go rest
+    <span class="kw">case</span> v <span class="ot">`lookup`</span> incompleteSubstitution <span class="kw">of</span>
+      <span class="dt">Just</span> s' <span class="fu">|</span> s <span class="fu">/=</span> s'   <span class="ot">-&gt;</span> <span class="dt">Nothing</span>
+      _                   <span class="ot">-&gt;</span> return <span class="fu">$</span> (v,s) <span class="fu">:</span> incompleteSubstitution
+  go ((_, <span class="dt">Var</span>{}) <span class="fu">:</span> _) <span class="fu">=</span> error <span class="st">&quot;The second atom is assumed to be ground.&quot;</span></code></pre></div>
+<p>Unification is also simple, in fact, too simple. For one thing, we cheat and unify whenever we have two atoms that have the same predicate symbol. In Datalog, a predicate is determined by its predicate symbol <em>and</em> arity (the number of terms). Here, we assume each predicate symbol determines the arity. More importantly, we throw an error when a term from the second atom is a variable. The reason is unification only occurs between a body atom and a fact. Since facts cannot have variables, this is safe. This is consistent with our earlier assumptions about the form of substitutions.</p>
+<p>We take special care of unification of atoms with repeated variables. It requires failing in case of a contradictory variable assignment. Consider unifying <code>p(X,X)</code> with <code>p(&quot;a&quot;,&quot;b&quot;)</code>.</p>
+<p>Next we evaluate an atom into a list of substitutions by finding facts that fit the template provided by a body atom and capturing the assignments to its variables. Those assignments to variables are just the substitutions we are looking for.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">evalAtom ::</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">Atom</span> <span class="ot">-&gt;</span> [ <span class="dt">Substitution</span> ] <span class="ot">-&gt;</span> [ <span class="dt">Substitution</span> ]
+evalAtom kb atom substitutions <span class="fu">=</span> <span class="kw">do</span>
+  substitution <span class="ot">&lt;-</span> substitutions
+  <span class="kw">let</span> downToEarthAtom <span class="fu">=</span> substitute atom substitution
+  extension <span class="ot">&lt;-</span> mapMaybe (unify downToEarthAtom) kb
+  return <span class="fu">$</span> substitution <span class="fu">&lt;&gt;</span> extension</code></pre></div>
+<p>Here we do exactly what is described above but build the substitutions by accumulation. This means we have substitutions that we use on the body atom to ground its variables, but then unifying this more down to earth atom (it’s more ground, get it?) with the facts we know gives us extensions to the substitution we started with. Thus, we extend and accumulate substitutions.</p>
+<p>Now all we need to do is to walk the body and accumulate substitutions, then using these substitutions we deduce new facts based on the head of the rule.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">walk ::</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> [ <span class="dt">Atom</span> ] <span class="ot">-&gt;</span> [ <span class="dt">Substitution</span> ]
+walk kb <span class="fu">=</span> foldr (evalAtom kb) [ emptySubstitution ]
+
+<span class="ot">evalRule ::</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">Rule</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>
+evalRule kb (<span class="dt">Rule</span> head body) <span class="fu">=</span> map (substitute head) (walk kb body)</code></pre></div>
+<p>Here’s something to think about. We said the facts we deduce will be ground, but <code>evalRule</code> does not check if the substitution has a binding for all the variables that appear in the head. Does that mean we are potentially concluding non-ground facts? Don’t worry if you’re not sure, we’ll come back to it <a href="#range-restriction">below</a>.</p>
+<h3 id="all-at-once">All at once</h3>
+<p>All we need now is to evaluate all of the rules together. We’ll do one of the simplest possible things. We’ll evaluate each rule independently and then concatenate the newly derived facts together and bundle them with what we already know. Then repeat the process until we can’t produce new facts any more.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">immediateConsequence ::</span> <span class="dt">Program</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>
+immediateConsequence rules kb <span class="fu">=</span>
+  nub <span class="fu">.</span> (kb <span class="fu">&lt;&gt;</span>) <span class="fu">.</span> concatMap (evalRule kb) <span class="fu">$</span> rules
+
+<span class="ot">solve ::</span> <span class="dt">Program</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>
+solve rules <span class="fu">=</span>
+  <span class="kw">if</span> all isRangeRestricted rules
+    <span class="kw">then</span> fix step []
+    <span class="kw">else</span> error <span class="st">&quot;The input program is not range-restricted.&quot;</span>
+  <span class="kw">where</span>
+<span class="ot">  step ::</span> (<span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>)
+       <span class="ot">-&gt;</span> (<span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>)
+  step f currentKB <span class="fu">|</span> nextKB <span class="ot">&lt;-</span> immediateConsequence rules currentKB <span class="fu">=</span>
+    <span class="kw">if</span> nextKB <span class="fu">==</span> currentKB
+      <span class="kw">then</span> currentKB
+      <span class="kw">else</span> f nextKB</code></pre></div>
+<p>The <code>immediateConsequence</code> function does the bundling step and <code>solve</code> computes the fixpoint from an empty set of facts.</p>
+<p>The only thing left unexplained is the <code>isRangeRestricted</code> predicate which ensures the program is well-formed.</p>
+<h3 id="semantic-considerations">Semantic considerations</h3>
+<p>Now that we have something that almost compiles we can talk about semantics. Starting with the last missing piece: the range restriction predicate followed by termination.</p>
+<h4 id="range-restriction-and-domain-independence">Range restriction and domain independence</h4>
+<p>In a rule, if every variable in the head appears somewhere in the body, we call the rule range-restricted. We check if every rule is range-restricted before evaluating them in <code>solve</code>.<a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a> This is why we didn’t have to check if there were any variables left in the head after substitution in <code>evalRule</code>. If we can get to the stage of substituting into head, we are guaranteed to find values for each head variable.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">isRangeRestricted ::</span> <span class="dt">Rule</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span>
+isRangeRestricted <span class="dt">Rule</span>{<span class="fu">..</span>} <span class="fu">=</span>
+  vars _head <span class="ot">`isSubsetOf`</span> concatMap vars _body
+  <span class="kw">where</span>
+  isSubsetOf as bs <span class="fu">=</span> all (<span class="ot">`elem`</span> bs) as
+  vars <span class="dt">Atom</span>{<span class="fu">..</span>} <span class="fu">=</span> nub <span class="fu">$</span> filter (\<span class="kw">case</span> {<span class="dt">Var</span>{} <span class="ot">-&gt;</span> <span class="dt">True</span>; _ <span class="ot">-&gt;</span> <span class="dt">False</span>}) _terms</code></pre></div>
+<p>There still remains the question of why we need range restriction at all? After all, the ability to deduce generic facts seems useful. For example, stating <code>p(X,X)</code> as a fact is a compact way of saying <code>p</code> is reflexive.</p>
+<p>The problem is something called <em>domain independence</em>. It basically means if the set of values a variable can take changes from one database to another (but not the instance itself), queries still compute the same thing. In other words, it prevents your program’s result to change under your feet if the values in your database are the same. Since checking domain independence in general is undecidable, range restriction is a safe syntactic approximation.</p>
+<p>In this implementation what this means is if I change the definition of datatype <code>Term</code> so that the symbols do not use <code>String</code> but instead a type for strings up to length 10, if my initial ground facts were all strings of length up to 10, then the results to all queries remain the same. We can’t guarantee the same thing without domain independence.</p>
+<p>Another problem is that when a query is posed with free variables, we expect values to be filled for that variable. If we can deduce a generic fact such as <code>p(X,X)</code>, then asking for the values of <code>X</code> would enumerate the set of infinite strings.</p>
+<p>Bear in mind, there are Datalog variants that lift this restriction. In fact, it wouldn’t be too much work to implement it here. We just need a notion of α-equivalence, a store that can handle non-ground values, and a unification algorithm that handles variables.</p>
+<h4 id="every-good-thing-must-come-to-an-end">Every good thing must come to an end</h4>
+<p>Does this procedure terminate? Yes, it does. When? So long as you don’t have infinite programs. It would be a cheeky thing to do though. One of the appeals of Datalog is that it is not Turing-complete and every query to the system terminates.</p>
+<p>The termination argument is pretty simple. Immediate consequence function is <em>monotone</em> that is the facts it produces encompasses the facts it starts with. Further, the number of facts that can be produced is <em>bounded</em> if we start with a finite database. Our initial set of facts used to kick-start <code>solve</code> is empty. Hence, as long as our program is finite, we have finite number of facts.<a href="#fn4" class="footnoteRef" id="fnref4"><sup>4</sup></a> As an upper bound, if we have <span class="math inline"><em>N</em></span> constants throughout the program, then for each relation of arity <span class="math inline"><em>k</em></span>, we can have at most <span class="math inline"><em>N</em><sup><em>k</em></sup></span> facts. So the number of facts we can produce is also finite.</p>
+<p>One place I’m being a bit loose is the monotone bit. What I said makes sense with sets, but we’re working here with lists. Although <code>[1,2,3]</code> and <code>[2,1,3]</code> encompass each other, they don’t compare equal using <code>==</code>. The reason this implementation never gets in a cycle is because <code>nub</code> function called on the amalgamation of facts in <code>immediateConsequence</code> preserves the first occurrence of each element in the list. Since we prepend the already known facts before calling <code>nub</code>, <code>==</code> behaves as if it is set equality.</p>
+<p>If you want to sound smart explaining all of this and reduce the size of your audience to a group of people who would understand this without you mentioning anyway, you can just say the following. We have a non-empty finite lattice which means it is complete and <a href="https://en.wikipedia.org/wiki/Knaster–Tarski_theorem">Knaster-Tarski theorem</a> (which is a very cool theorem ❤️) applied to the immediate consequence monotone function over this complete lattice implies that it has a least fixpoint.</p>
+<h2 id="quality-assurance">Quality assurance</h2>
+<p>Time for the litmus test. We can now translate the ancestry program into Haskell.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">ancestor ::</span> <span class="dt">Program</span>
+ancestor <span class="fu">=</span>
+  <span class="co">-- Facts</span>
+  fmap (\terms <span class="ot">-&gt;</span> <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;adviser&quot;</span> terms) [])
+    [ [ <span class="dt">Sym</span> <span class="st">&quot;Andrew Rice&quot;</span>,     <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;Dominic Orchard&quot;</span>, <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;Andy Hopper&quot;</span>,     <span class="dt">Sym</span> <span class="st">&quot;Andrew Rice&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;Alan Mycroft&quot;</span>,    <span class="dt">Sym</span> <span class="st">&quot;Dominic Orchard&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;David Wheeler&quot;</span>,   <span class="dt">Sym</span> <span class="st">&quot;Andy Hopper&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;Rod Burstall&quot;</span>,    <span class="dt">Sym</span> <span class="st">&quot;Alan Mycroft&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;Robin Milner&quot;</span>,    <span class="dt">Sym</span> <span class="st">&quot;Alan Mycroft&quot;</span> ]
+    ] <span class="fu">&lt;&gt;</span>
+  <span class="co">-- Actual rules</span>
+  [ <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;X&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Y&quot;</span> ])
+      [ <span class="dt">Atom</span> <span class="st">&quot;adviser&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;X&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Y&quot;</span> ] ]
+  , <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;X&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Z&quot;</span> ])
+      [ <span class="dt">Atom</span> <span class="st">&quot;adviser&quot;</span>          [ <span class="dt">Var</span> <span class="st">&quot;X&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Y&quot;</span> ]
+      , <span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;Y&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Z&quot;</span> ] ]
+  ] <span class="fu">&lt;&gt;</span>
+  <span class="co">-- Queries</span>
+  [ <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;query1&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;Intermediate&quot;</span> ])
+      (fmap (<span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span>)
+        [ [ <span class="dt">Sym</span> <span class="st">&quot;Robin Milner&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Intermediate&quot;</span> ]
+        , [ <span class="dt">Var</span> <span class="st">&quot;Intermediate&quot;</span>, <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ] ])
+  , <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;query2&quot;</span> [ ])
+      [ <span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span>
+          [ <span class="dt">Sym</span> <span class="st">&quot;Alan Turing&quot;</span>, <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ] ]
+  , <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;query3&quot;</span> [ ])
+      [ <span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span>
+          [ <span class="dt">Sym</span> <span class="st">&quot;David Wheeler&quot;</span>, <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ] ]
+  ]</code></pre></div>
+<p>We can make querying a bit more pleasant with a function that returns possible bindings.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">query ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Program</span> <span class="ot">-&gt;</span> [ <span class="dt">Substitution</span> ]
+query predSym pr <span class="fu">=</span>
+  <span class="kw">case</span> queryVarsL <span class="kw">of</span>
+    [ queryVars ] <span class="ot">-&gt;</span> zip queryVars <span class="fu">&lt;$&gt;</span> relevantKnowledgeBaseSyms
+    [] <span class="ot">-&gt;</span> error <span class="fu">$</span> <span class="st">&quot;The query '&quot;</span> <span class="fu">++</span> predSym <span class="fu">++</span> <span class="st">&quot;' doesn't exist.&quot;</span>
+    _  <span class="ot">-&gt;</span> error <span class="fu">$</span> <span class="st">&quot;The query '&quot;</span> <span class="fu">++</span> predSym <span class="fu">++</span> <span class="st">&quot;' has multiple clauses.&quot;</span>
+  <span class="kw">where</span>
+  relevantKnowledgeBase <span class="fu">=</span> filter ((<span class="fu">==</span> predSym) <span class="fu">.</span> _predSym) <span class="fu">$</span> solve pr
+  relevantKnowledgeBaseSyms <span class="fu">=</span> _terms <span class="fu">&lt;$&gt;</span> relevantKnowledgeBase
+
+  queryRules <span class="fu">=</span> filter ((<span class="fu">==</span> predSym) <span class="fu">.</span> _predSym <span class="fu">.</span> _head) pr
+  queryVarsL <span class="fu">=</span> _terms <span class="fu">.</span> _head <span class="fu">&lt;$&gt;</span> queryRules</code></pre></div>
+<p>All it does it to run the program, find the named query and return the bindings to its arguments. Let’s execute all three queries.</p>
+<pre><code>&gt; query &quot;query1&quot; ancestor
+[[(Intermediate,&quot;Dominic Orchard&quot;)],[(Intermediate,&quot;Alan Mycroft&quot;)]]
+&gt; query &quot;query2&quot; ancestor
+[]
+&gt; query &quot;query3&quot; ancestor
+[[]]</code></pre>
+<p>The empty list of variable bindings, <code>[]</code>, mean there are no possible assignments that satisfy the query, whereas the singleton empty binding, <code>[[]]</code>, means the query is satisfied. It just didn’t have any variables that need to be bound to values.</p>
+<p>All three queries return the expected results. Dominic Orchard and Alan Mycroft are between me and Robin Milner. I am not an academic descendant of Alan Turing, but I am of David Wheeler.</p>
+<p>Since these three queries run fine, we can safely conclude that the evaluator here is bug-free.</p>
+<h2 id="addressing-the-turtle-in-the-room">Addressing the turtle in the room</h2>
+<p>As I mentioned before, this evaluator is inefficient. Discussing the reasons why and what we can do to make it better is not only a software engineering exercise, but also another way of highlighting why Datalog is a good language. The optimisations I discuss here are quite major, but they are not a complete list. There are many other optimisations that draw both from programming languages and database theory literatures.</p>
+<h3 id="optimise-for-the-query">Optimise for the query</h3>
+<p>Basically, all I told you about Datalog semantics is incomplete. You’ll struggle to find a resource that discusses Datalog evaluation the way I do because the semantics are always defined with respect to a query. So what we really need is a program query pair. What we compute here is much stronger and is also unnecessary. For example, if the queries were interested only in the <code>adviser</code> relation, computing <code>academicAncestors</code> would be a waste of time.</p>
+<p>One way of dealing with this is to use a top-down evaluator which starts from the query and uses <em>resolution</em> which is a proof technique. This allows only the relevant facts to be derived. Most Prolog interpreters use a similar top-down evaluation strategy. It is not preferred in Datalog for various reasons. One of which is that the naïve implementation of it brings non-termination.</p>
+<p>We can achieve the same in a bottom-up evaluator (like ours) using <em>magic set transformation</em>. The very long story short, based on the input program, it generates magic rules based on the dataflow of the program and inserts atoms defined by these rules into the original rule bodies to restrict what can be derived. Its effectiveness varies from program to program and there are alternatives to it. If you want to learn more about it, you can look at <a href="https://www.sciencedirect.com/science/article/pii/074310669190038Q">On the Power of Magic</a> (you must admit, it is a catchy title) by Beeri and Ramakrishnan.</p>
+<h3 id="semi-naïve-evaluation">Semi-naïve evaluation</h3>
+<p>While discussing <a href="#range-restriction">range restriction</a>, we mentioned that this implementation rederives all the known facts in each iteration. This is awful and is why it is called the naïve evaluation. There is also a modestly named semi-naïve evaluation. It exploits a simple observation. In order to derive a new fact from a rule, at least one new fact of the previous iteration needs to be used.</p>
+<p>The way this gets implemented is that we maintain a delta of facts as well as an accumulator and rewrite the rules to make versions of them that use the deltas.</p>
+<p>This is particularly effective for the so called <em>linear rules</em> such as the recursive <code>academicAncestor</code> rule which only has one derived predicate in its body. In that case, the semi-naïve evaluation turns a quadratic computation into a linear one.</p>
+<h3 id="incremental-evaluation">Incremental evaluation</h3>
+<p>Datalog is amenable to incremental evaluation. Even in this version of the evaluator, you can see that when a fixpoint is reached, we can enrich the resulting knowledge base with additional facts and apply the fixpoint algorithm again. This performs at least as good as starting from scratch and often much much better.</p>
+<p>The situation gets more complicated when there is negation in the language because additional facts invalidate facts that depend on the negation of those facts. This is a particular instance of <a href="https://en.wikipedia.org/wiki/Non-monotonic_logic"><em>non-monotonic reasoning</em></a>. However, Datalog, overall, is still a good language if you’re after incremental evaluation.</p>
+<p>Furthermore, the idea of incremental evaluation is intricately connected with maintaining a delta of facts. If your evaluator uses semi-naïve evaluation already, having an incremental evaluator is not much extra effort.</p>
+<h3 id="data-structures">Data structures</h3>
+<p>Using lists to compute over sets is a bad idea. Depending on the application, hash tables, proper databases, in memory key-value stores, or at the very least of <code>Set</code> and <code>Map</code> modules from the <code>containers</code> package will certainly make things better. Use of sets in general is a good idea because then we don’t have to rely on <code>nub</code> function’s internals for termination as discussed <a href="#every-good-thing-must-come-to-an-end">earlier</a>.</p>
+<h3 id="dependency-graphs">Dependency graphs</h3>
+<p>We evaluate all rules in one pot but that is also very inefficient. We can partition the program by determining dependencies between predicates. This allows us to treat evaluated dependencies as static knowledge, so we have to deal with a smaller collection of changing facts at any one time.</p>
+<p>For example in the ancestor program, we would have a graph with <code>adviser</code> and <code>academicAncestor</code> nodes where the former points to the latter and the latter loops around. Meaning we can compute the fixpoint for <code>adviser</code> rules first, then forget about those rules and compute the fixpoint of <code>academicAncestor</code>.</p>
+<p>Also if your Datalog variant has <em>stratified negation</em> which is a popular way of incorporating negated atoms, you already have to do the dependency analysis and partition your program. So engineering-wise, this optimisation comes for free.</p>
+<h3 id="parallelisation-distributed-computation">Parallelisation &amp; distributed computation</h3>
+<p>Datalog evaluation is great for data-parallel computation. Even by inspecting our implementation, it is evident that evaluating all the rules in a given iteration is an embarrassingly parallel problem. The dependency graph can be used to further parallelise the evaluation using work queues. Similarly, the workload can be separated over multiple machines, a bit like <a href="https://en.wikipedia.org/wiki/MapReduce">MapReduce</a>.</p>
+<h2 id="closing-remarks">Closing remarks</h2>
+<p>Short program, long prose is the theme. I hope I managed to give some ideas about how Datalog works. I tried to squeeze in as much semantics and tips for more efficient implementation as possible which is probably more useful than a short program.</p>
+<p>If you want to look at Datalog further. <a href="https://souffle-lang.github.io">Soufflé</a> is a modern variant geared towards program analysis and is blazingly fast.</p>
+<p>If you are interested in a more formal treatment of Datalog as well as some of the optimisations I mentioned chapters 12 to 15 of <a href="http://webdam.inria.fr/Alice/">Foundations of Databases</a> by Abiteboul, Hull, and Vianu are probably the best resources which collect everything together in such detail and with modern exposition.</p>
+<h2 id="full-program">Full program</h2>
+<p>Here’s the full program for your convenience.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE LambdaCase #-}</span>
+<span class="ot">{-# LANGUAGE RecordWildCards #-}</span>
+
+<span class="kw">module</span> <span class="dt">SimpleDatalog</span> <span class="kw">where</span>
+
+<span class="kw">import </span><span class="dt">Data.Function</span> (fix)
+<span class="kw">import </span><span class="dt">Data.List</span> (nub, intercalate, isSubsequenceOf)
+<span class="kw">import </span><span class="dt">Data.Maybe</span> (mapMaybe, fromMaybe, isNothing)
+
+<span class="kw">type</span> <span class="dt">Program</span> <span class="fu">=</span> [ <span class="dt">Rule</span> ]
+
+<span class="kw">data</span> <span class="dt">Rule</span> <span class="fu">=</span> <span class="dt">Rule</span> {<span class="ot"> _head ::</span> <span class="dt">Atom</span>,<span class="ot"> _body ::</span> [ <span class="dt">Atom</span> ] }
+
+<span class="kw">data</span> <span class="dt">Atom</span> <span class="fu">=</span> <span class="dt">Atom</span> {<span class="ot"> _predSym ::</span> <span class="dt">String</span>,<span class="ot"> _terms ::</span> [ <span class="dt">Term</span> ] } <span class="kw">deriving</span> <span class="dt">Eq</span>
+
+<span class="kw">data</span> <span class="dt">Term</span> <span class="fu">=</span> <span class="dt">Var</span> <span class="dt">String</span> <span class="fu">|</span> <span class="dt">Sym</span> <span class="dt">String</span> <span class="kw">deriving</span> <span class="dt">Eq</span>
+
+<span class="kw">type</span> <span class="dt">KnowledgeBase</span> <span class="fu">=</span> [ <span class="dt">Atom</span> ]
+
+<span class="kw">type</span> <span class="dt">Substitution</span> <span class="fu">=</span> [ (<span class="dt">Term</span>, <span class="dt">Term</span>) ]
+
+<span class="ot">emptySubstitution ::</span> <span class="dt">Substitution</span>
+emptySubstitution <span class="fu">=</span> []
+
+<span class="ot">solve ::</span> <span class="dt">Program</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>
+solve rules <span class="fu">=</span>
+  <span class="kw">if</span> all isRangeRestricted rules
+    <span class="kw">then</span> fix step []
+    <span class="kw">else</span> error <span class="st">&quot;The input program is not range-restricted.&quot;</span>
+  <span class="kw">where</span>
+<span class="ot">  step ::</span> (<span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>)
+       <span class="ot">-&gt;</span> (<span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>)
+  step f currentKB <span class="fu">|</span> nextKB <span class="ot">&lt;-</span> immediateConsequence rules currentKB <span class="fu">=</span>
+    <span class="kw">if</span> nextKB <span class="fu">==</span> currentKB
+      <span class="kw">then</span> currentKB
+      <span class="kw">else</span> f nextKB
+
+<span class="ot">isRangeRestricted ::</span> <span class="dt">Rule</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span>
+isRangeRestricted <span class="dt">Rule</span>{<span class="fu">..</span>} <span class="fu">=</span>
+  vars _head <span class="ot">`isSubsetOf`</span> concatMap vars _body
+  <span class="kw">where</span>
+  isSubsetOf as bs <span class="fu">=</span> all (<span class="ot">`elem`</span> bs) as
+  vars <span class="dt">Atom</span>{<span class="fu">..</span>} <span class="fu">=</span> nub <span class="fu">$</span> filter (\<span class="kw">case</span> {<span class="dt">Var</span>{} <span class="ot">-&gt;</span> <span class="dt">True</span>; _ <span class="ot">-&gt;</span> <span class="dt">False</span>}) _terms
+
+<span class="ot">immediateConsequence ::</span> <span class="dt">Program</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>
+immediateConsequence rules kb <span class="fu">=</span>
+  nub <span class="fu">.</span> (kb <span class="fu">&lt;&gt;</span>) <span class="fu">.</span> concatMap (evalRule kb) <span class="fu">$</span> rules
+
+<span class="ot">evalRule ::</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">Rule</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span>
+evalRule kb (<span class="dt">Rule</span> head body) <span class="fu">=</span> map (substitute head) (walk kb body)
+
+<span class="ot">walk ::</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> [ <span class="dt">Atom</span> ] <span class="ot">-&gt;</span> [ <span class="dt">Substitution</span> ]
+walk kb <span class="fu">=</span> foldr (evalAtom kb) [ emptySubstitution ]
+
+<span class="ot">evalAtom ::</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">Atom</span> <span class="ot">-&gt;</span> [ <span class="dt">Substitution</span> ] <span class="ot">-&gt;</span> [ <span class="dt">Substitution</span> ]
+evalAtom kb atom substitutions <span class="fu">=</span> <span class="kw">do</span>
+  substitution <span class="ot">&lt;-</span> substitutions
+  <span class="kw">let</span> downToEarthAtom <span class="fu">=</span> substitute atom substitution
+  extension <span class="ot">&lt;-</span> mapMaybe (unify downToEarthAtom) kb
+  return <span class="fu">$</span> substitution <span class="fu">&lt;&gt;</span> extension
+
+<span class="ot">substitute ::</span> <span class="dt">Atom</span> <span class="ot">-&gt;</span> <span class="dt">Substitution</span> <span class="ot">-&gt;</span> <span class="dt">Atom</span>
+substitute atom substitution <span class="fu">=</span> atom { _terms <span class="fu">=</span> map go (_terms atom) }
+  <span class="kw">where</span>
+  go sym<span class="fu">@</span><span class="dt">Sym</span>{} <span class="fu">=</span> sym
+  go var<span class="fu">@</span><span class="dt">Var</span>{} <span class="fu">=</span> fromMaybe var (var <span class="ot">`lookup`</span> substitution)
+
+<span class="ot">unify ::</span> <span class="dt">Atom</span> <span class="ot">-&gt;</span> <span class="dt">Atom</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> <span class="dt">Substitution</span>
+unify (<span class="dt">Atom</span> predSym ts) (<span class="dt">Atom</span> predSym' ts')
+  <span class="fu">|</span> predSym <span class="fu">==</span> predSym' <span class="fu">=</span> go <span class="fu">$</span> zip ts ts'
+  <span class="fu">|</span> otherwise           <span class="fu">=</span> <span class="dt">Nothing</span>
+  <span class="kw">where</span>
+<span class="ot">  go ::</span> [ (<span class="dt">Term</span>, <span class="dt">Term</span>) ] <span class="ot">-&gt;</span> <span class="dt">Maybe</span> <span class="dt">Substitution</span>
+  go []                           <span class="fu">=</span> <span class="dt">Just</span> emptySubstitution
+  go ((s<span class="fu">@</span><span class="dt">Sym</span>{}, s'<span class="fu">@</span><span class="dt">Sym</span>{}) <span class="fu">:</span> rest) <span class="fu">=</span> <span class="kw">if</span> s <span class="fu">==</span> s' <span class="kw">then</span> go rest <span class="kw">else</span> <span class="dt">Nothing</span>
+  go ((v<span class="fu">@</span><span class="dt">Var</span>{}, s<span class="fu">@</span><span class="dt">Sym</span>{})  <span class="fu">:</span> rest) <span class="fu">=</span> <span class="kw">do</span>
+    incompleteSubstitution <span class="ot">&lt;-</span> go rest
+    <span class="kw">case</span> v <span class="ot">`lookup`</span> incompleteSubstitution <span class="kw">of</span>
+      <span class="dt">Just</span> s' <span class="fu">|</span> s <span class="fu">/=</span> s'   <span class="ot">-&gt;</span> <span class="dt">Nothing</span>
+      _                   <span class="ot">-&gt;</span> return <span class="fu">$</span> (v,s) <span class="fu">:</span> incompleteSubstitution
+  go ((_, <span class="dt">Var</span>{}) <span class="fu">:</span> _) <span class="fu">=</span> error <span class="st">&quot;The second atom is assumed to be ground.&quot;</span>
+
+<span class="co">{-</span>
+<span class="co">- adviser(&quot;Andrew Rice&quot;,     &quot;Mistral Contrastin&quot;).</span>
+<span class="co">- adviser(&quot;Dominic Orchard&quot;, &quot;Andrew Rice&quot;).</span>
+<span class="co">- adviser(&quot;Andy Hopper&quot;,     &quot;Andrew Rice&quot;).</span>
+<span class="co">- adviser(&quot;Alan Mycroft&quot;,    &quot;Dominic Orchard&quot;).</span>
+<span class="co">- adviser(&quot;David Wheeler&quot;,   &quot;Andy Hopper&quot;).</span>
+<span class="co">- adviser(&quot;Rod Burstall&quot;,    &quot;Alan Mycroft&quot;).</span>
+<span class="co">- adviser(&quot;Robin Milner&quot;,    &quot;Alan Mycroft&quot;).</span>
+<span class="co">-</span>
+<span class="co">- academicAncestor(X,Y) :- adviser(X,Y).</span>
+<span class="co">- academicAncestor(X,Z) :- adviser(X,Y), academicAncestor(Y,Z).</span>
+<span class="co">-</span>
+<span class="co">- ?- academicAncestor(&quot;Robin Milner&quot;, Intermediate),</span>
+<span class="co">-    academicAncestor(Intermediate, &quot;Mistral Contrastin&quot;).</span>
+<span class="co">- ?- academicAncestor(&quot;Alan Turing&quot;, &quot;Mistral Contrastin&quot;).</span>
+<span class="co">- ?- academicAncestor(&quot;David Wheeler&quot;, &quot;Mistral Contrastin&quot;).</span>
+<span class="co">-}</span>
+<span class="ot">ancestor ::</span> <span class="dt">Program</span>
+ancestor <span class="fu">=</span>
+  <span class="co">-- Facts</span>
+  fmap (\terms <span class="ot">-&gt;</span> <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;adviser&quot;</span> terms) [])
+    [ [ <span class="dt">Sym</span> <span class="st">&quot;Andrew Rice&quot;</span>,     <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;Dominic Orchard&quot;</span>, <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;Andy Hopper&quot;</span>,     <span class="dt">Sym</span> <span class="st">&quot;Andrew Rice&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;Alan Mycroft&quot;</span>,    <span class="dt">Sym</span> <span class="st">&quot;Dominic Orchard&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;David Wheeler&quot;</span>,   <span class="dt">Sym</span> <span class="st">&quot;Andy Hopper&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;Rod Burstall&quot;</span>,    <span class="dt">Sym</span> <span class="st">&quot;Alan Mycroft&quot;</span> ]
+    , [ <span class="dt">Sym</span> <span class="st">&quot;Robin Milner&quot;</span>,    <span class="dt">Sym</span> <span class="st">&quot;Alan Mycroft&quot;</span> ]
+    ] <span class="fu">&lt;&gt;</span>
+  <span class="co">-- Actual rules</span>
+  [ <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;X&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Y&quot;</span> ])
+      [ <span class="dt">Atom</span> <span class="st">&quot;adviser&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;X&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Y&quot;</span> ] ]
+  , <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;X&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Z&quot;</span> ])
+      [ <span class="dt">Atom</span> <span class="st">&quot;adviser&quot;</span>          [ <span class="dt">Var</span> <span class="st">&quot;X&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Y&quot;</span> ]
+      , <span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;Y&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Z&quot;</span> ] ]
+  ] <span class="fu">&lt;&gt;</span>
+  <span class="co">-- Queries</span>
+  [ <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;query1&quot;</span> [ <span class="dt">Var</span> <span class="st">&quot;Intermediate&quot;</span> ])
+      (fmap (<span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span>)
+        [ [ <span class="dt">Sym</span> <span class="st">&quot;Robin Milner&quot;</span>, <span class="dt">Var</span> <span class="st">&quot;Intermediate&quot;</span> ]
+        , [ <span class="dt">Var</span> <span class="st">&quot;Intermediate&quot;</span>, <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ] ])
+  , <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;query2&quot;</span> [ ])
+      [ <span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span>
+          [ <span class="dt">Sym</span> <span class="st">&quot;Alan Turing&quot;</span>, <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ] ]
+  , <span class="dt">Rule</span> (<span class="dt">Atom</span> <span class="st">&quot;query3&quot;</span> [ ])
+      [ <span class="dt">Atom</span> <span class="st">&quot;academicAncestor&quot;</span>
+          [ <span class="dt">Sym</span> <span class="st">&quot;David Wheeler&quot;</span>, <span class="dt">Sym</span> <span class="st">&quot;Mistral Contrastin&quot;</span> ] ]
+  ]
+
+<span class="ot">query ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Program</span> <span class="ot">-&gt;</span> [ <span class="dt">Substitution</span> ]
+query predSym pr <span class="fu">=</span>
+  <span class="kw">case</span> queryVarsL <span class="kw">of</span>
+    [ queryVars ] <span class="ot">-&gt;</span> zip queryVars <span class="fu">&lt;$&gt;</span> relevantKnowledgeBaseSyms
+    [] <span class="ot">-&gt;</span> error <span class="fu">$</span> <span class="st">&quot;The query '&quot;</span> <span class="fu">++</span> predSym <span class="fu">++</span> <span class="st">&quot;' doesn't exist.&quot;</span>
+    _  <span class="ot">-&gt;</span> error <span class="fu">$</span> <span class="st">&quot;The query '&quot;</span> <span class="fu">++</span> predSym <span class="fu">++</span> <span class="st">&quot;' has multiple clauses.&quot;</span>
+  <span class="kw">where</span>
+  relevantKnowledgeBase <span class="fu">=</span> filter ((<span class="fu">==</span> predSym) <span class="fu">.</span> _predSym) <span class="fu">$</span> solve pr
+  relevantKnowledgeBaseSyms <span class="fu">=</span> _terms <span class="fu">&lt;$&gt;</span> relevantKnowledgeBase
+
+  queryRules <span class="fu">=</span> filter ((<span class="fu">==</span> predSym) <span class="fu">.</span> _predSym <span class="fu">.</span> _head) pr
+  queryVarsL <span class="fu">=</span> _terms <span class="fu">.</span> _head <span class="fu">&lt;$&gt;</span> queryRules</code></pre></div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>My impression is, as time goes on, λ-calculus variants try to tame λ-calculus (simply typed, linear, dependent, etc.) while Datalog variants (relaxed range-restriction, functional symbols, explicit quantification, etc.) let it run wild.<a href="#fnref1">↩</a></p></li>
+<li id="fn2"><p>As it happens, select-before-join is usually (but certainly not always) the faster approach in real world. However, this doesn’t affect us at all because the performance benefit requires an indexed database for the columns that are grounded by substitution.<a href="#fnref2">↩</a></p></li>
+<li id="fn3"><p>This is a simple check, but if we wanted, we could make it even neater. Range-restriction is something that can be baked into the <code>Rule</code> datatype using some dependent types. We would need to modify <code>Atom</code> to keep track of its variables, but it is doable. While at it we could also make substitutions keep track of their variables, which would enable us to enforce the assumptions about our substitutions. You see, this is my favourite kind of dependent types. It doesn’t give you full correctness, but eliminates a whole class of software bugs and potentially give you some performance boost. This may very well become a future blog post (famous last words on the topic).<a href="#fnref3">↩</a></p></li>
+<li id="fn4"><p>Infinite programs are an interesting concept. I can’t think of any use for it though. Also evaluating them is tricky as you can’t traverse all your program statements, rules, etc. Notice that our Datalog evaluator wouldn’t be terminating not only because of a potential infinite facts problem, but because we try to evaluate each rule.<a href="#fnref4">↩</a></p></li>
+</ol>
+</div></div>
+
+<script>
+var figures =
+  Array.prototype.slice.call(document.getElementsByClassName("figure"),0)
+  .concat(
+    Array.prototype.slice.call(document.getElementsByTagName("figure"),0));
+
+for (var i = 0; i < figures.length; i++) {
+  var figure = figures[i];
+  var imgs = figure.getElementsByTagName("img");
+  if (imgs.length > 0) {
+    classes = imgs[0].classList;
+    for (var j = 0; j < classes.length; j++) {
+      figure.classList.add(classes[j] + "-figure");
+    }
+  }
+}
+</script>
+
+        </div>
+        <div id="footer">
+          <div class="top-container">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+          </div>
+        </div>
+    </body>
+</html>
