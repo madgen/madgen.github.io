@@ -69,21 +69,23 @@ Here are the sections and what to expect from them.
  - [A simple heap](#a-simple-heap) covers the generic heap interface through a
    typeclass and a trivial instance for it. Type-level features: associated type
    families;
- - [A leftist heap](#a-leftist-heap) describes a datatype for leftist heaps
+ - [A leftist heap](#a-leftist-heap) describes a data type for leftist heaps
    without using fancy types and discusses the asymptotic complexities of its
    operations;
  - [Terms, types, and kinds](#terms-types-and-kinds) covers the basic entities
    in modern Haskell and how they relate to each other. Type-level features:
-   datatype promotion and kind polymorphism;
+   [data type promotion](#data-type-promotion), [kind
+   polymorphism](#kind-polymorphism), and
+   [levity-polymorhpsim](#levity-polymorphism);
  - [Verifying the leftist property](#verifying-the-leftist-property) explains
-   the datatype encoding the leftist property and the implementation of its
+   the data type encoding the leftist property and the implementation of its
    property preserving operations. Type-level features: generalised algebraic
    data types, singletons, kind signatures through the example of [natural
    numbers](#natural-numbers), and existential types through [the heap instance
-   for our datatype](#heap-instance-for-safeheap). We also introduce [theorem
-     proving](#comparing-without-forgetting) in Haskell.
+   for our data type](#heap-instance-for-safeheap). We also introduce [theorem
+   proving](#comparing-without-forgetting) in Haskell.
  - [Verifying the heap property](#verifying-the-heap-property) encodes both the
-   leftist and the heap properties into a datatype. Most of this section is on
+   leftist and the heap properties into a data type. Most of this section is on
    the property preserving merge. Type-level features: [closed type
    families](#type-families) and [propositional equality](#propositional
    equality). Additionally, it extends on theorem proving and use of existential
@@ -170,24 +172,27 @@ class Heap heap where
 ```
 
 This is a bit mouthful because many operations are interdefinable as reflected
-by the `MINIMAL` pragma.
+by the `MINIMAL`{.haskell} pragma.
 
-The `Elem` _type family_ (enabled by `TypeFamilies` extension) associated with
-`Heap` gives the type of elements for a particular instance. This is nothing but
-a function from types of containers to types of their elements. We could have
-equally used `MultiParamTypeClasses` and `FunctionalDependencies` extensions to
-establish the same container-element relationship. I chose a type family here
-because we will use type families in a moment anyway and because I think `Elem
-heap` has less cognitive overhead than remembering functional dependencies
-between type variables.
+The `Elem`{.haskell} _type family_ (enabled by `TypeFamilies` extension)
+associated with `Heap`{.haskell} gives the type of elements for a particular
+instance. This is nothing but a function from types of containers to types of
+their elements. We could have equally used `MultiParamTypeClasses` and
+`FunctionalDependencies` extensions to establish the same container-element
+relationship. I chose a type family here because we will use type families in a
+moment anyway and because I think `Elem heap`{.haskell} has less cognitive
+overhead than remembering functional dependencies between type variables.
 
-Although `insert`, `findMax` and `deleteMax` are the most commonly used
-operations of `Heap`, `merge` is the one that we care the most about. For all
-data structures we'll use as heaps today, implementing `isEmpty`, `findMax`,
-`singleton`, and `empty` are trivial.  Then with `merge`, we can implement
-`insert`, `fromList`, `decompose`, and `deleteMax`. As we see in the next
-section, implementing `merge` and deriving the rest is not only optimal in terms
-of productivity but also in terms of performance for leftist heaps.
+Although `insert`{.haskell}, `findMax`{.haskell} and `deleteMax`{.haskell} are
+the most commonly used operations of `Heap`{.haskell}, `merge`{.haskell} is the
+one that we care the most about. For all data structures we'll use as heaps
+today, implementing `isEmpty`{.haskell}, `findMax`{.haskell},
+`singleton`{.haskell}, and `empty`{.haskell} are trivial. Then with
+`merge`{.haskell}, we can implement `insert`{.haskell}, `fromList`{.haskell},
+`decompose`{.haskell}, and `deleteMax`{.haskell}. As we see in the next section,
+implementing `merge`{.haskell} and deriving the rest is not only optimal in
+terms of productivity but also in terms of performance for leftist
+heaps.
 
 Before implementing this interface for a leftist heap, let's look at a much
 simpler instance.
@@ -241,9 +246,10 @@ be proven wrong).
 We can also look at their complexities more concretely. Leftist heaps have
 $O(\lg{n})$ worst-case complexity for insertion and deleting the maximum, while
 maintaining $O(1)$ complexity for finding the maximum. Building a heap out of a
-`Foldable` collection is $O(n)$. So far we're on par with binary heaps. But we
-can do one better. While merging binary heaps is $O(n)$, it's only $O(\lg{n})$
-for leftist heaps. In fact, this is why insertion and deletion are $O(\lg{n})$.
+`Foldable`{.haskell} collection is $O(n)$. So far we're on par with binary
+heaps. But we can do one better. While merging binary heaps is $O(n)$, it's only
+$O(\lg{n})$ for leftist heaps. In fact, this is why insertion and deletion are
+$O(\lg{n})$.
 
 ## The data structure and its properties
 
@@ -253,16 +259,17 @@ A leftist heap is as a tree and we implement it as such.
 data LeftistHeap a = Leaf | Node a Int (LeftistHeap a) (LeftistHeap a)
 ```
 
-The tree is standard except for the `Int` parameter. This is the _rank_ of the
-`Node`, which is the least distance to a `Leaf`. The rank of a `Leaf` is 0 and
-the rank of a `Node` is one more than the minimum of its children's ranks.
+The tree is standard except for the `Int`{.haskell} parameter. This is the
+_rank_ of the `Node`{.haskell}, which is the least distance to a
+`Leaf`{.haskell}. The rank of a `Leaf`{.haskell} is 0 and the rank of a
+`Node`{.haskell} is one more than the minimum of its children's ranks.
 
 Let's briefly look at the relationship between the size of a tree and its rank.
 
 A first question is how many elements there needs to be in the tree if its rank
 is $R$? If the rank of a tree is $R$, then it must be the case that each path
-from the root has $R$ `Node`s, otherwise the rank of the tree would be fewer.
-This means the tree has at least $2^{R} - 1$ elements.
+from the root has $R$ `Node`{.haskell}s, otherwise the rank of the tree would be
+fewer.  This means the tree has at least $2^{R} - 1$ elements.
 
 Then the followup question is, if a tree has $N$ elements, what is its maximum
 rank? Well, we know that the rank imposes a lower bound on the tree size, so
@@ -272,15 +279,15 @@ maximum rank, we have $2^{R} - 1 \leq N \lt 2^{R + 1} - 1$, so $R \leq
 + 1)}} \right\rfloor$ is the desired maximum.
 
 The leftist heap has the _leftist property_. In short, the shortest path from
-any node to a `Leaf` must be the right-most one. Since each subtree in a leftist
-heap is also a leftist heap, the rank of any left child is at least as big as
-that of the right, hence the name.
+any node to a `Leaf`{.haskell} must be the right-most one. Since each subtree in
+a leftist heap is also a leftist heap, the rank of any left child is at least as
+big as that of the right, hence the name.
 
 How can we refine the earlier calculation about the maximum rank for leftist
-heaps? The distance between the root and the right-most `Leaf` is at most
-$\left\lfloor{\lg{(N + 1)}} \right\rfloor$, if the leftist heap has $N$ elements
-in it. This is the critical information we'll use to derive the complexity of
-the `merge` operation.
+heaps? The distance between the root and the right-most `Leaf`{.haskell} is at
+most $\left\lfloor{\lg{(N + 1)}} \right\rfloor$, if the leftist heap has $N$
+elements in it. This is the critical information we'll use to derive the
+complexity of the `merge`{.haskell} operation.
 
 Accessing the rank is handy, so let's create a typeclass for it.
 
@@ -296,9 +303,10 @@ instance HasRank (LeftistHeap a) where
   rank (Node _ r _ _) = r
 ```
 
-Here is the `Heap` instance for the `LeftistHeap`. The `Ord` constraint is
-needed due to the heap property and the element of a `LeftistHeap a` is `a`. Its
-operations are implemented over the next two sections.
+Here is the `Heap`{.haskell} instance for the `LeftistHeap`{.haskell}. The
+`Ord`{.haskell} constraint is for the heap property. The element of a
+`LeftistHeap a`{.haskell} is `a`{.haskell}. Its operations are implemented over
+the next two sections.
 
 ```haskell
 instance Ord a => Heap (LeftistHeap a) where
@@ -325,7 +333,8 @@ merge h1@(Node x _ left1 right1)
       else Node a (rank heap2 + 1) heap1 heap2
 ```
 
-The base cases are simple as `Leaf` acts as the identity element for `merge`.
+The base cases are simple as `Leaf`{.haskell} acts as the identity element for
+`merge`{.haskell}.
 
 In the recursive case, we walk over the right-most paths of the input heaps. You
 can see this in the recursive calls; they never touch the left children.
@@ -333,12 +342,12 @@ can see this in the recursive calls; they never touch the left children.
 To preserve the heap property, we recurse on the right child of the argument
 heap with the bigger label.
 
-To build a new node, we use `mkNode` helper rather than `Node` constructor
-directly. The helper does two things. First, it makes the child with the lowest
-rank the right child. Since the arguments to `mkNode` are leftist heaps
-themselves, this flip ensures the right-most path to `Leaf` is still the
-shortest. Second, it calculates the new rank which is one more than the rank of
-the right child.
+To build a new node, we use `mkNode`{.haskell} helper rather than
+`Node`{.haskell} constructor directly. The helper does two things. First, it
+makes the child with the lowest rank the right child. Since the arguments to
+`mkNode`{.haskell} are leftist heaps themselves, this flip ensures the
+right-most path to `Leaf`{.haskell} is still the shortest. Second, it calculates
+the new rank which is one more than the rank of the right child.
 
 Now what is the complexity of this? At each recursive call we potentially do a
 flip, increase the rank, and construct a tree node, these are all constant time
@@ -351,12 +360,12 @@ complexity is $O(\lg{(L \times R)})$ which is a subset of $O(\lg{(L + R)})$ (can
 you see why?). In short, the merge operation is logarithmic in the size of the
 output.
 
-This is not where the beauty of `merge` ends. Recall that most leftist heap
-elements live outside the right-most path. Then since we only recurse over the
-right-most path, we never touch the trees where most elements live. We just move
-them around. In a purely functional language, this means the output tree does
-not have to allocate new memory for those trees, it can just share them with the
-input heaps.
+This is not where the beauty of `merge`{.haskell} ends. Recall that most leftist
+heap elements live outside the right-most path. Then since we only recurse over
+the right-most path, we never touch the trees where most elements live. We just
+move them around. In a purely functional language, this means the output tree
+does not have to allocate new memory for those trees, it can just share them
+with the input heaps.
 
 ## Every other operation
 
@@ -374,14 +383,15 @@ decompose Leaf                  = Nothing
 decompose (Node x _ left right) = Just (x, merge left right)
 ```
 
-From `merge` follows everything else. Maximum is maintained at the root, so
-accessing it is easy. The `decompose` operation returns the maximum along with
-the rest of the heap with the maximum removed by merging the two children of the
-root. Insertion (the default implementation) creates a singleton heap out of the
-inserted label and merges it into the heap.
+From `merge`{.haskell} follows everything else. Maximum is maintained at the
+root, so accessing it is easy. The `decompose`{.haskell} operation returns the
+maximum along with the rest of the heap with the maximum removed by merging the
+two children of the root. Insertion (the default implementation) creates a
+singleton heap out of the inserted label and merges it into the heap.
 
-Since `merge` has logarithmic complexity, so does `insert` and `deleteMax`.
-Since we store the maximum at the root, `findMax` runs in constant time.
+Since `merge`{.haskell} has logarithmic complexity, so does `insert`{.haskell}
+and `deleteMax`{.haskell}.  Since we store the maximum at the root,
+`findMax`{.haskell} runs in constant time.
 
 Conversion from a list is more interesting. The obvious implementation is to
 fold over the list of elements and insert them into the heap, this turns out not
@@ -413,67 +423,152 @@ list is done in linear time.
 
 # Terms, types, and kinds
 
-Before verifying anything with types, we need to understand terms, types, and
-kinds in Haskell. Haskell imposes a separation of the term and the type levels.
-Here's the conceptual gist: all terms have types, all types have kinds, and
-there is no distinction between types and kinds since GHC 8.0.
+Before doing verification with fancy types, we need to understand terms, types,
+and kinds. Here's the gist: all terms have types, all types have kinds, and
+there is no distinction between types and kinds since GHC 8.0, but terms and
+types (for now) occupy different realms.
 
-For example, just as you can say `42 :: Int`, you can also say `Int :: Type` (or
-its synonym `Int :: *`, import `Data.Kind` for the more descriptive synonym
-`Type`) and `Type :: Type`. We can read these has the term `42` has type `Int`,
-the type `Int` has kind `Type`, and the kind `Type` has kind `Type` (yup, not a
+For example, just as you can say `42 :: Int`{.haskell}, you can also say `Int ::
+Type`{.haskell} and `Type :: Type`{.haskell} (`*`{.haskell} is a deprecated
+synonym of `Type`{.haskell}; import `Data.Kind`{.haskell} for `Type`{.haskell}).
+We can read these as "`42`{.haskell} is an `Int`{.haskell}", "`Int`{.haskell} is
+a `Type`{.haskell}", and "`Type`{.haskell} is a `Type`{.haskell}" (yup, not a
 typo).
 
-I'll give more detail about these in the rest of this section. It may be too
-much information to soak in at once, but the broad-strokes should be enough for
-this post. More generally, one can get away without an in-depth understanding of
-these and still be able to verify data structures, but then we'd be relying on
-GHC to yell at us when certain extensions are missing and not understand why
-we're being yelled at.
+Just as you can use `:type` or `:t` learn the type of a term in `ghci`, you can
+use `:k` or `:kind` to learn the kind of a type.
 
-If you are worried about `Type :: Type`, yes, it is problematic and it leads to
-[Russel's paradox](https://en.wikipedia.org/wiki/Russell%27s_paradox). This is
-one reason, people don't like type-level programming in Haskell. It means as a
-proof system, Haskell's type system is inconsistent. What that means is that _we
-don't have the ability to tell the truth_. If you have a type-level proof of
-something and your type checker confirms it, it might just be a lie. However,
-since Haskell is not total and `let x = x in x`, `undefined`, and `error "QED"`
-already inhabit **every** type. So fallacious types representing propositions
-already have inhabitants meaning we didn't have the ability to tell the truth to
-start with. So we are not worse off with `Type :: Type`. However, it is still
-icky and it means the degree of trust you can place on an Agda proof and a
-Haskell proof are different.
+We now look at types and kinds in more detail. It may be too much information to
+soak in at once, but the broad-strokes should be enough for this post. For more
+detailed and broad overview of the subject, see Diogo Castro's amazing [blog
+post](https://diogocastro.com/blog/2018/10/17/haskells-kind-system-a-primer/).
+More generally, one can get away without an in-depth understanding of these and
+still be able to verify data structures. But then we'd be relying on GHC to yell
+at us when certain extensions are missing and not understand why we're being
+yelled at.
 
-Now that we got that technicality out of the way, we can look at more
-interesting kinds. The constructor `(:)` has type `a -> [a] -> [a]`, similarly
-the type `Either` has kind `Type -> Type -> Type`. This makes sense because just
-as `(:)` constructs a term out of an `a` and a `[a]`, `Either` constructs a type
-out of two `Type`s. `Either` is a type constructor. In `ghci`, you can use `:t`
-to query the type of a term and `:k` to query the kind of a type.
+## Proofs and contradictions
 
-`Type` is the kind of inhabitable types, meaning types that have terms
-associated with them, meaning if we have type `T :: Type`, then there can
-potentially be a term `t :: T`. The previous sentence lacks certainty because
-there are some types despite having the kind `Type` does not have any
-inhabitants. For example, the type `Void` from `Data.Void` has no inhabitants.
-If you declare a type `data T` without any constructors, that also has no
-inhabitants. However, if a datatype does have an inhabitant, then it definitely
-has kind `Type`.
+Famously, Ludwig Wittgenstein wasn't terribly concerned about inconsistencies in
+mathematics as most were, including Alan Turing. They even have a [direct
+exchange](https://www.britishwittgensteinsociety.org/wp-content/uploads/documents/lectures/Turing-and-Wittgenstein-on-Logic-and-Mathematics.pdf)
+on this subject. Surprisingly, Haskell's type system seems to agree more with
+Wittgenstein than with Turing.
 
-The other sort of kinds that we have seen are type constructors such as
-`Either`, `Maybe`, or `[]`. But those are a bit boring, there are more to kinds
-than facilitating production of inhabitable types. With the `DataKinds`
-extension, we can create new kinds that have nothing to do with `Type` and are
-therefore not inhabitable.
+If `Type :: Type`{.haskell} makes you uncomfortable, you're right, it is
+problematic and it leads to [Russel's
+paradox](https://en.wikipedia.org/wiki/Russell%27s_paradox). This is one reason
+people don't like type-level programming in Haskell. It means as a proof system,
+Haskell's type system is inconsistent. What that means is that _we don't have
+the ability to tell the truth_. The expectation due to the [Curry-Howard
+correspondance](https://en.wikipedia.org/wiki/Curry–Howard_correspondence) is
+that if we have a type corresponding to some logical statement, a term for that
+type (if it exists) is a proof. Inconsistency means, we can have terms that are
+not valid proofs of the statement, but satisfy the type checker.  In particular,
+`Type :: Type`{.haskell} leads to diverging terms that can satisfy any
+proposition.
 
-Consider the following `List` declaration.
+That said, since Haskell already has `let x = x in x`{.haskell},
+`undefined`{.haskell}, and `error "QED"`{.haskell} satisfying types of
+propositions, we didn't have the ability to tell the truth to start with. Hence,
+we are not worse off. At least, this is the argument in Prof. Stephanie
+Weirich's [paper](http://www.seas.upenn.edu/~sweirich/papers/fckinds.pdf) as
+well as [the GHC
+documentation](https://downloads.haskell.org/~ghc/8.8.1/docs/html/users_guide/glasgow_exts.html#overview-of-type-in-type).
+
+One might think existing flaws don't justify adding new ways to break a system.
+Ordinarily, that's right, but contradictions are are infectious. As soon as
+there is a little crack, it is difficult to contain. So the marginal harm done
+by `Type :: Type`{.haskell} is less than expected.
+
+There are such things as [_paraconsistent
+logics_](https://en.wikipedia.org/wiki/Paraconsistent_logic) that try to limit
+the harm done by contradiction, but they are not employed in type systems as far
+as I know.
+
+To sum up, Haskell proofs are partial. If a term (proof) corresponding to a type
+(proposition) compiles, one of two things happened. The term is a valid proof or
+its evaluation will diverge. In contrast, Agda and Idris proofs are always
+terminating and are thus valid proofs as long as the type checker says so (up to
+compiler bugs). Hence, despite the syntactic similarity, you should have more
+faith in the latter.
+
+## Why is `Type`{.haskell} a misnomer?
+
+The kind `Type`{.haskell} has a very confusing name. It should really be named
+`LiftedType`{.haskell}. Let's understand why.
+
+It has two important features. The term `undefined`{.haskell} (or $\bot$ in
+academic papers) is a valid term for any type with kind `Type`{.haskell}. This
+makes it _lifted_. Consequently, every type of kind `Type`{.haskell} is
+_inhabited_ by some values.
+
+GHC manual (until recently) called `Type`{.haskell} "the kind of types with
+values". This is not true. If we enable `MagicHash` extension, we get access to
+unlifted types such as `Int#`{.haskell}. `Int#`{.haskell} definitely has values
+as witnessed by `42# :: Int#`{.haskell}, but when we query `:k Int# ::
+Type`{.haskell}, we get an error saying "Expecting a lifted type, but
+`Int#`{.haskell} is unlifted". So there are inhabited types without kind
+`Type`{.haskell}.
+
+It is also wrong to say that `Type`{.haskell} is the kind of types that
+definitely has inhabitants. Once again the kind of `Int#`{.haskell} is `TYPE
+'IntRep`{.haskell} and `Int#`{.haskell} is the only type of that kind. We
+already know it has inhabitants. In fact, in a sense `TYPE 'IntRep`{.haskell} is
+superior because `data Void`{.haskell} creates a type `Void :: Type`{.haskell}
+where the only inhabitants are the degenerate ones such as `error
+"Oops!"`{.haskell} and `undefined`{.haskell}. `TYPE 'IntRep`{.haskell} can claim
+to be _a_ kind of types that has non-degenerate inhabitants.
+
+As a final piece of evidence about why `Type`{.haskell} is a bad name, you can
+consult `GHC.Types`{.haskell} which defines the kind `Type`{.haskell} as `TYPE
+'LiftedRep`{.haskell}. Even GHC admits that `Type`{.haskell} is more specific
+than what the name implies.
+
+So `Type`{.haskell} is a bad name because of non-`Type`{.haskell} types! We've
+already seen `Int#`{.haskell},
+let's find some more.
+
+## `Type`{.haskell} constructors
+
+`Maybe`{.haskell} takes a `Type`{.haskell} and returns a `Type`{.haskell}. How
+about `Either`{.haskell}? It takes two `Type`{.haskell}s and returns a
+`Type`{.haskell}. You can say they are type-level functions and you wouldn't be
+wrong, but we can be more specific. We can say that `Maybe`{.haskell} and
+`Either`{.haskell} construct `Type`{.haskell}s just like `(:)`{.haskell} and
+`[]`{.haskell} at the term level.
+
+Are `Maybe`{.haskell} and `Either`{.haskell} types themselves? They are types
+but not `Type`{.haskell}s.  Asking `ghci` reveals that `Maybe`{.haskell} has
+kind `Type -> Type`{.haskell} and `Either`{.haskell} has kind `Type -> Type ->
+Type`{.haskell}.
+
+`Type -> Type`{.haskell} is not the same thing as `Type`{.haskell}, but (here is
+the confusing part) `Type -> Type`{.haskell} has the kind `Type`{.haskell}. Get
+your head around that!
+
+We have `Type`{.haskell}s; we have things that construct `Type`{.haskell}s; and
+we have unlifted types such as `Int#`{.haskell}. What else?
+
+## Data type promotion
+
+So far, we've only seen inhabited types. `Int`{.haskell} and `Int#`{.haskell}
+are obviously examples, but `Type -> Type`{.haskell} is also inhabited since
+that too has kind `Type`{.haskell}. For example, `id :: Type -> Type`{.haskell}
+type checks.
+
+Emphasising inhabitation as a property implies that there must be some
+uninhabited kinds. In fact, these are the pillars of theorem proving and
+property encoding in Haskell.
+
+Consider the following `List`{.haskell} declaration.
 
 ```haskell
 data List a = Nil | Cons a (List a)
 ```
 
-In vanilla Haskell, this generates a type `List` and two data constructors `Nil`
-and `Cons`.
+In vanilla Haskell, this generates a type `List`{.haskell} and two data
+constructors `Nil`{.haskell} and `Cons`{.haskell}.
 
 ```haskell
 List :: Type -> Type
@@ -481,80 +576,190 @@ Nil  :: List a
 Cons :: a -> List a -> List a
 ```
 
-With `DataKinds` extension enabled, you also get following.
+With `DataKinds` extension, you also get following.
 
 ```haskell
 'Nil  :: List a
 'Cons :: a -> List a -> List a
 ```
 
-Despite having precisely the same names and looking awfully similar, these are
-different beasts. Since there is no distinction between types and kinds, the
-type constructor `List` is also a kind constructor. Then, `'Nil` and `'Cons` are
-type constructors. Is there a term `t` with `t :: 'Cons Int 'Nil`? No, there
-isn't because the kind of `'Cons Int 'Nil` is `List Int` which is distinct from
-`Type` and since only `Type` is inhabitable, there is no such `t`.
+Despite looking pretty similar, these are different beasts. Since there is no
+distinction between types and kinds, the type constructor `List`{.haskell} is
+also a kind constructor. Then, `'Nil`{.haskell} and `'Cons`{.haskell} are type
+constructors, but they are not `Type`{.haskell} constructors, they are `List
+a`{.haskell} constructors! All promoted types are automatically uninhabited. So
+there is no term `t`{.haskell} with `t :: 'Cons Int 'Nil`{.haskell}.
 
 This promotion feature alone spawns multiple reasons why people do not like
 fancy types in Haskell:
 
   1. The `'` prefix of promoted type-constructors is optional, but terms and
-  types are completely separate. So when I type `Nil`, GHC figures out whether
-  it is a term or a type constructor depending on the context.
+  types are completely separate. So when I type `Nil`{.haskell}, GHC figures out
+  whether it is a term or a type constructor depending on the context. In the
+  absence of `'`, we need to disambiguate ourselves.
 
-  2. The built-in list type `[a]` is automatically promoted. This means there is
-  `[]` which the equivalent of `Nil`. There is `[]` which is the type and kind
-  constructor equivalent to `List`. There is `'[]` which is the type constructor
-  euivalent to `'Nil`. Remember that `'` is optional. So when I use `[]`, we
-  don't know, if it is the type constructor `List` or the type constructor
-  `Nil`. Call me crazy, but this is confusing. Similar situation occurs with
-  tuples, where the term and type syntax are the same.
+  2. The built-in list type `[a]`{.haskell} is automatically promoted. This
+  means there is `[]`{.haskell}, the equivalent of `Nil`{.haskell}. There is
+  `[]`{.haskell}, the type and kind constructor equivalent to `List`{.haskell}.
+  Then there is `'[]`{.haskell}, the type constructor equivalent to
+  `'Nil`{.haskell}. Remember that `'` is optional. So when I use `[]`{.haskell},
+  we don't know, if it is the type constructor `List`{.haskell} or the type
+  constructor `Nil`{.haskell}. Similar situation occurs with tuples, where the
+  term and the type share similar syntax.
 
-At the term level we talk about polymorphic types such as `reverse :: [a] ->
-[a]`. You guessed it right, types can be poly-kinded. In fact, the `'Cons` type
-constructor has kind `a -> List a -> List a` where `a` is a kind variable. We
-can see this in `ghci`. If you type `:k 'Cons Int`, you get `'Cons Int :: List
-Type -> List Type`, but if you type `:k 'Cons Maybe`, you get `'Cons Maybe ::
-List (Type -> Type) -> List (Type -> Type)'` instead. In fact, you can use a
-promoted kind as well: `:k 'Cons 'Nil' gives `'Cons 'Nil :: List (List a) ->
-List (List a)`.
+Note that this is the improved state of affairs. Kinds and types used to be
+separated and there was also a separate kind `[]`{.haskell} with sort (the
+classification of kind) `BOX`{.haskell}.
 
-How about the kind of the type constructor `List`? `:k List` returns `Type ->
-Type`. The return kind makes sense, it's a type constructor after all, but what
-is the reason for the input `Type`? If you look at the `Cons` data constructor,
-it has the type `a -> List a -> List a`, that first `a` is why the argument to
-`List` has to be `Type` because constructing a term `Cons x xs` means there is a
-term with `x :: a`, hence `a` must be inhabitable meaning it has to be `Type`.
+Nevertheless, their existence in GHC is a blessing. They have structure that
+normal types lack and are good indices to data types. We come back to this when
+we introduces GADTs.
 
-But what about the following datatype?
+## Kind polymorphism
+
+Just as there are polymorphic types such as `[a] -> [a]`{.haskell}, there are
+also polymorphic kinds. In fact, `'Cons`{.haskell} has kind `a -> List a -> List
+a`{.haskell} where `a`{.haskell} is a kind variable. We can see this in `ghci`.
+
+We kind `a`{.haskell} can be `Type`{.haskell},
 
 ```haskell
-data Proxy a = ProxyC
+> :k 'Cons Int
+'Cons Int :: List Type -> List Type
 ```
 
-If we ask `ghci` for the kind of `Proxy`, we get `Type -> Type` again, but this
-time `a` does not appear as a type parameter to the sole constructor `ProxyC`.
-So in principle, the kind of `Proxy` could be `k -> Type` where `k` is a kind
-variable. This is another instance of poly-kindedness. GHC, by default, assumes
-that the type variables of a type constructor have the kind `Type` even if they
-can be more generic as is the case with `Proxy`. If you turn on the `PolyKinds`
-extension, GHC correctly assigns the kind `k -> Type` to `Proxy`. Later in the
-post, we define an equality type which has to be poly-kinded and which nicely
-illustrates the use of poly-kindedness.
+Or it can be the kind of a type constructor such as `Type -> Type`{.haskell}
 
-With this, you have a good bird's-eye view of Haskell types.
+```haskell
+> :k 'Cons Maybe
+'Cons Maybe :: List (Type -> Type) -> List (Type -> Type)'
+```
+
+We can also use a promoted kind such as `List a`{.haskell}, which results in
+another kind polymorphic type.
+
+```haskell
+> :k 'Cons 'Nil
+'Cons 'Nil :: List (List a) -> List (List a)
+```
+
+## Levity polymorphism
+
+How about the kind of the `Type`{.haskell} constructor `List`{.haskell}?
+
+```haskell
+> :k List
+Type -> Type
+```
+
+The return kind makes sense, it's a `Type`{.haskell} constructor after all, but
+why the input kind `Type`{.haskell}? Since `Cons`{.haskell}'s first parameter
+has type `a`{.haskell}, constructing a term `Cons x xs`{.haskell} necessitates a
+term `x :: a`{.haskell}, hence `a`{.haskell} must be a type with kind
+`Type`{.haskell}.
+
+Hopefully, my rant about `Type`{.haskell} being a misnomer made you doubt my
+last statement. What about `Int#`{.haskell}? That has inhabitants, so it can
+equally be `a`{.haskell}. More generally, we want `a`{.haskell} to be a type
+that has a runtime representation.
+
+You remember `TYPE`{.haskell}? The kind that spawns `Type`{.haskell} and `TYPE
+'IntRep`{.haskell}. Let see what kind it has.
+
+```haskell
+> :k TYPE
+TYPE :: RuntimeRep -> Type
+```
+
+Aha! `TYPE`{.haskell} constructs things that have runtime representations. So we
+want the type variable of `List`{.haskell} to have kind `TYPE rep`{.haskell}, so
+that it ranges over everything that has a runtime representation. This idea of
+abstracting over runtime representations is called _levity polymorphism_.
+
+But why doesn't GHC infer that as the kind of `a`{.haskell}? Let's try declaring
+a levity polymorphic `List` explicitly.
+
+```haskell
+> data List (a :: TYPE rep) = Nil | Cons a (List a)
+```
+```
+A levity-polymorphic type is not allowed here:
+  Type: a
+  Kind: TYPE rep
+```
+
+The reason this doesn't work and why GHC defaults `a`{.haskell} to
+`Type`{.haskell} is because if you want to create data type, you need to know
+the runtime representation in advance so you can lay down the data when
+generating code. For example, `Int#`{.haskell} requires 32 bits but
+`Int`{.haskell} requires a pointer to a thunk, hence 64 bits. Unless you know
+how big the data is you can't generate the code (at least not without
+introducing runtime code generation or indirection which defeats the purpose of
+unlifted types).
+
+More generally, [the paper introducing levity
+polymorphism](https://cs.brynmawr.edu/~rae/papers/2017/levity/levity.pdf) has
+the following maxim for its usage:
+
+> Never move or store a levity-polymorphic value.
+
+This rules out making a function as simple as `id`{.haskell} levity polymorphic
+as well because it moves values.
+
+This raises the question, what can be levity polymorphic then? The classic
+example is `error`{.haskell}. It has type `String -> a`{.haskell}, so `a` needs
+to be runtime representable. It neither stores nor moves a value and
+`a`{.haskell}. Hence, it can be and is levity polymorphic in GHC:
+
+```haskell
+error :: forall (rep :: RuntimeRep) (a :: TYPE rep). String -> a
+```
+
+You need `-fprint-explicit-runtime-reps` flag and the `+v` option to `:t` to get
+the signature.
+
+```
+> :set -fprint-explicit-runtime-reps
+> :t +v error
+```
+
+## Inhabitable out of uninhabitable
+
+What is the kind of the following data type?
+
+```haskell
+data MyProxy a = MkMyProxy
+```
+
+If we ask `ghci`, we get `Type -> Type`{.haskell} again. However, this time
+`a`{.haskell} does not appear as a type parameter to the the sole constructor of
+`MyProxy`{.haskell}, so there is no reason for it to have a runtime
+representation. In principle, the type argument to `MyProxy`{.haskell} can be
+_anything_. This sounds kind polymorphic.
+
+GHC, by default, assumes that the type variables of a type constructor have the
+kind `Type`{.haskell} even if they can be more generic. If you turn on the
+`PolyKinds` extension, GHC correctly infers the kind `k -> Type`{.haskell} to
+`Proxy`{.haskell}, where `k`{.haskell} is a kind variable.
+
+This is nice because it is general, but also unmotivated at the moment because
+we haven't yet made any use of poly-kindedness.
+[Later](#propositional-equality), we define a poly-kinded equality type
+illustrating the utility of kind polymorphism.
+
+With this, you have a good bird's-eye view of Haskell types and kinds.
 
 # Verifying the leftist property
 
 Let's encode the leftist property at the type level. That is, we will ensure
 that each the rank of each right child of a node is less than or equal to the
 rank of its left child. Clearly, for this we need ranks at the type-level. Our
-previous implementation used `Int`, but we really just need natural numbers. If
-what we need is type-level natural numbers, we have two options:
+previous implementation used `Int`{.haskell}, but we really just need natural
+numbers. If what we need is type-level natural numbers, we have two options:
 
-1. Import `GHC.TypeLits`, which uses compiler magic to define a `Nat` _kind_
-   where integer literals can be used at type-level.
-2. Define a `Nat` kind inductively.
+ 1. Import `GHC.TypeLits`{.haskell}, which uses compiler magic to define a
+ `Nat`{.haskell} _kind_ where integer literals can be used at type-level.
+ 2. Define a `Nat`{.haskell} kind inductively.
 
 The advantage of (1) is it is efficient and most things we need are already
 proved for us. The advantage of (2) is that it is not compiler magic and we get
