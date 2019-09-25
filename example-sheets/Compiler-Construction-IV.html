@@ -4,6 +4,7 @@
     <head>
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
         <script>
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
@@ -17,7 +18,7 @@
           blog, and personal revelations." />
         <meta name="author" content="Mistral Contrastin" />
         <title>Do disturb me | Compiler Construction Example Sheet IV</title>
-        <link href="https://fonts.googleapis.com/css?family=Noto+Serif" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet" />
         <link rel="stylesheet" type="text/css" href="../css/default.css" />
         <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
         <link rel="alternate" type="application/atom+xml" href="../atom.xml" />
@@ -51,12 +52,12 @@
 
 
 <div class="post"><ol>
-<li><p>This question is about function inlining. It is a common optimisation and most <span style="font-variant: small-caps;">C</span> implementations have directives for it. How can it adversely affect computation time? What sort of functions would be ideal candidates for inlining? (<em>Hint</em>: remember computer design lectures)</p></li>
+<li><p>This question is about function inlining. It is a common optimisation and most <span class="smallcaps">C</span> implementations have directives for it. How can it adversely affect computation time? What sort of functions would be ideal candidates for inlining? (<em>Hint</em>: remember computer design lectures)</p></li>
 <li><p>What is the scope of peephole optimisations? What are the other class of optimisations and rank them in difficulty with brief justification to your ranking. Give five examples of peephole optimisations.</p></li>
-<li><p>In <span style="font-variant: small-caps;">C</span>, when you are allocating memory with <code>malloc</code> you need to pass the size of the memory you want to be allocated and the routine returns a pointer. When you later want to free this memory you use the free routine and only pass the pointer. How come <em>libc</em> knows how much memory to deallocate?</p></li>
-<li><p>After reviewing lecture notes on garbage collection, read <span class="citation">Bacon et al. (2004)</span> up to and including section 4.</p></li>
+<li><p>In <span class="smallcaps">C</span>, when you are allocating memory with <code>malloc</code> you need to pass the size of the memory you want to be allocated and the routine returns a pointer. When you later want to free this memory you use the free routine and only pass the pointer. How come <em>libc</em> knows how much memory to deallocate?</p></li>
+<li><p>After reviewing lecture notes on garbage collection, read <span class="citation" data-cites="unified">Bacon et al. (2004)</span> up to and including section 4.</p></li>
 <li><p>Cycles in reference counting is a well-known problem. Briefly explain the problem. Suggest a way to solve it without completely changing to a different garbage collection algorithm.</p></li>
-<li><p>From <span class="citation">Mogensen (2009, chap. 13)</span>, solve Exercise 13.2.</p></li>
+<li><p>From <span class="citation" data-cites="mogensen">Mogensen (2009, chap. 13)</span>, solve Exercise 13.2.</p></li>
 <li><p><a href="http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2017p23q3.pdf">2017/3/3</a></p></li>
 </ol>
 <div id="refs" class="references">

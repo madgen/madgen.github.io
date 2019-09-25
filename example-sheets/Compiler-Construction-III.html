@@ -4,6 +4,7 @@
     <head>
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
         <script>
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
@@ -17,7 +18,7 @@
           blog, and personal revelations." />
         <meta name="author" content="Mistral Contrastin" />
         <title>Do disturb me | Compiler Construction Example Sheet III</title>
-        <link href="https://fonts.googleapis.com/css?family=Noto+Serif" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet" />
         <link rel="stylesheet" type="text/css" href="../css/default.css" />
         <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
         <link rel="alternate" type="application/atom+xml" href="../atom.xml" />
@@ -53,7 +54,7 @@
 
 
 <div class="post"><ol>
-<li><p>Read the paper by <span class="citation">Reynolds (1972)</span> up to and including section seven. Later sections are delightful as well, but less relevant to the course. Section one can be skimmed, but it nicely sets up the scene. He talks about <span style="font-variant: small-caps;">Algol</span> a lot. For the unfamiliar it is the archetype of block structured programming languages <em>e.g.</em> <span style="font-variant: small-caps;">C</span>, but unlike <span style="font-variant: small-caps;">C</span> it has <em>some</em> high-order function support.</p>
+<li><p>Read the paper by <span class="citation" data-cites="reynolds1972definitional">Reynolds (1972)</span> up to and including section seven. Later sections are delightful as well, but less relevant to the course. Section one can be skimmed, but it nicely sets up the scene. He talks about <span class="smallcaps">Algol</span> a lot. For the unfamiliar it is the archetype of block structured programming languages <em>e.g.</em> <span class="smallcaps">C</span>, but unlike <span class="smallcaps">C</span> it has <em>some</em> high-order function support.</p>
 <p>This is a great paper in computer science. Apart from historical value, it is also what the lecturer basis his interpreter upon. It will allow you to deeply understand how and why we bother with defunctionalisation &amp; continuation passing style.</p>
 <p>I strongly suggest you read it before you attempt the rest of the workset.</p></li>
 <li><p><a href="https://www.cl.cam.ac.uk/teaching/current/CompConstr/exercises_cps.ml">CPS and defunctionalisation exercise sheet</a> (from the course site)</p></li>

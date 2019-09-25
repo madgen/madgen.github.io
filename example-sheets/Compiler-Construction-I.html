@@ -4,6 +4,7 @@
     <head>
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
         <script>
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
@@ -17,7 +18,7 @@
           blog, and personal revelations." />
         <meta name="author" content="Mistral Contrastin" />
         <title>Do disturb me | Compiler Construction Example Sheet I</title>
-        <link href="https://fonts.googleapis.com/css?family=Noto+Serif" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet" />
         <link rel="stylesheet" type="text/css" href="../css/default.css" />
         <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
         <link rel="alternate" type="application/atom+xml" href="../atom.xml" />
@@ -55,9 +56,9 @@
 <div class="post"><ol>
 <li><p>Build and play with the SLANG compiler. Experiment with the front end (syntax/type checker) and be prepared to discuss what you have done in the supervision. It is OK if the changes you make do not work.</p></li>
 <li><p>Write down a <em>pipeline</em> of steps involved in compilation paying special attention to what goes into each step and what goes out. You can be as vague or specific as you want, but be prepared to discuss compiler related concepts and how it fits to your pipeline.</p></li>
-<li><p>How is <span style="font-variant: small-caps;">LLVM</span> approach to compiler construction is different than that is presented in this course?</p></li>
+<li><p>How is <span class="smallcaps">LLVM</span> approach to compiler construction is different than that is presented in this course?</p></li>
 <li><p>Why are functional languages are commonly used to prototype compilers?</p></li>
-<li><p>Why does <code>past.ml</code> in first Slang compiler have <code>loc</code> parameter for every constructor, while the corresponding constructors in <code>ast.ml</code> don't have them?</p></li>
+<li><p>Why does <code>past.ml</code> in first Slang compiler have <code>loc</code> parameter for every constructor, while the corresponding constructors in <code>ast.ml</code> don’t have them?</p></li>
 <li><p>According to lexical analysis algorithm described in slide 31, what are the two rules that disambiguate multiple possible matches out of the same character stream?</p></li>
 <li><p>Starting with regular expressions that match individual tokens, how do we generate a single lexing program?</p></li>
 <li><p>What is the difference between concrete and abstract syntax trees (CST vs AST)? What stages of compilation involve these?</p></li>
