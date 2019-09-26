@@ -18,7 +18,7 @@ expect you to do at their job interviews (and at their job interviews only).
 
 At some point in the book, it says "know how to implement these data structures
 by heart: dynamically sized arrays, hash tables, [...], **binary heaps**,
-[...]". It downed on me that I remember the heap property and heap interface,
+[...]". It dawned on me that I remember the heap property and heap interface,
 but not how to implement it. I was horrified when I remembered despite
 conceptually being a tree, binary heaps are implemented using arrays. Despite
 having used Haskell as my primary language, decided to implement it in Ruby---my
@@ -477,9 +477,9 @@ well as [the GHC
 documentation](https://downloads.haskell.org/~ghc/8.8.1/docs/html/users_guide/glasgow_exts.html#overview-of-type-in-type).
 
 One might think existing flaws don't justify adding new ways to break a system.
-Ordinarily, that's right, but contradictions are are infectious. As soon as
-there is a little crack, it is difficult to contain. So the marginal harm done
-by `Type :: Type`{.haskell} is less than expected.
+Ordinarily, that's right, but contradictions are infectious. As soon as there is
+a little crack, it is difficult to contain. So the marginal harm done by `Type
+:: Type`{.haskell} is less than expected.
 
 There are such things as [_paraconsistent
 logics_](https://en.wikipedia.org/wiki/Paraconsistent_logic) that try to limit
@@ -621,7 +621,7 @@ Just as there are polymorphic types such as `[a] -> [a]`{.haskell}, there are
 also polymorphic kinds. In fact, `'Cons`{.haskell} has kind `a -> List a -> List
 a`{.haskell} where `a`{.haskell} is a kind variable. We can see this in `ghci`.
 
-We kind `a`{.haskell} can be `Type`{.haskell},
+The kind variable `a`{.haskell} can be `Type`{.haskell},
 
 ```haskell
 > :k 'Cons Int
@@ -689,13 +689,12 @@ A levity-polymorphic type is not allowed here:
 ```
 
 The reason this doesn't work and why GHC defaults `a`{.haskell} to
-`Type`{.haskell} is because if you want to create data type, you need to know
-the runtime representation in advance so you can lay down the data when
-generating code. For example, `Int#`{.haskell} requires 32 bits but
-`Int`{.haskell} requires a pointer to a thunk, hence 64 bits. Unless you know
-how big the data is you can't generate the code (at least not without
-introducing runtime code generation or indirection which defeats the purpose of
-unlifted types).
+`Type`{.haskell} is because if we want to create a data type, we need to know
+its runtime representation in advance to lay down the data while generating
+code. For example, `Int#`{.haskell} requires 32 bits but `Int`{.haskell}
+requires a pointer to a thunk, hence 64 bits. Unless you know how big the data
+is you can't generate the code (at least not without introducing runtime code
+generation or indirection which defeats the purpose of unlifted types).
 
 More generally, [the paper introducing levity
 polymorphism](https://cs.brynmawr.edu/~rae/papers/2017/levity/levity.pdf) has
@@ -732,7 +731,7 @@ data MyProxy a = MkMyProxy
 ```
 
 If we ask `ghci`, we get `Type -> Type`{.haskell} again. However, this time
-`a`{.haskell} does not appear as a type parameter to the the sole constructor of
+`a`{.haskell} does not appear as a type parameter to the sole constructor of
 `MyProxy`{.haskell}, so there is no reason for it to have a runtime
 representation. In principle, the type argument to `MyProxy`{.haskell} can be
 _anything_. This sounds kind polymorphic.
