@@ -500,8 +500,8 @@ The kind `Type`{.haskell} has a very confusing name. It should really be named
 
 It has two important features. The term `undefined`{.haskell} (or $\bot$ in
 academic papers) is a valid term for any type with kind `Type`{.haskell}. This
-makes it _lifted_. Consequently, every type of kind `Type`{.haskell} is
-_inhabited_ by some values.
+makes `Type` the kind of _lifted_ types. Consequently, all of these types are
+_inhabited_.
 
 GHC manual (until recently) called `Type`{.haskell} "the kind of types with
 values". This is not true. If we enable `MagicHash` extension, we get access to
@@ -516,9 +516,10 @@ definitely has inhabitants. Once again the kind of `Int#`{.haskell} is `TYPE
 'IntRep`{.haskell} and `Int#`{.haskell} is the only type of that kind. We
 already know it has inhabitants. In fact, in a sense `TYPE 'IntRep`{.haskell} is
 superior because `data Void`{.haskell} creates a type `Void :: Type`{.haskell}
-where the only inhabitants are the degenerate ones such as `error
-"Oops!"`{.haskell} and `undefined`{.haskell}. `TYPE 'IntRep`{.haskell} can claim
-to be _a_ kind of types that has non-degenerate inhabitants.
+where the only inhabitants are degenerate such as `error "Oops!"`{.haskell} and
+`undefined`{.haskell}. Neither of these are proper values. `TYPE
+'IntRep`{.haskell} can claim to be _a_ kind of types that has non-degenerate
+inhabitants.
 
 As a final piece of evidence about why `Type`{.haskell} is a bad name, you can
 consult `GHC.Types`{.haskell} which defines the kind `Type`{.haskell} as `TYPE
@@ -545,7 +546,12 @@ Type`{.haskell}.
 
 `Type -> Type`{.haskell} is not the same thing as `Type`{.haskell}, but (here is
 the confusing part) `Type -> Type`{.haskell} has the kind `Type`{.haskell}. Get
-your head around that!
+your head around that! If you can't, that's fine. The intuition is that types
+and kinds are one and the same, then so are the function arrow `(->)`{.haskell}
+and kind arrow `(->)`{.haskell}. A more concrete explanation will follow once we
+cover [levity polymorphism](#levity-polymorphism). One implication of `Type ->
+Type :: Type` is that, it is inhabited. For example, `id :: Type -> Type` type
+checks.
 
 We have `Type`{.haskell}s; we have things that construct `Type`{.haskell}s; and
 we have unlifted types such as `Int#`{.haskell}. What else?
@@ -554,8 +560,7 @@ we have unlifted types such as `Int#`{.haskell}. What else?
 
 So far, we've only seen inhabited types. `Int`{.haskell} and `Int#`{.haskell}
 are obviously examples, but `Type -> Type`{.haskell} is also inhabited since
-that too has kind `Type`{.haskell}. For example, `id :: Type -> Type`{.haskell}
-type checks.
+that too has kind `Type`{.haskell}.
 
 Emphasising inhabitation as a property implies that there must be some
 uninhabited kinds. In fact, these are the pillars of theorem proving and
@@ -611,9 +616,9 @@ Note that this is the improved state of affairs. Kinds and types used to be
 separated and there was also a separate kind `[]`{.haskell} with sort (the
 classification of kind) `BOX`{.haskell}.
 
-Nevertheless, their existence in GHC is a blessing. They have structure that
-normal types lack and are good indices to data types. We come back to this when
-we introduces GADTs.
+Nevertheless, promoted types are a blessing. They act as indices to other data
+types and allows us to encode various properties at type level. We come back to
+this when we introduces GADTs.
 
 ## Kind polymorphism
 
@@ -645,7 +650,14 @@ another kind polymorphic type.
 
 ## Levity polymorphism
 
-How about the kind of the `Type`{.haskell} constructor `List`{.haskell}?
+The distinction between types that have inhabitants and types that don't stand
+on solid ground in GHC and leads to beautiful generalisations over types that
+have inhabitants. We now explore that.
+
+This section consolidates the previous discussions of type habitation. If your
+solely interested in verification, you can skip it.
+
+What is the kind of the `Type`{.haskell} constructor `List`{.haskell}?
 
 ```haskell
 > :k List
@@ -658,10 +670,11 @@ has type `a`{.haskell}, constructing a term `Cons x xs`{.haskell} necessitates a
 term `x :: a`{.haskell}, hence `a`{.haskell} must be a type with kind
 `Type`{.haskell}.
 
-Hopefully, my rant about `Type`{.haskell} being a misnomer made you doubt my
-last statement. What about `Int#`{.haskell}? That has inhabitants, so it can
-equally be `a`{.haskell}. More generally, we want `a`{.haskell} to be a type
-that has a runtime representation.
+Hopefully, my rant about `Type`{.haskell} being a misnomer made you doubt the
+last statement. What about `Int#`{.haskell}? Since `Int#`{.haskell} has
+inhabitants, by the reasoning above `a`{.haskell} can also be `Int#`{.haskell}.
+More generally, we want `a`{.haskell} to be a type that has a runtime
+representation.
 
 You remember `TYPE`{.haskell}? The kind that spawns `Type`{.haskell} and `TYPE
 'IntRep`{.haskell}. Let see what kind it has.
@@ -722,6 +735,19 @@ the signature.
 > :t +v error
 ```
 
+Let's look at something more interesting. What is the kind of the function type
+constructor `(->)`{.haskell}?
+
+```haskell
+(->) :: forall {r :: RuntimeRep} {s :: RuntimeRep}.  TYPE r -> TYPE s -> Type
+```
+
+This shows why `Type -> Type`{.haskell} has inhabitants. It is because
+`(->)`{.haskell} is a `Type`{.haskell} constructor. More importantly, it shows
+that when you write a function between lifted data types or from a lifted data
+type to a unlifted one, we are in fact using the same arrow rather than
+syntactic magic.
+
 ## Inhabitable out of uninhabitable
 
 What is the kind of the following data type?
@@ -746,7 +772,13 @@ we haven't yet made any use of poly-kindedness.
 [Later](#propositional-equality), we define a poly-kinded equality type
 illustrating the utility of kind polymorphism.
 
-With this, you have a good bird's-eye view of Haskell types and kinds.
+## Summary
+
+Haskell is slowly evolving into a practical language that unifies terms and
+types. We are not quite there yet and the gradual transition creates some
+interesting and tough-to-wrap-your-head-around language concepts. This section
+gives a bird eye's view of these concepts that we shall use as building blocks
+of useful type-level programming.
 
 # Verifying the leftist property
 
