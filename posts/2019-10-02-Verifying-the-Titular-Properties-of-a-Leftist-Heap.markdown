@@ -1,5 +1,5 @@
 ---
-title: Verifying Leftist and Heap Properties of a Leftist Heap
+title: Verifying the Titular Properties of a Leftist Heap
 postType: Technical
 inWhich: my job search leads me to verify the titular properties of a leftist
   heap using Haskell's type-level features and to test it by way of simulation
