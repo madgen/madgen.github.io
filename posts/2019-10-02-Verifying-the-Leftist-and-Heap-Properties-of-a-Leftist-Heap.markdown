@@ -18,15 +18,15 @@ expect you to do at their job interviews (and at their job interviews only).
 
 At some point in the book, it says "know how to implement these data structures
 by heart: dynamically sized arrays, hash tables, [...], **binary heaps**,
-[...]". It dawned on me that I remember the heap property and heap interface,
-but not how to implement it. I was horrified when I remembered despite
-conceptually being a tree, binary heaps are implemented using arrays. Despite
-having used Haskell as my primary language, decided to implement it in Ruby---my
-prior primary language. After some time and indexing errors later, I got it
-working. Then ported it to Haskell's using the [`ST`
+[...]". It dawned on me that I remember the heap property and the heap
+interface, but not how to implement it. I was horrified when I remembered
+despite conceptually being a tree, binary heaps are implemented using arrays.
+Despite having used Haskell as my primary language, decided to implement it in
+Ruby---my prior primary language. Some time and indexing errors later, I got it
+working.  Then ported it to Haskell's using the [`ST`
 monad](http://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html).
-After writing `STRef` one too many times, I got that working too, but it left
-much to be desired. "Save the trees" yelled my terminal!
+After writing `STRef`{.haskell} one too many times, I got that working too, but
+it left much to be desired. "Save the trees" yelled my terminal!
 
 Finally, I consulted Dr Chris Okasaki's [Purely Functional Data
 Structures](https://amzn.to/34ICTAM) (affiliate link). A leftist heap is one of
