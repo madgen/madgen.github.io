@@ -76,7 +76,7 @@ Here are the sections and what to expect from them.
    in modern Haskell and how they relate to each other. Type-level features:
    [data type promotion](#data-type-promotion), [kind
    polymorphism](#kind-polymorphism), and
-   [levity-polymorhpsim](#levity-polymorphism);
+   [levity-polymorphism](#levity-polymorphism);
  - [Verifying the leftist property](#verifying-the-leftist-property) explains
    the data type encoding the leftist property and the implementation of its
    property preserving operations. Type-level features: [generalised algebraic
@@ -149,7 +149,7 @@ class Heap heap where
     go [ x ] = [ x ]
     go (x : y : rest) = go (merge x y : go rest)
 
-  -- Motification
+  -- Modification
   insert :: Elem heap -> heap -> heap
   insert x = merge (singleton x)
 
@@ -173,7 +173,7 @@ class Heap heap where
   deleteMax = fmap snd <$> decompose
 ```
 
-This is a bit mouthful because many operations are interdefinable as reflected
+This is a bit mouthful because many operations are inter-definable as reflected
 by the `MINIMAL`{.haskell} pragma.
 
 The `Elem`{.haskell} _type family_ (enabled by `TypeFamilies` extension)
@@ -874,7 +874,7 @@ div _ TZ = error "Impossible! The compiler ensures it!"
 Doing so prompts GHC to kindly inform us that this case cannot occur and thus is
 not needed. In fact, GHC wouldn't even bother generating the code to raise the
 infamous "non-exhaustive patterns" exception because it knows the type checker
-wouldn't let such an offense reach code generation. So not only GADTs improve
+wouldn't let such an offence reach code generation. So not only GADTs improve
 safety, but also, other things equal, generate less code and consequently
 improve efficiency.
 
@@ -967,7 +967,7 @@ data SNat :: Nat -> Type where
 
 You see while the type `'Z`{.haskell} has kind `Nat`{.haskell}, the type `SNat
 'Z`{.haskell} has kind `Type`{.haskell} and it has exactly one inhabitant:
-`SZ`{.haskell}. This correspondance is true for all naturals. Hence, we can use
+`SZ`{.haskell}. This correspondence is true for all naturals. Hence, we can use
 the singleton type `SNat n :: Type`{.haskell} as the term-level representative
 for `n :: Nat`{.haskell}.
 
@@ -1492,7 +1492,7 @@ implementation as well. In short, unless we do that the implementation doesn't
 go through, but it is going to take some time to explain exactly why. For now,
 bare with me.
 
-Let's oberserve the use of the intermediary function `merge'`{.haskell} and its
+Let's observe the use of the intermediary function `merge'`{.haskell} and its
 type signature.
 
 ```haskell
@@ -1536,7 +1536,7 @@ max (S n) (S m) = S (max n m)
 
 You might be wondering why not just write that and get a promoted version of
 `max`{.haskell} just as we did with data types and kinds? It's an excellent
-question and this syntactic dicothomy is another reason why people don't like
+question and this syntactic dichotomy is another reason why people don't like
 type-level programming in Haskell. In Idris or Agda, that is exactly how it
 works.
 
@@ -1636,7 +1636,7 @@ because `'Z`{.haskell} hits the base cases of `Max`{.haskell}.
 In the previous version, term-level `(<=)`{.haskell} decided on the top
 label and the spine to recurse on. We've already seen that
 `lemConnexity`{.haskell} is the replacement we need for comparing
-`SNat`{.haskell}s. By mimicing the structure of the previous implementation, we
+`SNat`{.haskell}s. By mimicking the structure of the previous implementation, we
 can provide a partial implementation.
 
 ```haskell
@@ -1790,7 +1790,7 @@ go _ SZ _ = error "Inaccessible case."
 
 We use `error` due to a deficiency of Haskell. When the second argument is
 `SZ`{.haskell}, there is no constructor of `(<=)`{.haskell} that can make `'S n
-<= m`{.haskell}, butwe have a proof of this, namely the third argument. We can
+<= m`{.haskell}, but we have a proof of this, namely the third argument. We can
 see this by pattern matching on the third argument.
 
 ```haskell
@@ -1960,7 +1960,7 @@ $x$ is $\lambda$ bound. However, $\alpha$ doesn't seem to be bound by anything,
 hence it looks dependent on the context.
 
 Appearances can be deceiving. If this term should be interpreted as Haskell
-interprets terms and their signatures, it just abbrebiates $\Lambda \alpha :
+interprets terms and their signatures, it just abbreviates $\Lambda \alpha :
 \mathit{Type}. \lambda x : \alpha. x$. All free type variables in signatures are
 implicitly $\Lambda$ bound. The Haskell syntax is `forall` and is only allowed
 in signatures (with `ExplicitForAll` enabled).
@@ -1980,7 +1980,7 @@ explicitly. You just pass the type with a `@` prefix.  For example in `ghci`,
 `:t id @Int` yields `Int -> Int`{.haskell}.
 
 This works as an alternative to using `::`{.haskell} when a type is ambiguous.
-Often it lets us get away with fewer parantheses and looks cleaner in general.
+Often it lets us get away with fewer parentheses and looks cleaner in general.
 
 What happens if there are multiple type variables? The applied type is unified
 with the first type variable. This is how term-level application works as well.
@@ -2042,7 +2042,7 @@ applied to `heap`{.haskell} instead, we'd create a property that is trivially
 satisfied.
 
 We use another type application in the body of `maxOfActions`{.haskell}. This is
-for disambiguiation. Without it, all `carryOutActions` sees is `Elem
+for disambiguation. Without it, all `carryOutActions` sees is `Elem
 h`{.haskell} and `Elem`{.haskell} isn't injective. This means given `Elem
 h`{.haskell}, we can't know what `h` is. For example, if I told you `Elem
 h`{.haskell} was `Int`{.haskell}, `h` could be `LeftistHeap`{.haskell} or
@@ -2103,7 +2103,7 @@ to Haskell's typed and bright future.
 I'd like to thank Dr Dominic Orchard and Lex van der Stoep for their comments.
 
 This post wouldn't be possible without the heroic work of a vibrant research
-community and GHC implementors. They are too many to name exhaustively, but the
+community and GHC implementers. They are too many to name exhaustively, but the
 following deserves a special round of applause: [Dr Richard
 Eisenberg](https://richarde.dev/index.html) and [Prof. Stephanie
 Weirich](https://www.cis.upenn.edu/~sweirich/) ([closed type
