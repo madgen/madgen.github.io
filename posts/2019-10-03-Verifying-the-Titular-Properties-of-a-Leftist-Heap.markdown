@@ -5,7 +5,7 @@ inWhich: my job search leads me to verify the leftist and heap properties of a
   leftist heap using Haskell's type-level features and to test various
   implementations by way of simulation using QuickCheck. We also cover much of
   Haskell's type-level computation features from scratch.
-published: false
+published: true
 ---
 
 ## The story
