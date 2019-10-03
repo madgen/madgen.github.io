@@ -97,7 +97,7 @@ Here are the sections and what to expect from them.
    foralls](#there-is-lambda-then-there-is-lambda), and [scoped type
    variables](#quickchecking-functional-equivalence);
  - [Conclusion](#conclusion) acknowledges people who made this post possible and
-   reminds some take aways.
+   reminds some take-aways.
 
 The exposition of the code is fragmented and out of order, but a well-organised
 version of the [**SOURCE
@@ -1271,7 +1271,7 @@ That said, with some discipline about making the lemmas small and properties
 simple, we can go a long distance as long as we are not trying to mechanise an
 entire field of mathematics.
 
-If you are interested in this style of _type-deriven development_, there is a
+If you are interested in this style of _type-driven development_, there is a
 [(w)hole book](https://amzn.to/2OjXoxB) (affiliate link) on it by the Idris
 language creator Dr Edwin Brady.
 
