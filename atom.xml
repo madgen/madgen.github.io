@@ -8,8 +8,16 @@
         <name>Mistral Contrastin</name>
         <email>madgenhetic@gmail.com</email>
     </author>
-    <updated>2018-12-25T00:00:00Z</updated>
+    <updated>2019-10-03T00:00:00Z</updated>
     <entry>
+    <title>Verifying the Titular Properties of a Leftist Heap</title>
+    <link href="https://dodisturb.me/posts/2019-10-03-Verifying-the-Titular-Properties-of-a-Leftist-Heap.html" />
+    <id>https://dodisturb.me/posts/2019-10-03-Verifying-the-Titular-Properties-of-a-Leftist-Heap.html</id>
+    <published>2019-10-03T00:00:00Z</published>
+    <updated>2019-10-03T00:00:00Z</updated>
+    <summary type="html"><![CDATA[In which my job search leads me to verify the leftist and heap properties of a leftist heap using Haskell's type-level features and to test various implementations by way of simulation using QuickCheck. We also cover much of Haskell's type-level computation features from scratch.]]></summary>
+</entry>
+<entry>
     <title>The Essence of Datalog</title>
     <link href="https://dodisturb.me/posts/2018-12-25-The-Essence-of-Datalog.html" />
     <id>https://dodisturb.me/posts/2018-12-25-The-Essence-of-Datalog.html</id>
