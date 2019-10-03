@@ -118,7 +118,9 @@ class Heap heap where
   {-# MINIMAL
     isEmpty, empty,
     (singleton | insert),
-    (merge | insert),
+    (fromList | (singleton, merge)),
+    (insert | (merge, singleton)),
+    (merge | (decompose, insert)),
     (decompose | (findMax, deleteMax))
     #-}
 
