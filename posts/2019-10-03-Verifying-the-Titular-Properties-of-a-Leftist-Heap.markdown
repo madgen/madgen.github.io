@@ -338,7 +338,7 @@ merge h1@(Node x _ left1 right1)
 The base cases are simple as `Leaf`{.haskell} acts as the identity element for
 `merge`{.haskell}.
 
-In the recursive case, we walk over the right-most paths of the input heaps. You
+In the inductive case, we walk over the right-most paths of the input heaps. You
 can see this in the recursive calls; they never touch the left children.
 
 To preserve the heap property, we recurse on the right child of the argument
@@ -504,13 +504,13 @@ academic papers) is a valid term for any type with kind `Type`{.haskell}. This
 makes `Type` the kind of _lifted_ types. Consequently, all of these types are
 _inhabited_.
 
-GHC manual (until recently) called `Type`{.haskell} "the kind of types with
-values". This is not true. If we enable `MagicHash` extension, we get access to
-unlifted types such as `Int#`{.haskell}. `Int#`{.haskell} definitely has values
-as witnessed by `42# :: Int#`{.haskell}, but when we query `:k Int# ::
-Type`{.haskell}, we get an error saying "Expecting a lifted type, but
-`Int#`{.haskell} is unlifted". So there are inhabited types without kind
-`Type`{.haskell}.
+The GHC manual (until recently) called `Type`{.haskell} "the kind of types with
+values". This is not true. If we enable the `MagicHash` extension and import
+`GHC.Prim`{.haskell}, we get access to unlifted types such as `Int#`{.haskell}.
+`Int#`{.haskell} definitely has values as witnessed by `42# :: Int#`{.haskell},
+but when we query `:k Int# :: Type`{.haskell}, we get an error saying "Expecting
+a lifted type, but `Int#`{.haskell} is unlifted". So there are inhabited types
+without kind `Type`{.haskell}.
 
 It is also wrong to say that `Type`{.haskell} is the kind of types that
 definitely has inhabitants. Once again the kind of `Int#`{.haskell} is `TYPE
@@ -582,7 +582,7 @@ Nil  :: List a
 Cons :: a -> List a -> List a
 ```
 
-With `DataKinds` extension, you also get following.
+With the `DataKinds` extension, you also get the following.
 
 ```haskell
 'Nil  :: List a
@@ -610,12 +610,12 @@ fancy types in Haskell:
   Then there is `'[]`{.haskell}, the type constructor equivalent to
   `'Nil`{.haskell}. Remember that `'` is optional. So when I use `[]`{.haskell},
   we don't know, if it is the type constructor `List`{.haskell} or the type
-  constructor `Nil`{.haskell}. Similar situation occurs with tuples, where the
+  constructor `Nil`{.haskell}. A similar situation occurs with tuples, where the
   term and the type share similar syntax.
 
 Note that this is the improved state of affairs. Kinds and types used to be
 separated and there was also a separate kind `[]`{.haskell} with sort (the
-classification of kind) `BOX`{.haskell}.
+classification of kinds) `BOX`{.haskell}.
 
 Nevertheless, promoted types are a blessing. They act as indices to other data
 types and help encoding various properties at type level. We come back to this
@@ -777,7 +777,7 @@ illustrating the utility of kind polymorphism.
 Haskell is slowly evolving into a practical language that unifies terms and
 types. We are not quite there yet and the gradual transition creates some
 interesting and tough-to-wrap-your-head-around language concepts. This section
-gives a bird eye's view of these concepts that we shall use as building blocks
+gives a bird's-eye view of these concepts that we shall use as building blocks
 of useful type-level programming.
 
 # Verifying the leftist property
@@ -872,13 +872,13 @@ div _ TZ = error "Impossible! The compiler ensures it!"
 Doing so prompts GHC to kindly inform us that this case cannot occur and thus is
 not needed. In fact, GHC wouldn't even bother generating the code to raise the
 infamous "non-exhaustive patterns" exception because it knows the type checker
-wouldn't let such an offence reach code generation. So not only GADTs improve
-safety, but also, other things equal, generate less code and consequently
-improve efficiency.
+wouldn't let such an offence reach code generation. So not only do GADTs improve
+safety, but also, other things equal, lead to less code and consequently improve
+efficiency.
 
 ### Less than or equal to relation
 
-Let's finally define $\leq$.`TypeOperators` extension is needed to use infix
+Let's finally define $\leq$.The `TypeOperators` extension is needed to use infix
 operators at the type level.
 
 ```haskell
@@ -892,13 +892,15 @@ This defines a relation between two `Nat`{.haskell}s. It records a series of
 steps that gets us to the desired $n \leq m$ starting from an indisputable fact.
 The record of these steps is a proof of membership to this relation.
 
-The indisputable fact is $\vdash_{\mathit{PA}} 0 \leq 0$ encoded by the
-`Base`{.haskell} constructor. Then by applying a series of `Single`{.haskell}s
-and `Double`{.haskell}s, we try to produce the desired inequality $n \leq m$.
-These constructors encode the following statements: $\vdash_{\mathit{PA}} n \leq
-m \implies n \leq m + 1$, and $\vdash_{\mathit{PA}} n \leq m \implies n + 1 \leq
-m + 1$. Hopefully, neither are controversial as our verification claims hinge on
-these being sound.
+The indisputable fact is $\vdash_{\mathit{PA}} 0 \leq 0$ ($\vdash_{\mathit{PA}}$
+means the statement is provable with the [Peano
+axioms](https://en.wikipedia.org/wiki/Peano_axioms) which constitutes the
+everyday theory of arithmetic) encoded by the `Base`{.haskell} constructor.
+Then by applying a series of `Single`{.haskell}s and `Double`{.haskell}s, we try
+to produce the desired inequality $n \leq m$.  These constructors encode the
+following statements: $\vdash_{\mathit{PA}} n \leq m \implies n \leq m + 1$, and
+$\vdash_{\mathit{PA}} n \leq m \implies n + 1 \leq m + 1$. Hopefully, neither
+are controversial as our verification claims hinge on these being sound.
 
 For example, to establish $1 \leq 2$ we need to give a term of type `'S 'Z <= 'S
 ('S 'Z)`{.haskell}.
@@ -1748,7 +1750,7 @@ lemMaxOfLEQ (Double xLEQy) | Refl <- lemMaxOfLEQ xLEQy = Refl
 ```
 
 Here, `xLEQy`{.haskell} has type `n <= m`{.haskell} and we need to show `Max ('S
-n) ('S m) :~: 'S m`{.haskell}. By the recursive case of `Max`{.haskell}'s
+n) ('S m) :~: 'S m`{.haskell}. By the inductive case of `Max`{.haskell}'s
 definition, the goal reduces to `'S (Max n m) :~: 'S m`{.haskell}. Since
 `xLEQy`{.haskell} is smaller than the original argument, we can recursively call
 `lemMaxOfLEQ`{.haskell} to get a term of type `Max n m :~: m`{.haskell}.
@@ -2143,7 +2145,9 @@ to Haskell's typed and bright future.
 
 ## Acknowledgements
 
-I'd like to thank Dr Dominic Orchard and Lex van der Stoep for their comments.
+I'd like to thank Dr Dominic Orchard and Lex van der Stoep for their comments on
+the drafts of this post and I appreciate Vilem Liepelt's post-publication
+corrections and suggestions.
 
 This post wouldn't be possible without the heroic work of a vibrant research
 community and GHC implementers. They are too many to name exhaustively, but the
