@@ -6,7 +6,7 @@ inWhich: my job search leads me to verify the leftist and heap properties of a
   implementations by way of simulation using QuickCheck. We also cover much of
   Haskell's type-level computation features from scratch.
 published: true
-lastUpdated: 2019-10-03
+lastUpdated: 2019-10-04
 ---
 
 ## The story
