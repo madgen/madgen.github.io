@@ -6,7 +6,7 @@ inWhich: my job search leads me to verify the leftist and heap properties of a
   implementations by way of simulation using QuickCheck. We also cover much of
   Haskell's type-level computation features from scratch.
 published: true
-lastUpdated: 2019-10-04
+lastUpdated: 2019-10-08
 ---
 
 ## The story
@@ -990,10 +990,10 @@ is simply no way of getting a buggy implementation to type check.
 
 ## Rank encoded leftist heaps
 
-We have everything needed to encode the leftist property at type level. Since
-the leftist property involves comparing ranks of subheaps, we need access to
-rank at type level. `Rank`{.haskell} does that using a an `SNat`{.haskell}. We
-also define a helper to increment the rank for later use.
+We have everything needed to encode the leftist property at the type level.
+Since the leftist property involves comparing ranks of subheaps, we need access
+to rank at type level. `Rank`{.haskell} does that using a an `SNat`{.haskell}.
+We also define a helper to increment the rank for later use.
 
 ```haskell
 newtype Rank n = Rank { _unRank :: SNat n }
@@ -1065,8 +1065,8 @@ legal ones another.
 
 The `Heap`{.haskell} instance for `LeftistHeap`{.haskell} was directly on that
 data type. Consequently, the signatures of heap operations all involved
-`LeftistHeap`{.haskell}. This direct approach tends fail with property encoding
-fancy types.
+`LeftistHeap`{.haskell}. This direct approach tends to fail with
+property-encoding fancy types.
 
 Say we tried to make `SafeHeap rank a`{.haskell} an instance of
 `Heap`{.haskell}.
