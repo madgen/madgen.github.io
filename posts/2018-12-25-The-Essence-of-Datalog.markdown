@@ -4,7 +4,7 @@ postType: Technical
 inWhich: we implement a simple Datalog engine in not many lines of Haskell to
   understand its semantics.
 published: true
-lastUpdated: 2019-06-18
+lastUpdated: 2019-12-07
 ---
 
 Datalog is arguably the simplest logic programming language there is. Depending
@@ -31,8 +31,8 @@ feel that's not the case at any point, give me a shout on Twitter or email me
 ## Acknowledgements
 
 Thanks to Dominic Orchard for pointing out that he did not advise Andrew Rice.
-Also thanks to Daniel Kröni for realising `isRangeRestricted` is too restrictive
-and for providing a better implementation.
+Also thanks to Daniel Kröni for providing a less restrictive `isRangeRestricted`
+implementation and to Gilbert G for pointing out a broken link.
 
 ## A crash course in logic programming
 
@@ -299,7 +299,7 @@ Here's something to think about. We said the facts we deduce will be ground, but
 `evalRule` does not check if the substitution has a binding for all the
 variables that appear in the head. Does that mean we are potentially concluding
 non-ground facts? Don't worry if you're not sure, we'll come back to it
-[below](#range-restriction).
+[below](#range-restriction-and-domain-independence).
 
 ### All at once
 
