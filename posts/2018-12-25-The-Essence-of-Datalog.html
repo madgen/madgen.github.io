@@ -45,7 +45,7 @@
   Posted on December 25, 2018
   
   
-    and last updated on June 18, 2019
+    and last updated on December  7, 2019
   
 </div>
 
@@ -59,7 +59,7 @@
 <p>We start by looking at a simple program and implement an evaluator for it. Along with the implementation, we give a lightweight discussion of semantic concerns, in particular about its termination. Later, we try quenching the thirst for efficiency a little by giving some avenues for optimisation and conclude with where to go next for those interested. There is a copy of the full implementation at the end of the post.</p>
 <p>I want this post to be accessible to everyone, not only to the programming language people. For that reason, all uses of theory terms are auxiliary. If you feel that’s not the case at any point, give me a shout on Twitter or email me (both available in <a href="https://dodisturb.me">my homepage</a>) and I’ll fix it.</p>
 <h2 id="acknowledgements">Acknowledgements</h2>
-<p>Thanks to Dominic Orchard for pointing out that he did not advise Andrew Rice. Also thanks to Daniel Kröni for realising <code>isRangeRestricted</code> is too restrictive and for providing a better implementation.</p>
+<p>Thanks to Dominic Orchard for pointing out that he did not advise Andrew Rice. Also thanks to Daniel Kröni for providing a less restrictive <code>isRangeRestricted</code> implementation and to Gilbert G for pointing out a broken link.</p>
 <h2 id="a-crash-course-in-logic-programming">A crash course in logic programming</h2>
 <p>The litmus test for any logic programming language is to be able to compute a variation of the following ancestry program.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode prolog"><code class="sourceCode prolog"><a class="sourceLine" id="cb1-1" title="1">adviser(<span class="ot">&quot;</span><span class="er">Andrew</span><span class="al"> </span><span class="er">Rice</span><span class="ot">&quot;</span><span class="kw">,</span>     <span class="ot">&quot;</span><span class="er">Mistral</span><span class="al"> </span><span class="er">Contrastin</span><span class="ot">&quot;</span>)<span class="kw">.</span></a>
@@ -158,7 +158,7 @@
 <a class="sourceLine" id="cb18-3" title="3"></a>
 <a class="sourceLine" id="cb18-4" title="4"><span class="ot">evalRule ::</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">Rule</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span></a>
 <a class="sourceLine" id="cb18-5" title="5">evalRule kb (<span class="dt">Rule</span> <span class="fu">head</span> body) <span class="fu">=</span> <span class="fu">map</span> (substitute <span class="fu">head</span>) (walk kb body)</a></code></pre></div>
-<p>Here’s something to think about. We said the facts we deduce will be ground, but <code>evalRule</code> does not check if the substitution has a binding for all the variables that appear in the head. Does that mean we are potentially concluding non-ground facts? Don’t worry if you’re not sure, we’ll come back to it <a href="#range-restriction">below</a>.</p>
+<p>Here’s something to think about. We said the facts we deduce will be ground, but <code>evalRule</code> does not check if the substitution has a binding for all the variables that appear in the head. Does that mean we are potentially concluding non-ground facts? Don’t worry if you’re not sure, we’ll come back to it <a href="#range-restriction-and-domain-independence">below</a>.</p>
 <h3 id="all-at-once">All at once</h3>
 <p>All we need now is to evaluate all of the rules together. We’ll do one of the simplest possible things. We’ll evaluate each rule independently and then concatenate the newly derived facts together and bundle them with what we already know. Then repeat the process until we can’t produce new facts any more.</p>
 <div class="sourceCode" id="cb19"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb19-1" title="1"><span class="ot">immediateConsequence ::</span> <span class="dt">Program</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span> <span class="ot">-&gt;</span> <span class="dt">KnowledgeBase</span></a>
