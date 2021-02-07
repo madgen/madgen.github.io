@@ -21,7 +21,7 @@ presented in this course?
 5. Why does `past.ml` in first Slang compiler have `loc` parameter for every
 constructor, while the corresponding constructors in `ast.ml` don't have them?
 
-6. According to lexical analysis algorithm described in slide 31, what are the
+6. According to lexical analysis algorithm described in the slides, what are the
 two rules that disambiguate multiple possible matches out of the same character
 stream?
 
