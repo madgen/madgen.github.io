@@ -50,26 +50,28 @@
 <h1>Typed Programs Don't Leak Data</h1>
 
 
-<p class="in-which">In which we turn privacy violations into compile-time errors in a simple imperative language embedded in Haskell and make GHC enforce it in style using GADTs.</p>
+<p class="in-which">In which we turn privacy violations into compile-time errors in a simple imperative language embedded in Haskell and enforce it in style using GADTs.</p>
 
 
 <div class="post"><p>Private data should remain private. The goal is obvious, but how to achieve it is less so.</p>
-<p>First, it is a deeply global problem. Private data can enter a system through a fancy frontend and make its way deep into the jungle of backend services only to be logged into a file and read by someone who is not supposed to. It is not practical for people to audit a large system end-to-end.</p>
-<p>Second, it is not amenable to testing. The most <em>explicit</em> cases of leakage such as</p>
-<pre><code>publicStatus := privateMaritalStatus</code></pre>
-<p>can perhaps be tested, but how about the more <em>implicit</em> and elusive forms of leakage such as</p>
-<pre><code>if privateMaritalStatus = &quot;single&quot; {
-  publicStatus := &quot;available&quot;
+<p>For one thing, it is a fundamentally global problem. Private data can enter a system through a fancy frontend, make its way deep through the maze of backend services, only to be logged and read by someone who is not supposed to. It is not practical for people to audit a large system end-to-end and even less realistic to expect such an audit to hold up against software evolution.</p>
+<p>Further, privacy as a property is not always amenable to testing. The most <em>explicit</em> cases of leakage such as</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb1-1" title="1">publicStatus <span class="op">:=</span> privateMaritalStatus</a></code></pre></div>
+<p>can perhaps be tested, but how about the more <em>implicit</em> forms of leakage. Consider</p>
+<pre><code>if (privateMaritalStatus = &quot;single&quot;) {
+  publicStatus := &quot;available&quot;;
 } else {
-  else publicStatus := &quot;complicated&quot;
+  publicStatus := &quot;complicated&quot;;
 }</code></pre>
-<p>where private data doesn’t physically move to the public status, but by observing the public status, we can figure something out about the private data.</p>
-<p>The nightmare doesn’t end there. There are subtler ways of leaking data such as termination, execution time, and exceptions. Perhaps the most famous example is figuring out passwords by measuring the time it takes for a program to reject candidate passwords. The longer it it takes, more of the prefix we know.</p>
-<p>There are multitude of ways of mitigating these problems both dynamic and static. In this post, I’ll focus on one productive static approach, namely we’ll look at type systems that makes private data leakage impossible. Let’s get into it.</p>
-<p>All the Haskell necessary imports and Haskell extensions can be found <a href="#full-program">at the end of this post</a> as well in <a href>this repository</a>.</p>
+<p>where private marital status doesn’t physically move to the public status, but by observing the public status, we can figure something out about the private data. Without reifying these implicit flows at runtime, it doesn’t look like we can write tests.</p>
+<p>The nightmare doesn’t end there. There are subtler ways of leaking data such as non-termination, execution time, and exceptions. Perhaps the most famous example is figuring out passwords by measuring the time it takes for a program to reject candidate passwords. The longer rejection takes, the longer password prefix can be deduced.</p>
+<p>There are multitude of ways of mitigating these problems both dynamic and static. In this post, we focus on one productive static approach. Namely, we implement a type system that regulates explicit and implicit dataflows as well as non-termination as a covert channel. See <a href="#final-words">the end of this post</a> for references.</p>
+<p>We won’t shy away from harnessing the full might of GHC. The necessary imports, extensions, and typechecker plugin can be found at <a href="#full-program">the end of this post</a> as well as <a href="https://github.com/madgen/volpano-smith">this repository</a>.</p>
+<p>If you find a mistake, some explanation to be unclear, or just want to say hi, reach me on <a href="https://twitter.com/madgen_">Twitter</a> or by other ways listed on my homepage.</p>
+<p>Let’s get started.</p>
 <h2 id="a-simple-imperative-language">A simple imperative language</h2>
-<p>As this is a blog post, we’ll use the most contrived language possible that demonstrates all the major ideas. First, we define everything using simple types that does not make use of any fancy type machinery.</p>
-<p>Our expression language has integer literals, variables, and addition.</p>
+<p>We’ll use the most contrived language possible that demonstrates all the major ideas. First, we define everything using simple types that does not make use of any fancy type machinery.</p>
+<p>The expression language has integer literals, variables, and addition.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" title="1"><span class="kw">data</span> <span class="dt">Variable</span> <span class="fu">=</span> <span class="dt">Variable</span> <span class="dt">String</span></a>
 <a class="sourceLine" id="cb3-2" title="2"></a>
 <a class="sourceLine" id="cb3-3" title="3"><span class="kw">infixr</span> <span class="dv">6</span> <span class="fu">:+</span></a>
@@ -77,7 +79,7 @@
 <a class="sourceLine" id="cb3-5" title="5">  <span class="dt">EInt</span><span class="ot"> ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span></a>
 <a class="sourceLine" id="cb3-6" title="6">  <span class="dt">EVar</span><span class="ot"> ::</span> <span class="dt">Variable</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span></a>
 <a class="sourceLine" id="cb3-7" title="7"><span class="ot">  (:+) ::</span> <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span></a></code></pre></div>
-<p>Our little imperative language has assignment, sequencing, if-then-else statements, and while loops.</p>
+<p>The tiny imperative language has assignments, sequencing, if-then-else statements, and while loops.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" title="1"><span class="kw">infixl</span> <span class="dv">5</span> <span class="fu">:=</span></a>
 <a class="sourceLine" id="cb4-2" title="2"><span class="kw">infixl</span> <span class="dv">4</span> <span class="fu">:&gt;&gt;</span></a>
 <a class="sourceLine" id="cb4-3" title="3"><span class="kw">data</span> <span class="dt">Cmd</span> <span class="kw">where</span></a>
@@ -109,11 +111,11 @@ if (x) {
 } else {
   y := 24;
 }</code></pre>
-<p>At this point, I should write an evaluator function to give semantics to this language, but there is nothing interesting about the dynamic semantics. The intuitive evaluation of the language is the right one. The only oddity is that we treat <code>0</code> as false and any other number as true when an expression is used as a conditional expression.</p>
+<p>At this point, we should write an evaluator function to give dynamic semantics to this language, but there is nothing interesting about it. So, we’ll skip it. The intuitive evaluation of the language is the right one. The only oddity is that we treat <code>0</code> as false and any other number as true when an expression is used as a condition.</p>
 <h2 id="typing-our-language">Typing our language</h2>
 <p>Now that we are acquainted with the language, let’s prevent private data from leaking.</p>
 <h3 id="security-levels">Security levels</h3>
-<p>Let’s first distinguish private from public. We’ll use natural numbers to do that. The higher the values, the more private they are. All variables in our language shall have intrinsic security levels.</p>
+<p>We need to distinguish private from public. We’ll use natural numbers to do that. The higher the value, the more private it is. All variables in our language have intrinsic security levels reflected in their types.</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" title="1"><span class="kw">type</span> <span class="dt">Level</span> <span class="fu">=</span> <span class="dt">Nat</span></a>
 <a class="sourceLine" id="cb7-2" title="2"></a>
 <a class="sourceLine" id="cb7-3" title="3"><span class="kw">newtype</span> <span class="dt">Variable</span> (<span class="ot">l ::</span> <span class="dt">Level</span>) <span class="fu">=</span> <span class="dt">Variable</span> <span class="dt">String</span></a>
@@ -124,14 +126,14 @@ if (x) {
 <a class="sourceLine" id="cb7-8" title="8"><span class="ot">private ::</span> <span class="dt">Variable</span> <span class="dv">999</span></a>
 <a class="sourceLine" id="cb7-9" title="9">private <span class="fu">=</span> <span class="dt">Variable</span> <span class="st">&quot;private&quot;</span></a></code></pre></div>
 <h3 id="expressions">Expressions</h3>
-<p>Our expression language will remain the same, but the expressions will reflect how private they are in their types.</p>
-<p>For variable expressions, the obvious choice is to use the security level of the underlying variable. The literals will all be public, i.e., they all have the security level 0. Finally, for plus, we’ll be conservative and pick the more private security level. A folder that contains top secret intelligence and a pizza flyer still cannot be handed to a pizza lover without security clearance.</p>
+<p>The expression language is structurally the same as the simply typed version, but expression types now reflect how private expressions are.</p>
+<p>For variable expressions, the obvious choice is to use the security level of the underlying variable. The literals are all be public, i.e., they all have the security level 0. Finally, for plus, we’ll be conservative and pick the more private security level. A folder that contains some top secret intelligence and a pizzaria flyer cannot be handed to a pizza lover without security clearance.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb8-1" title="1"><span class="kw">infixr</span> <span class="dv">6</span> <span class="fu">:+</span></a>
 <a class="sourceLine" id="cb8-2" title="2"><span class="kw">data</span> <span class="dt">Exp</span> (<span class="ot">level ::</span> <span class="dt">Level</span>) <span class="kw">where</span></a>
 <a class="sourceLine" id="cb8-3" title="3">  <span class="dt">EInt</span><span class="ot"> ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span> <span class="dv">0</span></a>
 <a class="sourceLine" id="cb8-4" title="4">  <span class="dt">EVar</span><span class="ot"> ::</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Exp</span> level</a>
 <a class="sourceLine" id="cb8-5" title="5"><span class="ot">  (:+) ::</span> <span class="dt">Exp</span> level1 <span class="ot">-&gt;</span> <span class="dt">Exp</span> level2 <span class="ot">-&gt;</span> <span class="dt">Exp</span> (<span class="dt">Max</span> level1 level2)</a></code></pre></div>
-<p>Another way of writing these constructors would be using inference rules. <code>e : l</code> means <code>e</code> has a security level <code>l</code> and <code>v : l</code> means the intrinsic security level of the variable <code>v</code> is <code>l</code>. (I take some liberties with the notation)</p>
+<p>Another way of writing these constructors would be using inference rules. <code>e : l</code> means <code>e</code> has a security level <code>l</code> and <code>v : l</code> means the intrinsic security level of the variable <code>v</code> is <code>l</code>.</p>
 <pre><code>  ----------
   EInt n : 0
 
@@ -142,41 +144,40 @@ if (x) {
   e1 : l1      e2 : l2
   --------------------
   e1 :+ e2 : max l1 l2</code></pre>
-<p>Here’s a simple expression where the maximum computation is done for us behind the scenes.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" title="1"><span class="ot">simpleExp ::</span> <span class="dt">Exp</span> <span class="dv">999</span></a>
-<a class="sourceLine" id="cb10-2" title="2">simpleExp <span class="fu">=</span> <span class="dt">EVar</span> public <span class="fu">:+</span> <span class="dt">EVar</span> private</a></code></pre></div>
+<p>Here’s a simple expression where GHC does the maximum computation for us behind the scenes.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" title="1"><span class="ot">compoundPrivateExp ::</span> <span class="dt">Exp</span> <span class="dv">999</span></a>
+<a class="sourceLine" id="cb10-2" title="2">compoundPrivateExp <span class="fu">=</span> <span class="dt">EVar</span> public <span class="fu">:+</span> <span class="dt">EVar</span> private</a></code></pre></div>
 <h3 id="commands">Commands</h3>
-<p>The commands are where information flow happens and where our type system gets interesting. Here they are</p>
+<p>Commands are where information flow happens and where our type system gets interesting. Before we go over each constructor, here’s the definition in all of its glory.</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" title="1"><span class="kw">infixl</span> <span class="dv">5</span> <span class="fu">:=</span></a>
 <a class="sourceLine" id="cb11-2" title="2"><span class="kw">infixl</span> <span class="dv">4</span> <span class="fu">:&gt;&gt;</span></a>
 <a class="sourceLine" id="cb11-3" title="3"><span class="kw">data</span> <span class="dt">Cmd</span> (<span class="ot">level ::</span> <span class="dt">Level</span>) <span class="kw">where</span></a>
-<a class="sourceLine" id="cb11-4" title="4"><span class="ot">  (:=)  ::</span> (le <span class="fu">&lt;=</span> lx) <span class="ot">=&gt;</span> <span class="dt">Variable</span> lx <span class="ot">-&gt;</span> <span class="dt">Exp</span> le <span class="ot">-&gt;</span> <span class="dt">Cmd</span> lx</a>
+<a class="sourceLine" id="cb11-4" title="4"><span class="ot">  (:=)  ::</span> (le <span class="fu">&lt;=</span> lv) <span class="ot">=&gt;</span> <span class="dt">Variable</span> lv <span class="ot">-&gt;</span> <span class="dt">Exp</span> le <span class="ot">-&gt;</span> <span class="dt">Cmd</span> lv</a>
 <a class="sourceLine" id="cb11-5" title="5"><span class="ot">  (:&gt;&gt;) ::</span> <span class="dt">Cmd</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> (<span class="dt">Min</span> l1 l2)</a>
 <a class="sourceLine" id="cb11-6" title="6">  <span class="dt">ITE</span><span class="ot">   ::</span> (lb <span class="fu">&lt;=</span> <span class="dt">Min</span> l1 l2) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> (<span class="dt">Min</span> l1 l2)</a>
 <a class="sourceLine" id="cb11-7" title="7">  <span class="dt">While</span><span class="ot"> ::</span> (lb <span class="fu">&lt;=</span> l) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l</a></code></pre></div>
-<p>Structurally, it is identical to the simple commands. We have the same constructors with the same number of arguments. However, this definition is different in two different ways.</p>
+<p>Structurally, this is identical to the simply typed commands. We have the same constructors with the same number of arguments. However, it is different in two major ways:</p>
 <ol type="1">
-<li>Each command now carries a security level. More precisely, they carry the level of the most public variable that was assigned in the command.</li>
+<li>Each command now carries a security level. More precisely, they carry <strong>the security level of the most public variable that was assigned in the command</strong>. This will help us control implicit flows and covert channels, but exactly how will only become clear when we look at if-then-else statements.</li>
 <li>Constructors for assignment, conditional, and while statements now require conditions on the security levels of their parameters.</li>
 </ol>
 <p>In the end, we don’t care about the security level of a command, it is only necessary to bar bad data flows. So it can be hidden away once we construct the program with the help of an existential type.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" title="1"><span class="kw">data</span> <span class="dt">Program</span> <span class="fu">=</span> <span class="kw">forall</span> l<span class="fu">.</span> <span class="dt">Program</span> (<span class="dt">Cmd</span> l)</a></code></pre></div>
-<p>We now go over each of these constructors one by one. Just as we did for expressions, we present the inference rule corresponding to each constructor. <code>c : l</code> means that the lowest security level that the command <code>c</code> assigns to is <code>l</code>.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" title="1"><span class="kw">data</span> <span class="dt">Program</span> <span class="fu">=</span> <span class="kw">forall</span> level<span class="fu">.</span> <span class="dt">Program</span> (<span class="dt">Cmd</span> level)</a></code></pre></div>
+<p>We now go over each of these constructors one by one. Just as we did for expressions, we present the inference rule corresponding to each constructor. The judgement <code>c : l</code> means that the lowest security level that the command <code>c</code> assigns to is <code>l</code>.</p>
 <h4 id="assignment">Assignment</h4>
-<p>The assignment rule is the most fundamental as it is the only way in our language that can leak private data.</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" title="1"><span class="ot">(:=) ::</span> (le <span class="fu">&lt;=</span> lx) <span class="ot">=&gt;</span> <span class="dt">Variable</span> lx <span class="ot">-&gt;</span> <span class="dt">Exp</span> le <span class="ot">-&gt;</span> <span class="dt">Cmd</span> lx</a></code></pre></div>
+<p>The assignment rule is fundamental because it is the only way in the language to leak data.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" title="1"><span class="ot">(:=) ::</span> (le <span class="fu">&lt;=</span> lv) <span class="ot">=&gt;</span> <span class="dt">Variable</span> lv <span class="ot">-&gt;</span> <span class="dt">Exp</span> le <span class="ot">-&gt;</span> <span class="dt">Cmd</span> lv</a></code></pre></div>
 <p>The equivalent inference rule:</p>
 <pre><code>  v : lv    e : le    le &lt;= lv
   -----------------------------
           v := e : lv</code></pre>
-<p>An assignment has only one variable in it, so the most public variable it assigns to is the variable being assigned. However, to construct an assignment at all, the expression must be less private than the variable.</p>
+<p>An assignment only assigns to one variable, so the most public variable it assigns to is that variable. To construct an assignment at all, the expression must be less private than the assigned variable.</p>
 <p>This is enough to ban all private data leaking through explicit flows. For example, the following program is fine because <code>public</code> has a lower security level (i.e., more public) than <code>private</code>.</p>
 <div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb15-1" title="1">simpleAssignmentOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
 <a class="sourceLine" id="cb15-2" title="2">  private <span class="fu">:=</span> <span class="dt">EVar</span> public</a></code></pre></div>
 <p>However, if we attempt to go in the other direction, we’ll get a type error.</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb16-1" title="1"><span class="ot">simpleAssignmentKO ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
-<a class="sourceLine" id="cb16-2" title="2">simpleAssignmentKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
-<a class="sourceLine" id="cb16-3" title="3">  public <span class="fu">:=</span> <span class="dt">EVar</span> private</a></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb16-1" title="1">simpleAssignmentKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb16-2" title="2">  public <span class="fu">:=</span> <span class="dt">EVar</span> private</a></code></pre></div>
 <p>Particularly, GHC has the following to say about this program:</p>
 <pre><code>Couldn't match type ‘'False’ with ‘'True’ arising from a use of ‘:=’</code></pre>
 <p>I grant you that this is not the most obvious error message. But at least we have a compile-time error instead of leaking private data! Substituting the security levels, we have <code>999 &lt;= 0</code> which is a shorthand for <code>999 &lt;=?  0 ~ True</code> and GHC simplifies <code>999 &lt;=? 0</code> to <code>False</code>. This is why the error message says <code>False</code> and <code>True</code> do not match.</p>
@@ -188,13 +189,12 @@ if (x) {
   ---------------------
   c1 :&gt;&gt; c2 : Min l1 l2</code></pre>
 <p>Two commands in sequence are well-typed if and only if both of the subcommands are well-typed. For example, the following sequence of two assignments is alright.</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb20-1" title="1"><span class="ot">tempAssignmentOK ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
-<a class="sourceLine" id="cb20-2" title="2">tempAssignmentOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
-<a class="sourceLine" id="cb20-3" title="3">  temp <span class="fu">:=</span> <span class="dt">EVar</span> public <span class="fu">:&gt;&gt;</span></a>
-<a class="sourceLine" id="cb20-4" title="4">  private <span class="fu">:=</span> <span class="dt">EVar</span> temp</a>
-<a class="sourceLine" id="cb20-5" title="5">  <span class="kw">where</span></a>
-<a class="sourceLine" id="cb20-6" title="6">  temp <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">5</span> <span class="st">&quot;temp&quot;</span></a></code></pre></div>
-<p>The security level of the assignments are <code>Min 5 0</code> and <code>Min 999 5</code>, so the overall security level for the sequenced command is <code>Min 0 5</code> which is just <code>0</code>, i.e., the security level of <code>public</code> which is indeed the most public variable assigned in the program.</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb20-1" title="1">tempAssignmentOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb20-2" title="2">  temp <span class="fu">:=</span> <span class="dt">EVar</span> public <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb20-3" title="3">  private <span class="fu">:=</span> <span class="dt">EVar</span> temp</a>
+<a class="sourceLine" id="cb20-4" title="4">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb20-5" title="5">  temp <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">5</span> <span class="st">&quot;temp&quot;</span></a></code></pre></div>
+<p>The security level of the assignments are <code>Min 5 0</code> and <code>Min 999 5</code>, so the overall security level for the sequenced command is <code>Min 0 5</code> which is just <code>0</code>, i.e., the security level of <code>public</code>.</p>
 <h4 id="if-then-else">If-then-else</h4>
 <p>It is time to tackle the more mysterious implicit flows that happen as a result of a conditional write to some public data based on a private one.</p>
 <div class="sourceCode" id="cb21"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb21-1" title="1"><span class="dt">ITE</span><span class="ot"> ::</span> (lb <span class="fu">&lt;=</span> <span class="dt">Min</span> l1 l2) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> (<span class="dt">Min</span> l1 l2)</a></code></pre></div>
@@ -206,31 +206,28 @@ if (x) {
   -----------------------
   ITE e c1 c2 : Min l1 l2</code></pre>
 <p>The reasoning for the overall security level of a conditional statement is same as that for sequencing. The most public level assigned in the overall statement must come from the more public subcommand. Unlike sequencing, we know that only one of the branches will be taken but we cannot know which one at compile time, so we pessimistically account for both cases.</p>
-<p>This rule also comes with a requirement that needs to be satisfied. The security level of the conditional expression must be less than those of both branches. This prevents implicit flows and explains why we carry the security level of the most public security level commands assign to. If the security level of the expression was higher than the lowest level assigned in one of the branches, then a more public variable’s value would be in part determined by a private one. Thus, by observing the more public value, we could deduce something about the private value. However, the condition ensures that only more public data can influence private data. This is safe because whoever has access to the more private data would also have to the public one.</p>
-<p>The explanation was a mouthful, but the examples make point clearer.</p>
-<div class="sourceCode" id="cb23"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb23-1" title="1"><span class="ot">implicitPublicFlowOK ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
-<a class="sourceLine" id="cb23-2" title="2">implicitPublicFlowOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
-<a class="sourceLine" id="cb23-3" title="3">  <span class="dt">ITE</span> (<span class="dt">EVar</span> public)</a>
-<a class="sourceLine" id="cb23-4" title="4">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
-<a class="sourceLine" id="cb23-5" title="5">    (private <span class="fu">:=</span> <span class="dt">EVar</span> public)</a></code></pre></div>
-<p>The conditional expression in this program is public. In the then branch, we assign to a public data which is always safe. In the else branch, we assign private data, but this is fine too since by observing the result of <code>private</code>, we can only make a conclusion about <code>public</code> which we are allowed to anyway.</p>
-<p>The following program, on the other hand, fails with the same <code>True</code> is not <code>False</code> error:</p>
-<div class="sourceCode" id="cb24"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb24-1" title="1"><span class="ot">implicitPrivateFlowKO ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
-<a class="sourceLine" id="cb24-2" title="2">implicitPrivateFlowKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
-<a class="sourceLine" id="cb24-3" title="3">  <span class="dt">ITE</span> (<span class="dt">EVar</span> private)</a>
-<a class="sourceLine" id="cb24-4" title="4">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
-<a class="sourceLine" id="cb24-5" title="5">    (private <span class="fu">:=</span> <span class="dt">EVar</span> public)</a></code></pre></div>
-<p>This program fails because once executed, if we observe the value of <code>public</code> not to be <code>42</code>, the fact that <code>private</code> is non-zero is leaked. Luckily, since <code>private</code> is more private than <code>public</code>, the conditional statement is ill-typed.</p>
-<p>The typing rules for conditionals also come with a limitation. It bans programs that cannot leak private data.</p>
-<div class="sourceCode" id="cb25"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb25-1" title="1"><span class="ot">implicitPrivateFlowOKKO ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
-<a class="sourceLine" id="cb25-2" title="2">implicitPrivateFlowOKKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
-<a class="sourceLine" id="cb25-3" title="3">  <span class="dt">ITE</span> (<span class="dt">EVar</span> private)</a>
-<a class="sourceLine" id="cb25-4" title="4">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
-<a class="sourceLine" id="cb25-5" title="5">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a></code></pre></div>
-<p>This program is illegal according to our typing rules because there is an implicit flow from security level <code>999</code> to <code>0</code> (in two different ways in fact!), but it does not actually leak data. By observing the value of <code>public</code> after the conditional, we cannot deduce anything about <code>private</code> because the assignment to <code>public</code> is consistent in both branches.</p>
+<p>This rule also comes with a requirement that needs to be satisfied. The security level of the conditional expression (<code>lb</code>) must be less than those of both branches (<code>l1</code> and <code>l2</code>). This prevents implicit flows and explains why we carry the security level of the most public security level commands assign to. If the security level of the condition was higher than the lowest level assigned in one of the branches, then a more public variable’s value would be in part determined by a private one. Thus, by observing the more public value, we could deduce something about the private value. However, the condition ensures that only more public data can influence private data. This is safe because whoever has access to the more private data would also have access to the public one.</p>
+<p>The explanation is a mouthful, but examples make the point clearer.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb23-1" title="1">implicitPublicFlowOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb23-2" title="2">  <span class="dt">ITE</span> (<span class="dt">EVar</span> public)</a>
+<a class="sourceLine" id="cb23-3" title="3">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
+<a class="sourceLine" id="cb23-4" title="4">    (private <span class="fu">:=</span> <span class="dt">EVar</span> public)</a></code></pre></div>
+<p>The conditional expression in this program is public. In the then branch, we assign to <code>public</code> which is always safe. In the else branch, we assign to <code>private</code>, but this too is fine because if we are allowed to observe <code>private</code>, we can only make a conclusion about <code>public</code> which we are allowed inspect in full anyway.</p>
+<p>A similar program with the conditional expression changed to <code>private</code>, on the other hand, fails with the same <code>False</code> is not <code>True</code> error:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb24-1" title="1">implicitPrivateFlowKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb24-2" title="2">  <span class="dt">ITE</span> (<span class="dt">EVar</span> private)</a>
+<a class="sourceLine" id="cb24-3" title="3">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
+<a class="sourceLine" id="cb24-4" title="4">    (private <span class="fu">:=</span> <span class="dt">EVar</span> public)</a></code></pre></div>
+<p>This program is ill-typed because <code>private</code> is more private than <code>public</code>. We can easily justify this ban. Otherwise, if we observed the value of <code>public</code> not to be <code>42</code>, we could deduce that the else branch is taken, and consequently, <code>private</code> must be non-zero. So by observing <code>public</code>, we would have leaked something about <code>private</code>.</p>
+<p>The typing rule for if-then-else statements come with a limitation in expressiveness. It bans some programs that cannot leak private data.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb25-1" title="1">implicitPrivateFlowOKKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb25-2" title="2">  <span class="dt">ITE</span> (<span class="dt">EVar</span> private)</a>
+<a class="sourceLine" id="cb25-3" title="3">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
+<a class="sourceLine" id="cb25-4" title="4">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a></code></pre></div>
+<p>This program is illegal according to our typing rules because there is an implicit flow from security level <code>999</code> to <code>0</code> (in two different ways in fact!), but this does not actually leak data. By observing the value of <code>public</code> after the program is executed, we cannot tell anything about <code>private</code> because the assignment to <code>public</code> is consistent in both branches.</p>
 <p>This particular example looks easy to detect, but in general, it requires program equivalence which would make typechecking undecidable.</p>
 <h4 id="while-loop">While loop</h4>
-<p>Uncharacteristically, while loop rule is simpler than the one for if-then-else statements.</p>
+<p>Uncharacteristically, the while loop rule is simpler than the one for if-then-else statements.</p>
 <div class="sourceCode" id="cb26"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb26-1" title="1"><span class="dt">While</span><span class="ot"> ::</span> (lb <span class="fu">&lt;=</span> l) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l</a></code></pre></div>
 <p>The equivalent inference rule:</p>
 <pre><code>      e : lb
@@ -247,29 +244,28 @@ if (x) {
 <a class="sourceLine" id="cb28-3" title="3"></a>
 <a class="sourceLine" id="cb28-4" title="4"><span class="ot">adder ::</span> <span class="kw">forall</span> level<span class="fu">.</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Cmd</span> level</a>
 <a class="sourceLine" id="cb28-5" title="5">adder i var <span class="fu">|</span> <span class="dt">Refl</span> <span class="ot">&lt;-</span> lemmaMax0 <span class="fu">@</span>level <span class="fu">=</span> var <span class="fu">:=</span> <span class="dt">EVar</span> var <span class="fu">:+</span> <span class="dt">EInt</span> i</a></code></pre></div>
-<p>This looks more complicated than one initially expects. The body of the adder is simple, we offset the given variable’s value with <code>i</code> and assign back to the variable. But what about that <code>lemmaMax0</code> and <code>Refl</code>. Long story, short the assignment in question does not have access to a concrete level, it works for any level, so GHC has to do some symbolic reasoning.</p>
-<p>In particular, it needs to prove that <code>Max level 0 &lt;= level</code>. This is always true, but not obvious GHC. I prove a stronger property in <code>lemmaMax0</code>, namely <code>Max level 0</code> is exactly <code>level</code>. The proof is by reflexivity. Normally, GHC cannot do this on its own, so you need to teach it. I could have reinvented basic arithmetic, but I felt lazy and added a typechecker plugin that lets GHC in on some basic arithmetic facts. These plugins are incredibly cool, but very much scope of this post. The plugin I used is in <a href="https://github.com/clash-lang/ghc-typelits-extra">ghc-typelits-extra</a>.</p>
+<p>This looks more complicated than one initially expects. The body of the adder is simple, we offset the given variable’s value with <code>i</code> and assign back to the variable. But what about that <code>lemmaMax0</code> and <code>Refl</code>? Long story short, the assignment in question does not have access to a concrete level, it works for any security level, so GHC has to do some symbolic reasoning.</p>
+<p>In particular, GHC needs to prove that <code>Max level 0 &lt;= level</code>. This is always true, but not obvious to GHC. I prove a stronger property in <code>lemmaMax0</code>, namely <code>Max level 0</code> is exactly <code>level</code>. The proof is by reflexivity. Normally, GHC cannot recognise this proof on its own, so we’d need to teach it some arithmetic, but I felt lazy this weekend and added a typechecker plugin that lets GHC in on some basic arithmetic facts. Such plugins are incredible, but out of scope of this post. The plugin I used is <a href="https://github.com/clash-lang/ghc-typelits-extra">ghc-typelits-extra</a>.</p>
 <p>Now that we have this lemma, I simply pattern match on it which simplifies the <code>Max level 0 &lt;= level</code> proof obligation to <code>level &lt;= level</code> and GHC is clever enough to work that one out.</p>
 <p>After the small detour, the actual increment and decrement operations are trivial.</p>
 <div class="sourceCode" id="cb29"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb29-1" title="1">inc,<span class="ot"> dec ::</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Cmd</span> level</a>
 <a class="sourceLine" id="cb29-2" title="2">inc <span class="fu">=</span> adder <span class="dv">1</span></a>
 <a class="sourceLine" id="cb29-3" title="3">dec <span class="fu">=</span> adder (<span class="fu">-</span><span class="dv">1</span>)</a></code></pre></div>
-<p>We are now ready to halve an even natural number and store its value in <code>private</code>.</p>
-<div class="sourceCode" id="cb30"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb30-1" title="1"><span class="ot">halveCovertKO ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
-<a class="sourceLine" id="cb30-2" title="2">halveCovertKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
-<a class="sourceLine" id="cb30-3" title="3">  finished <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">0</span> <span class="fu">:&gt;&gt;</span></a>
-<a class="sourceLine" id="cb30-4" title="4">  private <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">0</span> <span class="fu">:&gt;&gt;</span></a>
-<a class="sourceLine" id="cb30-5" title="5">  <span class="dt">While</span> (<span class="dt">EVar</span> privCounter)</a>
-<a class="sourceLine" id="cb30-6" title="6">    (dec privCounter <span class="fu">:&gt;&gt;</span></a>
-<a class="sourceLine" id="cb30-7" title="7">     dec privCounter <span class="fu">:&gt;&gt;</span></a>
-<a class="sourceLine" id="cb30-8" title="8">     inc private) <span class="fu">:&gt;&gt;</span></a>
-<a class="sourceLine" id="cb30-9" title="9">  inc finished</a>
-<a class="sourceLine" id="cb30-10" title="10">  <span class="kw">where</span></a>
-<a class="sourceLine" id="cb30-11" title="11">  finished <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">0</span> <span class="st">&quot;finished&quot;</span></a>
-<a class="sourceLine" id="cb30-12" title="12">  privCounter <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">42</span> <span class="st">&quot;privCounter&quot;</span></a></code></pre></div>
-<p>The conditional of the while loop is just as private as the variables incremented and decremented in its body. Hence, the program does not leak data, or does it?</p>
+<p>We are now ready to halve an even natural number stored in <code>privCounter</code> and store its value in <code>private</code>.</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb30-1" title="1">halveCovertKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb30-2" title="2">  finished <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">0</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb30-3" title="3">  private <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">0</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb30-4" title="4">  <span class="dt">While</span> (<span class="dt">EVar</span> privCounter)</a>
+<a class="sourceLine" id="cb30-5" title="5">    (dec privCounter <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb30-6" title="6">     dec privCounter <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb30-7" title="7">     inc private) <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb30-8" title="8">  inc finished</a>
+<a class="sourceLine" id="cb30-9" title="9">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb30-10" title="10">  finished <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">0</span> <span class="st">&quot;finished&quot;</span></a>
+<a class="sourceLine" id="cb30-11" title="11">  privCounter <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">42</span> <span class="st">&quot;privCounter&quot;</span></a></code></pre></div>
+<p>The conditional of the while loop is just as private as the variables incremented and decremented in its body. Hence, the program does not leak private data, or does it? 🤔</p>
 <h2 id="plugging-covert-channels">Plugging covert channels</h2>
-<p>The natural number halving program above does not leak data explicitly or implicitly, but it leaks some data through covert channels. We can observe that the program terminates because we can observe the value of <code>finished</code>. Knowing that the program terminated leaks the fact that <code>privCounter</code>’s original value was either zero or odd. We shouldn’t be able to deduce that since this counter is private.</p>
+<p>The natural number halving program above does not leak data explicitly or implicitly, but it leaks some data through covert channels. We can observe that the program terminates because we can observe the value of <code>finished</code> which is public. Knowing that the program terminated leaks the fact that <code>privCounter</code>’s original value was either zero or even. We shouldn’t be able to deduce that since this counter is private whereas termination is public.</p>
 <p>Fortunately, not all is lost. We can plug this covert channel with a minor modification to the while constructor.</p>
 <div class="sourceCode" id="cb31"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb31-1" title="1"><span class="dt">While</span><span class="ot"> ::</span> <span class="dt">Exp</span> <span class="dv">0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l</a></code></pre></div>
 <p>The equivalent inference rule:</p>
@@ -277,19 +273,22 @@ if (x) {
       c : l
   -------------
   While e c : l</code></pre>
-<p>This chance necessitates loop conditionals to be public. It also dispenses with the conditional expression being more public than the most public variable assigned in the body because this always holds when the conditional expression is public.</p>
+<p>This change necessitates the loop’s conditional expression to be public. It also dispenses with the conditional expression being more public than the most public variable assigned in the body because this always holds when the conditional expression is public.</p>
 <p>This easily bars the halving program because it both modifies private variables, but does it cover all cases of non-termination-based private data leakage? If the program terminates, we learn that the conditional expression hit zero. This only tells us about the data involved in that expression, so if all of that is public anyway, we cannot possibly leak data.</p>
 <h3 id="expressivity">Expressivity</h3>
 <p>This change, sadly, lands two more blows to expressivity.</p>
 <p>First, if we initialise <code>privCounter</code> before the while loop to a positive even number, the program always terminates and the program cannot leak data. However, deducing this in general requires a solution to the halting problem.</p>
 <p>Second, and more importantly, non-termination can only depend on public data. For example, if we extended our language with arrays and had an array of employees, we would wouldn’t be able to loop over employees if the number of employees was private.</p>
-<p>Our saving grace is that we can get a lot done with terminating programs. Reassessing the employee example, if we extend our language with <code>foreach</code> loops that loops over the array directly, granted that we cannot make the array larger as we iterate over them, the loop would always terminate. Consequently, we can have a more relaxed constructor for <code>foreach</code> loops.</p>
+<p>Our saving grace is that we can get a lot done with terminating programs. Reassessing the employee example, if we extend our language with <code>foreach</code> and loop over the array directly, granted that we cannot make the array larger as we iterate over it, the loop would always terminate. Consequently, <code>foreach</code> admits a more permissive typing rule without compromising privacy through covert channels.</p>
 <h2 id="final-words">Final words</h2>
-<p>The language we considered here is simple, but the literature on type-based information-flow control is both wide and active. We already talked about how we can enrich the language with <code>foreach</code> and improve expressivity while being termination-sensitive. The same trick we used for while loops can also be applied to exceptions to prevent other covert channels. <a href="https://dl.acm.org/doi/10.1145/1929553.1929564">Language-Based Information-Flow Security</a> by Andrei Sabelfeld and Andrew Myers provide a good lay of the land. More specifically, <a href="https://ieeexplore.ieee.org/document/596807">Eliminating covert flows with minimum typings</a> by Volpano and Smith introduces termination-sensitive typing we presented as well as how to securely employ exceptions.</p>
-<p>The ulterior motive of this post was to show off how seamless type-level programming in Haskell could be. At no point, I said “I wish I was using a full dependently typed language” to myself. We even avoided reinventing mathematics using employing typechecker plugins. That topic clearly deserves a post of its own.</p>
-<p>You might be bit disappointed if you’re a Haskell developer looking to employ static IFC in your code. One remedy might be the <a href="https://hackage.haskell.org/package/lio">LIO monad available in Hackage</a> which takes a similar approach but is dynamic. If you’re after no runtime cost, Chapter 6 of <a href="https://dl.acm.org/doi/10.1145/1929553.1929564">Information Flow Enforcement in Monadic Libraries</a> provides a monad transformer in Haskell that employs the same ideas presented in this blog post to statically enforce information-flow properties.</p>
-<p>Finally, the intuition presented in this blog post about why our type system is sound is no substitute for a formal proof. The most beautiful definition that captures the desired property is called <em>non-interference</em> which simply says private data does not interfere with public data in a formal manner. This definition is far reaching, but that too deserves a thorough treatment of its own. That and the proof can be found in <a href="https://core.ac.uk/download/pdf/36700757.pdf">A sound type system for secure flow analysis</a> by Volpano, Irvine, and Smith. This is also the paper that introduced the type system we considered.</p>
+<p>The language we considered here is simple, but the literature on type-based information-flow control is both wide and active. We already talked about how we can enrich the language with <code>foreach</code> and improve expressivity while being termination-sensitive. The same trick we used for while loops can also be applied to exceptions to prevent other covert channels. <a href="https://dl.acm.org/doi/10.1145/1929553.1929564">Language-Based Information-Flow Security</a> by Andrei Sabelfeld and Andrew Myers provide a good lay of the land. More specifically, <a href="https://ieeexplore.ieee.org/document/596807">Eliminating Covert Flows with Minimum Typings</a> by Volpano and Smith introduces termination-sensitive typing we presented as well as how to securely employ exceptions.</p>
+<p>The ulterior motive of this post is to show off how seamless type-level programming in Haskell can be. At no point, I said “I wish I was using a proper dependently typed language” to myself. We even avoided reinventing arithmetic using a typechecker plugin. That topic clearly deserves a post of its own.</p>
+<p>You might be bit disappointed if you’re a Haskell developer looking to employ static IFC in your code. One remedy might be the <a href="https://hackage.haskell.org/package/lio">LIO monad available in Hackage</a> which takes a similar approach but is dynamic. If you’re after no runtime cost, Chapter 6 of <a href="https://dl.acm.org/doi/10.1145/1929553.1929564">Information Flow Enforcement in Monadic Libraries</a> introduces a monad transformer in Haskell that employs the same ideas presented in this blog post to statically enforce information-flow properties.</p>
+<p>The intuition presented in this blog post about why our type system is sound is no substitute for a proof. The most beautiful definition that captures the desired property is called <em>non-interference</em> which simply says private data does not interfere with public data in a formal manner. This definition is far reaching because it makes little reference to the dynamic semantics of the language. That too deserves a thorough treatment of its own. That and the proof can be found in <a href="https://core.ac.uk/download/pdf/36700757.pdf">A Sound Type System for Secure Flow Analysis</a> by Volpano, Irvine, and Smith. This is also the paper that introduced the type system we considered.</p>
+<p>Finally and most importantly, the treatment of the type system in this chapter comes from the Chapter 9 of <a href="http://concrete-semantics.org">Concrete Semantics</a> by Tobias Nipkow and Gerwin Klein. Not only it is beautifully and inductively presented, but also the soundness proof of the type system is mechanised in Isabelle/HOL. All there was left for me was to translate it to Haskell using GADTs.</p>
 <h2 id="full-program">Full program</h2>
+<p>The full program can be found in <a href="https://github.com/madgen/volpano-smith">this repository</a>.</p>
+<p>The GHC typechecker plugin, <a href="https://github.com/clash-lang/ghc-typelits-extra">ghc-typelits-extra</a>, is distributed on <a href="https://hackage.haskell.org/package/ghc-typelits-extra">Hackage</a> and <a href="https://www.stackage.org/lts-18.0/package/ghc-typelits-extra-0.4.2">Stackage</a>.</p>
 <div class="sourceCode" id="cb33"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb33-1" title="1"><span class="ot">{-# OPTIONS_GHC -fplugin GHC.TypeLits.Extra.Solver #-}</span></a>
 <a class="sourceLine" id="cb33-2" title="2"></a>
 <a class="sourceLine" id="cb33-3" title="3"><span class="ot">{-# LANGUAGE KindSignatures #-}</span></a>
@@ -374,8 +373,8 @@ if (x) {
 <a class="sourceLine" id="cb33-82" title="82"><span class="ot">private ::</span> <span class="dt">Variable</span> <span class="dv">999</span></a>
 <a class="sourceLine" id="cb33-83" title="83">private <span class="fu">=</span> <span class="dt">Variable</span> <span class="st">&quot;private&quot;</span></a>
 <a class="sourceLine" id="cb33-84" title="84"></a>
-<a class="sourceLine" id="cb33-85" title="85"><span class="ot">simpleExp ::</span> <span class="dt">Exp</span> <span class="dv">999</span></a>
-<a class="sourceLine" id="cb33-86" title="86">simpleExp <span class="fu">=</span> <span class="dt">EVar</span> public <span class="fu">:+</span> <span class="dt">EVar</span> private</a>
+<a class="sourceLine" id="cb33-85" title="85"><span class="ot">compoundPrivateExp ::</span> <span class="dt">Exp</span> <span class="dv">999</span></a>
+<a class="sourceLine" id="cb33-86" title="86">compoundPrivateExp <span class="fu">=</span> <span class="dt">EVar</span> public <span class="fu">:+</span> <span class="dt">EVar</span> private</a>
 <a class="sourceLine" id="cb33-87" title="87"></a>
 <a class="sourceLine" id="cb33-88" title="88"><span class="ot">simpleAssignmentOK ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
 <a class="sourceLine" id="cb33-89" title="89">simpleAssignmentOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>

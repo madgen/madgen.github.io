@@ -8,8 +8,16 @@
         <name>Mistral Contrastin</name>
         <email>madgenhetic@gmail.com</email>
     </author>
-    <updated>2019-10-03T00:00:00Z</updated>
+    <updated>2021-06-27T00:00:00Z</updated>
     <entry>
+    <title>Typed Programs Don't Leak Data</title>
+    <link href="https://dodisturb.me/posts/2021-06-27-Typed-Programs-Dont-Leak-Data.html" />
+    <id>https://dodisturb.me/posts/2021-06-27-Typed-Programs-Dont-Leak-Data.html</id>
+    <published>2021-06-27T00:00:00Z</published>
+    <updated>2021-06-27T00:00:00Z</updated>
+    <summary type="html"><![CDATA[In which we turn privacy violations into compile-time errors in a simple imperative language embedded in Haskell and enforce it in style using GADTs.]]></summary>
+</entry>
+<entry>
     <title>Verifying the Titular Properties of a Leftist Heap</title>
     <link href="https://dodisturb.me/posts/2019-10-03-Verifying-the-Titular-Properties-of-a-Leftist-Heap.html" />
     <id>https://dodisturb.me/posts/2019-10-03-Verifying-the-Titular-Properties-of-a-Leftist-Heap.html</id>
