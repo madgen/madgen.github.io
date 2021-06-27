@@ -52,18 +52,18 @@
 <h1>Staged Wins</h1>
 
 
-<p class="in-which">In which we look at how effortless and profitable staged programming is in Haskell by microbenchmarking a regular expression interpreter and staged compiler.</p>
+<p class="in-which">In which we look at how effortless and profitable staged programming is in Haskell by (micro)benchmarking a regular expression interpreter and a staged compiler.</p>
 
 
-<div class="post"><p>As Haskell programmers, we live and die by the maxim “never do at runtime what could be done at compile time”. However, we (or at least me) almost exclusively understand this as doing safety checks before runtime and do not appreciate the full generality of the maxim. Although an optimising compiler will do much computation before runtime, as a programmer we hardly ever have a say on the matter.</p>
-<p>The singular exception to this in many languages compiled or otherwise is <em>metaprogramming</em> where the purpose of our code is to generate code. If you think about it, the concept is remarkably prevalent in many languages from C preprocessor macros to abuses of C++ template system, from Ruby’s highly maleable object model to Java’s class loader API. In fact, in Haskell alone it comes at least in three flavours: datatype-generic programming, Template Haskell (henceforth TH), Typed-Template Haskell (henceforth TTH). The first is convenient but comes at a runtime cost. The second one is performed at compile time, but is unprincipled, potentially unhygienic, and effectively untyped. The third restricts Template Haskell, but it achieves principled and well-typed metaprograms with decent error messages!</p>
-<p>TTH is thus what I discuss in this post. In particular, I take a naïve regular expression recogniser and mindlessly apply TTH’s quotations and splices to answer two questions:</p>
+<div class="post"><p>As Haskell programmers, we live and die by the maxim “never do at runtime what could be done at compile time”. However, we (or at least me) almost exclusively understand this as doing safety checks before runtime and do not appreciate the full generality of this maxim. Although an optimising compiler will do much computation before runtime, as a programmer we hardly ever have a say on the matter.</p>
+<p>The singular exception to this in many languages compiled or otherwise is <em>metaprogramming</em> where the purpose of our code is to generate code. If you think about it, the concept is remarkably prevalent in many languages from C preprocessor macros to abuses of C++ template system, from Ruby’s highly maleable object model to Java’s class loader API. In fact, in Haskell alone, it comes at least in three flavours: datatype-generic programming, Template Haskell (henceforth TH), Typed-Template Haskell (henceforth TTH). The first is convenient but comes at a runtime cost. The second one is performed at compile time, but is unprincipled, potentially unhygienic, and effectively untyped. The third restricts Template Haskell, but it achieves principled and well-typed metaprograms with decent error messages!</p>
+<p>As you might guess, TTH is the topic of this post. In particular, I take a naïve regular expression recogniser and mindlessly apply TTH’s quotations and splices to answer two questions:</p>
 <ol type="1">
-<li>Is it a pain to do use TTH?</li>
+<li>Is it a pain to use TTH?</li>
 <li>What do I get out of going through this exercise?</li>
 </ol>
-<p>The short answers are “not really” and “4x performance improvement in time”. However, the justification for the first answer is my highly subjective value judgements with caveats and that for the second is microbenchmarks on a few examples. So if your reputation is on the line, I suggest you don’t cite this blog post to support your argument. For that, I’d go read articles, posts, and libraries by <a href="https://mpickering.github.io">Matthew Pickering</a>, <a href="https://www.cl.cam.ac.uk/~jdy22/">Jeremy Yallop</a>, or <a href="https://namin.seas.harvard.edu/people/nada-amin">Nada Amin</a>.</p>
-<p>In the rest of this post, we first quickly look at the regular expression recogniser in question. We then stage it. Having two these interpreted and staged versions at hand, we qualitatively compare them using microbenchmarks and look at the generated code to try to understand the performance difference. Finally, we remark on the convenience of staging this program and conclude.</p>
+<p>The short answers are “not really” and “5x performance improvement in time”. However, the justification for the first answer is my highly subjective value judgements with caveats and that for the second answer is backed only by microbenchmarks on a few examples. So if your reputation is on the line, I suggest you don’t cite this blog post to support your argument. For that, I’d go read articles, posts, and libraries by <a href="https://mpickering.github.io">Matthew Pickering</a>, <a href="https://www.cl.cam.ac.uk/~jdy22/">Jeremy Yallop</a>, and <a href="https://namin.seas.harvard.edu/people/nada-amin">Nada Amin</a>.</p>
+<p>In the rest of this post, we first quickly look at the regular expression recogniser in question. We then stage it. Having these interpreted and staged versions at hand, we quantitatively compare them using microbenchmarks and look at the generated code to try to understand the performance difference. Finally, we remark on the convenience of staging this program and conclude.</p>
 <h2 id="a-simple-regular-expression-interpreter">A simple regular expression interpreter</h2>
 <p>We implement an interpreter just sophisticated enough to represent some fictional phone number regular expression: <code>0?\d\d\d\d(\w|-)*\d\d\d(\w|-)*\d\d\d</code>. This would recognise <code>01234 567 890</code> without the leading zero and with or without spaces at the designated places and optionally with hyphens.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">data</span> <span class="dt">RegExp</span> <span class="fu">=</span></a>
@@ -121,9 +121,9 @@
 <p>So what treacherous road to optimisation is ahead of us? As it turns out, it is a short and painless one. You only need to be aware of three things if you want to use TTH: <code>TExpQ</code>, the quotation operator <code>[|| exp ||]</code>, and and the splice operator <code>$$code</code>.</p>
 <p><code>TExpQ a</code> is the typed equivalent of TH’s <code>Q Exp</code>. This already gives away that we can only generate expressions with TTH. The type parameter <code>a</code> is the type of the expression the generated code will evaluate to. This is entirely missing in <code>Q Exp</code>, hence the “Typed” in TTH. This <code>TExpQ</code> constructor is, however, does not have a terribly informative name, so I alias it with <code>Code</code>.</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" title="1"><span class="kw">type</span> <span class="dt">Code</span> a <span class="fu">=</span> <span class="dt">TExpQ</span> a</a></code></pre></div>
-<p>The quotation operator (<code>[|| exp ||]</code>) takes an expression of type <code>a</code> and turns it into <code>Code a</code>. The splice (<code>$$code</code>) operator goes the other way. In other words, the former produces the code for some evaluation and the latter <em>in the right context</em> evaluates that code.</p>
+<p>The quotation operator (<code>[|| exp ||]</code>) takes an expression of type <code>a</code> and turns it into <code>Code a</code>. The splice (<code>$$code</code>) operator goes the other way. In other words, the former produces the code for some expression and the latter <em>in the right context</em> evaluates that code.</p>
 <p>If you then have something you want evaluated at compile time for sure, you just write a function of the form <code>a -&gt; Code b</code>. The <code>a</code> is what you want to get rid of at runtime and the <code>Code b</code> is what you end up with as a result.</p>
-<p>In our case, we had an interpreter with type <code>RegExp -&gt; Matcher</code> and we want to compile the regular expression away, so we’d like a function <code>RegExp -&gt; Code Matcher</code> instead. Well, how are we going to get there? Mechanically! Mindlessly! Mercilessly?</p>
+<p>In our case, we had an interpreter with type <code>RegExp -&gt; Matcher</code> and we want to compile the regular expression away, so we’d like a function <code>RegExp -&gt; Code Matcher</code> instead. Well, how are we going to get there? Mechanically and mindlessly!</p>
 <p>Let’s take the first case:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" title="1">interpret <span class="dt">Null</span> <span class="fu">=</span> <span class="fu">pure</span></a></code></pre></div>
 <p>The <code>Matcher</code> is just <code>pure</code> and we want <code>Code Matcher</code>, so we just do <code>[|| pure ||]</code>.</p>
@@ -143,7 +143,7 @@
 <div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" title="1">interpret (re1 <span class="fu">:|:</span> re2) <span class="fu">=</span> (<span class="fu">&lt;|&gt;</span>) <span class="fu">&lt;$&gt;</span> interpret re1 <span class="fu">&lt;*&gt;</span> interpret re2</a></code></pre></div>
 <p>We know the result is going to be <code>Code Matcher</code>, so we place the quotation outsite the body once more.</p>
 <div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" title="1">compile (re1 <span class="fu">:|:</span> re2) <span class="fu">=</span> [<span class="fu">||</span> (<span class="fu">&lt;|&gt;</span>) <span class="fu">&lt;$&gt;</span> compile re1 <span class="fu">&lt;*&gt;</span> compile re2 <span class="fu">||</span>]</a></code></pre></div>
-<p>However, this won’t compile because <code>compile</code> has type <code>RegExp -&gt; Code Matcher</code> then the expression inside the quotation needs to have the type <code>Matcher</code>. Thus, the recursive calls are ill-typed. They have type <code>Code Matcher</code> instead of <code>Matcher</code>, but we already know how to go in this direction with a splice!</p>
+<p>However, this won’t compile because <code>compile</code> has type <code>RegExp -&gt; Code Matcher</code>. Then, the expression inside the quotation needs to have the type <code>Matcher</code>. This makes the recursive calls are ill-typed. They have type <code>Code Matcher</code> instead of <code>Matcher</code>, but we already know how to go in this direction with a splice. So, all we need is to wrap these recursive calls with it.</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" title="1">compile (re1 <span class="fu">:|:</span> re2) <span class="fu">=</span> [<span class="fu">||</span> (<span class="fu">&lt;|&gt;</span>) <span class="fu">&lt;$&gt;</span> <span class="fu">$$</span>(compile re1) <span class="fu">&lt;*&gt;</span> <span class="fu">$$</span>(compile re2) <span class="fu">||</span>]</a></code></pre></div>
 <p>We are done once more. The next two recursive cases are treated similarly. So overall, we end up with a compiler strikingly similar to the interpreter. Most surprisingly, we exercised almost no brain cells along the way.</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb14-1" title="1"><span class="ot">compile ::</span> <span class="dt">RegExp</span> <span class="ot">-&gt;</span> <span class="dt">Code</span> <span class="dt">Matcher</span></a>
@@ -170,18 +170,196 @@ resCompiled    = toRecogniser $$(compile $ Star &quot;ab&quot;)</code></pre>
 04207    999    163
 04207  0 999    163
 4207    999    163</code></pre>
-<p>The results indicate a convincing ~4x win when compiled with <code>-O0</code> and <code>-O2</code> indicated by the microbenchmarks conducted using the <code>criterion</code> library.</p>
+<p>The <code>criterion</code> benchmarking results indicate a convincing ~5x win when compiled with <code>-O1</code> and a ~%5 improvement with <code>-O0</code>.</p>
 <figure>
 <img src="../images/staged-wins/microbenchmarks-O0.png" alt="Microbenchmark results for -O0" /><figcaption>Microbenchmark results for -O0</figcaption>
 </figure>
 <figure>
-<img src="../images/staged-wins/microbenchmarks-O2.png" alt="Microbenchmark results for -O2" /><figcaption>Microbenchmark results for -O2</figcaption>
+<img src="../images/staged-wins/microbenchmarks-O1.png" alt="Microbenchmark results for -O1" /><figcaption>Microbenchmark results for -O1</figcaption>
 </figure>
 <h3 id="but-why">But why?</h3>
-<p>There are four reasons I can think of why staging would yield performance benefits: domain-specific optimisations, enabling compiler optimisations, microarchitectural wins, and doing less work.</p>
-<p>We know it is not domain-specific optimisations because we haven’t done any. By comparing the graphs of -O0 and -O2, we can also see that the timings for <code>compile</code> are consistent, so it is not GHC doing more optimisations (this surprises me).</p>
-<p>There remains the microarchitectural wins and doing less work. To see if these are in play we need to take a deeper look.</p>
-<h2 id="qualitative-remarks">Qualitative remarks</h2>
+<p>We have three questions to answer:</p>
+<ol type="1">
+<li>why does the compiled version un faster than the interpreted one even without optimisations?</li>
+<li>why does the compiled version benefit so much from optimisations, unlike the interpreted version?</li>
+</ol>
+<p>To understand the compiled version’s success without optimisations, it is enough to inspect the partially evaluated code. Passing the <code>-ddump-splices</code> and <code>-ddump-to-file</code> GHC options yields a file with <code>Foo.dump-splices</code> extension that contains the partially evaluated expressions in a module <code>Foo</code>. The resulting splice is nearly 700 lines long (due to partially evaluating the relatively complex phone number regex), but it is enough to look at only a few lines.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb17-1" title="1">(((((((((((((((<span class="fu">GHC.Base.&lt;|&gt;</span>)</a>
+<a class="sourceLine" id="cb17-2" title="2">    <span class="fu">&lt;$&gt;</span></a>
+<a class="sourceLine" id="cb17-3" title="3">      (\<span class="kw">case</span></a>
+<a class="sourceLine" id="cb17-4" title="4">         (c'_a5jT <span class="fu">:</span> rest_a5jU) <span class="fu">|</span> (<span class="ch">'0'</span> <span class="fu">==</span> c'_a5jT) <span class="ot">-&gt;</span> <span class="dt">Just</span> rest_a5jU</a>
+<a class="sourceLine" id="cb17-5" title="5">         _ <span class="ot">-&gt;</span> <span class="dt">Nothing</span>))</a>
+<a class="sourceLine" id="cb17-6" title="6">   <span class="fu">&lt;*&gt;</span> <span class="fu">pure</span>)</a>
+<a class="sourceLine" id="cb17-7" title="7">  <span class="fu">Control.Monad.&gt;=&gt;</span></a>
+<a class="sourceLine" id="cb17-8" title="8">    (((<span class="fu">GHC.Base.&lt;|&gt;</span>)</a>
+<a class="sourceLine" id="cb17-9" title="9">        <span class="fu">&lt;$&gt;</span></a>
+<a class="sourceLine" id="cb17-10" title="10">          (\<span class="kw">case</span></a>
+<a class="sourceLine" id="cb17-11" title="11">             (c'_a5jV <span class="fu">:</span> rest_a5jW) <span class="fu">|</span> (<span class="ch">'0'</span> <span class="fu">==</span> c'_a5jV) <span class="ot">-&gt;</span> <span class="dt">Just</span> rest_a5jW</a>
+<a class="sourceLine" id="cb17-12" title="12">             _ <span class="ot">-&gt;</span> <span class="dt">Nothing</span>))</a>
+<a class="sourceLine" id="cb17-13" title="13">       <span class="fu">&lt;*&gt;</span></a>
+<a class="sourceLine" id="cb17-14" title="14">         (((<span class="fu">GHC.Base.&lt;|&gt;</span>)</a>
+<a class="sourceLine" id="cb17-15" title="15">             <span class="fu">&lt;$&gt;</span></a>
+<a class="sourceLine" id="cb17-16" title="16">               (\<span class="kw">case</span></a>
+<a class="sourceLine" id="cb17-17" title="17">                  (c'_a5jX <span class="fu">:</span> rest_a5jY) <span class="fu">|</span> (<span class="ch">'1'</span> <span class="fu">==</span> c'_a5jX) <span class="ot">-&gt;</span> <span class="dt">Just</span> rest_a5jY</a>
+<a class="sourceLine" id="cb17-18" title="18">                  _ <span class="ot">-&gt;</span> <span class="dt">Nothing</span>))</a>
+<a class="sourceLine" id="cb17-19" title="19">            <span class="fu">&lt;*&gt;</span></a>
+<a class="sourceLine" id="cb17-20" title="20">              (((<span class="fu">GHC.Base.&lt;|&gt;</span>)</a>
+<a class="sourceLine" id="cb17-21" title="21">                  <span class="fu">&lt;$&gt;</span></a>
+<a class="sourceLine" id="cb17-22" title="22">                    (\<span class="kw">case</span></a>
+<a class="sourceLine" id="cb17-23" title="23">                       (c'_a5jZ <span class="fu">:</span> rest_a5k0) <span class="fu">|</span> (<span class="ch">'2'</span> <span class="fu">==</span> c'_a5jZ) <span class="ot">-&gt;</span> <span class="dt">Just</span> rest_a5k0</a>
+<a class="sourceLine" id="cb17-24" title="24">                       _ <span class="ot">-&gt;</span> <span class="dt">Nothing</span>))</a>
+<a class="sourceLine" id="cb17-25" title="25">                 <span class="fu">&lt;*&gt;</span> <span class="fu">...</span></a></code></pre></div>
+<p>We can see that this expression optionally looks for a <code>0</code> followed by one of <code>0</code>, <code>1</code>, <code>2</code>, and so on. This shouldn’t be surprising as that’s what our phone number specification dictates. The crucial thing is what is missing. Namely, there are no <code>:.:</code> or <code>:|:</code> constructors used to represent sequencing and alternatives. These are gone now and so is the need to branch on them. So the unoptimised staged regex compiler does better than the interpreter because it does less work.</p>
+<p>The same splice also reveals the answer to the next question. Optimisations do well on this expression because there is a larger surface area to optimise. Staging generated one big state machine where most information is available such as the branching structure and the concrete arguments of combinators. This is not the case for the interepreter and the optimiser is restricted to work on what is in each branch for the regex constructors.</p>
+<p>To confirm this, we compare intermediate representation (Core) dumps of Haskell with and without optimisations. To do so, we pass the <code>-O0</code> or <code>-O1</code>, <code>-ddump-simpl</code>, and <code>-ddump-to-file</code> GHC options which generate a <code>Foo.dump-simpl</code> file with a Core output after optimisations are applied at the desired optimisation level. At the top of these files, there some basic statistics, comparing these alone tells a story.</p>
+<pre><code>-O0:
+  Result size of Tidy Core
+    = {terms: 2,432, types: 4,705, coercions: 0, joins: 0/0}
+-O1
+  Result size of Tidy Core
+    = {terms: 1,623, types: 1,069, coercions: 0, joins: 70/70}:</code></pre>
+<p>The first difference is the significant decline in the number of terms and types. This is not surprising when we look at the core output. While the unoptimised code is full of calls to functorial, applicative, and monadic operators we used to implement regular expressions, the optimised version doesn’t have any. These could be eliminated because their arguments became known with staging.</p>
+<p>Here are representative excerpts from the core files. Don’t focus too much on what they do, but just observe the lack of combinators in the optimised version.</p>
+<p>Unoptimised core:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb19-1" title="1">compiledPhoneNumber <span class="fu">=</span></a>
+<a class="sourceLine" id="cb19-2" title="2"><span class="fu">Control.Monad.&gt;=&gt;</span> <span class="fu">@</span> <span class="dt">Maybe</span> <span class="fu">@</span> <span class="dt">String</span> <span class="fu">@</span> [<span class="dt">Char</span>] <span class="fu">@</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb19-3" title="3">  <span class="fu">GHC.Base.$</span>fMonadMaybe</a>
+<a class="sourceLine" id="cb19-4" title="4">  <span class="co">-- ***Omitted 10 nested calls to of monadic/applicative combinators***</span></a>
+<a class="sourceLine" id="cb19-5" title="5">  (<span class="fu">Control.Monad.&gt;=&gt;</span> <span class="fu">@</span> <span class="dt">Maybe</span> <span class="fu">@</span> <span class="dt">String</span> <span class="fu">@</span> [<span class="dt">Char</span>] <span class="fu">@</span> [<span class="dt">Char</span>]</a>
+<a class="sourceLine" id="cb19-6" title="6">     <span class="fu">GHC.Base.$</span>fMonadMaybe</a>
+<a class="sourceLine" id="cb19-7" title="7">     (<span class="fu">&lt;*&gt;</span> <span class="fu">@</span> ((<span class="ot">-&gt;</span>) [<span class="dt">Char</span>]) (<span class="fu">GHC.Base.$</span>fApplicative<span class="ot">-&gt;</span> <span class="fu">@</span> [<span class="dt">Char</span>]) <span class="fu">@</span> (<span class="dt">Maybe</span> [<span class="dt">Char</span>])</a>
+<a class="sourceLine" id="cb19-8" title="8">        <span class="fu">@</span> (<span class="dt">Maybe</span> [<span class="dt">Char</span>])</a>
+<a class="sourceLine" id="cb19-9" title="9">        (<span class="fu">&lt;$&gt;</span> <span class="fu">@</span> ((<span class="ot">-&gt;</span>) [<span class="dt">Char</span>]) <span class="fu">@</span> (<span class="dt">Maybe</span> [<span class="dt">Char</span>]) <span class="fu">@</span> (<span class="dt">Maybe</span> [<span class="dt">Char</span>] <span class="ot">-&gt;</span> <span class="dt">Maybe</span> [<span class="dt">Char</span>])</a>
+<a class="sourceLine" id="cb19-10" title="10">           (<span class="fu">GHC.Base.$</span>fFunctor<span class="ot">-&gt;</span> <span class="fu">@</span> [<span class="dt">Char</span>])</a>
+<a class="sourceLine" id="cb19-11" title="11">           (<span class="fu">GHC.Base.&lt;|&gt;</span></a>
+<a class="sourceLine" id="cb19-12" title="12">              <span class="fu">@</span> <span class="dt">Maybe</span> <span class="fu">GHC.Base.$</span>fAlternativeMaybe <span class="fu">@</span> [<span class="dt">Char</span>])</a>
+<a class="sourceLine" id="cb19-13" title="13">           (\ (<span class="ot">ds_d62q ::</span> [<span class="dt">Char</span>]) <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb19-14" title="14">              <span class="kw">case</span> ds_d62q <span class="kw">of</span> {</a>
+<a class="sourceLine" id="cb19-15" title="15">                [] <span class="ot">-&gt;</span> <span class="dt">GHC.Maybe.Nothing</span> <span class="fu">@</span> [<span class="dt">Char</span>];</a>
+<a class="sourceLine" id="cb19-16" title="16">                <span class="fu">:</span> c'_a5jT rest_a5jU <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb19-17" title="17">                  <span class="kw">case</span> <span class="fu">==</span></a>
+<a class="sourceLine" id="cb19-18" title="18">                         <span class="fu">@</span> <span class="dt">Char</span></a>
+<a class="sourceLine" id="cb19-19" title="19">                         ghc<span class="fu">-</span>prim<span class="fu">-</span><span class="fl">0.6</span><span class="fu">.</span><span class="dv">1</span><span class="fu">:GHC.Classes.$</span>fEqChar</a>
+<a class="sourceLine" id="cb19-20" title="20">                         (ghc<span class="fu">-</span>prim<span class="fu">-</span><span class="fl">0.6</span><span class="fu">.</span><span class="dv">1</span><span class="fu">:</span><span class="dt">GHC.Types.C</span><span class="fu">#</span> <span class="ch">'0'</span><span class="fu">#</span>)</a>
+<a class="sourceLine" id="cb19-21" title="21">                         c'_a5jT</a>
+<a class="sourceLine" id="cb19-22" title="22">                  <span class="kw">of</span> {</a>
+<a class="sourceLine" id="cb19-23" title="23">                    <span class="dt">False</span> <span class="ot">-&gt;</span> <span class="dt">GHC.Maybe.Nothing</span> <span class="fu">@</span> [<span class="dt">Char</span>];</a>
+<a class="sourceLine" id="cb19-24" title="24">                    <span class="dt">True</span> <span class="ot">-&gt;</span> <span class="dt">GHC.Maybe.Just</span> <span class="fu">@</span> [<span class="dt">Char</span>] rest_a5jU</a>
+<a class="sourceLine" id="cb19-25" title="25">                  }</a>
+<a class="sourceLine" id="cb19-26" title="26">              }))</a>
+<a class="sourceLine" id="cb19-27" title="27">        (<span class="fu">pure</span> <span class="fu">@</span> <span class="dt">Maybe</span> <span class="fu">GHC.Base.$</span>fApplicativeMaybe <span class="fu">@</span> [<span class="dt">Char</span>]))</a>
+<a class="sourceLine" id="cb19-28" title="28">     (<span class="fu">&lt;*&gt;</span> <span class="fu">@</span> ((<span class="ot">-&gt;</span>) [<span class="dt">Char</span>])</a>
+<a class="sourceLine" id="cb19-29" title="29">        (<span class="fu">GHC.Base.$</span>fApplicative<span class="ot">-&gt;</span> <span class="fu">@</span> [<span class="dt">Char</span>]) <span class="fu">@</span> (<span class="dt">Maybe</span> [<span class="dt">Char</span>]) <span class="fu">@</span> (<span class="dt">Maybe</span> [<span class="dt">Char</span>])</a>
+<a class="sourceLine" id="cb19-30" title="30">        (<span class="fu">&lt;$&gt;</span> <span class="fu">@</span> ((<span class="ot">-&gt;</span>) [<span class="dt">Char</span>]) <span class="fu">@</span> (<span class="dt">Maybe</span> [<span class="dt">Char</span>]) <span class="fu">@</span> (<span class="dt">Maybe</span> [<span class="dt">Char</span>] <span class="ot">-&gt;</span> <span class="dt">Maybe</span> [<span class="dt">Char</span>])</a>
+<a class="sourceLine" id="cb19-31" title="31">           (<span class="fu">GHC.Base.$</span>fFunctor<span class="ot">-&gt;</span> <span class="fu">@</span> [<span class="dt">Char</span>])</a>
+<a class="sourceLine" id="cb19-32" title="32">           (<span class="fu">GHC.Base.&lt;|&gt;</span></a>
+<a class="sourceLine" id="cb19-33" title="33">              <span class="fu">@</span> <span class="dt">Maybe</span> <span class="fu">GHC.Base.$</span>fAlternativeMaybe <span class="fu">@</span> [<span class="dt">Char</span>])</a>
+<a class="sourceLine" id="cb19-34" title="34">           (\ (<span class="ot">ds_d62t ::</span> [<span class="dt">Char</span>]) <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb19-35" title="35">              <span class="kw">case</span> ds_d62t <span class="kw">of</span> {</a>
+<a class="sourceLine" id="cb19-36" title="36">                [] <span class="ot">-&gt;</span> <span class="dt">GHC.Maybe.Nothing</span> <span class="fu">@</span> [<span class="dt">Char</span>];</a>
+<a class="sourceLine" id="cb19-37" title="37">                <span class="fu">:</span> c'_a5jV rest_a5jW <span class="ot">-&gt;</span> <span class="fu">...</span></a></code></pre></div>
+<p>Optimised core:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb20-1" title="1">StagedPhoneNumber.compiledPhoneNumber2 <span class="fu">=</span></a>
+<a class="sourceLine" id="cb20-2" title="2">\ (x_X5SR [<span class="dt">OS</span><span class="fu">=</span><span class="dt">OneShot</span>]<span class="ot"> ::</span> [<span class="dt">Char</span>]) <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb20-3" title="3">join {</a>
+<a class="sourceLine" id="cb20-4" title="4">  <span class="fu">$</span>w<span class="fu">$</span>j_sa1I [<span class="dt">InlPrag</span><span class="fu">=</span><span class="dt">NOUSERINLINE</span>[<span class="dv">2</span>], <span class="dt">Dmd</span><span class="fu">=&lt;</span><span class="dt">L</span>,<span class="dv">1</span><span class="fu">*</span><span class="dt">C1</span>(<span class="dt">U</span>)<span class="fu">&gt;</span>]</a>
+<a class="sourceLine" id="cb20-5" title="5"><span class="ot">    ::</span> ghc<span class="fu">-</span>prim<span class="fu">-</span><span class="fl">0.6</span><span class="fu">.</span><span class="dv">1</span><span class="fu">:</span><span class="dt">GHC.Prim.Void</span><span class="fu">#</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb20-6" title="6">  [<span class="dt">LclId</span>[<span class="dt">JoinId</span>(<span class="dv">1</span>)], <span class="dt">Arity</span><span class="fu">=</span><span class="dv">1</span>, <span class="dt">Str</span><span class="fu">=&lt;</span><span class="dt">L</span>,<span class="dt">A</span><span class="fu">&gt;</span>, <span class="dt">Unf</span><span class="fu">=</span><span class="dt">OtherCon</span> []]</a>
+<a class="sourceLine" id="cb20-7" title="7">  <span class="fu">$</span>w<span class="fu">$</span>j_sa1I _ [<span class="dt">Occ</span><span class="fu">=</span><span class="dt">Dead</span>, <span class="dt">OS</span><span class="fu">=</span><span class="dt">OneShot</span>]</a>
+<a class="sourceLine" id="cb20-8" title="8">  <span class="co">-- Omitted 5 levels of nested joins</span></a>
+<a class="sourceLine" id="cb20-9" title="9">  <span class="fu">=</span> join {</a>
+<a class="sourceLine" id="cb20-10" title="10">      <span class="fu">$</span>w<span class="fu">$</span>j6_sa1w [<span class="dt">InlPrag</span><span class="fu">=</span><span class="dt">NOUSERINLINE</span>[<span class="dv">2</span>], <span class="dt">Dmd</span><span class="fu">=&lt;</span><span class="dt">L</span>,<span class="dv">1</span><span class="fu">*</span><span class="dt">C1</span>(<span class="dt">U</span>)<span class="fu">&gt;</span>]</a>
+<a class="sourceLine" id="cb20-11" title="11"><span class="ot">        ::</span> ghc<span class="fu">-</span>prim<span class="fu">-</span><span class="fl">0.6</span><span class="fu">.</span><span class="dv">1</span><span class="fu">:</span><span class="dt">GHC.Prim.Void</span><span class="fu">#</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb20-12" title="12">      [<span class="dt">LclId</span>[<span class="dt">JoinId</span>(<span class="dv">1</span>)], <span class="dt">Arity</span><span class="fu">=</span><span class="dv">1</span>, <span class="dt">Str</span><span class="fu">=&lt;</span><span class="dt">L</span>,<span class="dt">A</span><span class="fu">&gt;</span>, <span class="dt">Unf</span><span class="fu">=</span><span class="dt">OtherCon</span> []]</a>
+<a class="sourceLine" id="cb20-13" title="13">      <span class="fu">$</span>w<span class="fu">$</span>j6_sa1w _ [<span class="dt">Occ</span><span class="fu">=</span><span class="dt">Dead</span>, <span class="dt">OS</span><span class="fu">=</span><span class="dt">OneShot</span>]</a>
+<a class="sourceLine" id="cb20-14" title="14">        <span class="fu">=</span> <span class="kw">case</span> x_X5SR <span class="kw">of</span> {</a>
+<a class="sourceLine" id="cb20-15" title="15">            [] <span class="ot">-&gt;</span> <span class="dt">GHC.Maybe.Nothing</span> <span class="fu">@</span> <span class="dt">String</span>;</a>
+<a class="sourceLine" id="cb20-16" title="16">            <span class="fu">:</span> c'_a886 rest_a887 <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb20-17" title="17">              <span class="kw">case</span> c'_a886 <span class="kw">of</span></a>
+<a class="sourceLine" id="cb20-18" title="18">              { ghc<span class="fu">-</span>prim<span class="fu">-</span><span class="fl">0.6</span><span class="fu">.</span><span class="dv">1</span><span class="fu">:</span><span class="dt">GHC.Types.C</span><span class="fu">#</span> y_a5S2 <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb20-19" title="19">              <span class="kw">case</span> y_a5S2 <span class="kw">of</span> {</a>
+<a class="sourceLine" id="cb20-20" title="20">                __DEFAULT <span class="ot">-&gt;</span> <span class="dt">GHC.Maybe.Nothing</span> <span class="fu">@</span> <span class="dt">String</span>;</a>
+<a class="sourceLine" id="cb20-21" title="21">                <span class="ch">'7'</span><span class="fu">#</span> <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb20-22" title="22">                  StagedPhoneNumber.compiledPhoneNumber3</a>
+<a class="sourceLine" id="cb20-23" title="23">                    rest_a887;</a>
+<a class="sourceLine" id="cb20-24" title="24">                <span class="ch">'8'</span><span class="fu">#</span> <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb20-25" title="25">                  StagedPhoneNumber.compiledPhoneNumber3</a>
+<a class="sourceLine" id="cb20-26" title="26">                    rest_a887;</a>
+<a class="sourceLine" id="cb20-27" title="27">                <span class="ch">'9'</span><span class="fu">#</span> <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb20-28" title="28">                  StagedPhoneNumber.compiledPhoneNumber3</a>
+<a class="sourceLine" id="cb20-29" title="29">                    rest_a887</a>
+<a class="sourceLine" id="cb20-30" title="30">              }</a>
+<a class="sourceLine" id="cb20-31" title="31">              }</a>
+<a class="sourceLine" id="cb20-32" title="32">  <span class="fu">...</span></a></code></pre></div>
+<p>The second thing to observe the proliferation of joins. These are both present above in the optimised core output and also in the summary. The unoptimised core had no joins, but the optimised version has 70. What are these joins? They are evidence of <em>commuting conversion</em> optimisation taking place. Given a nested conditional, this conversion brings the inner conditional with the outer one, e.g.,</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb21-1" title="1"><span class="kw">if</span> (<span class="kw">if</span> e1 <span class="kw">then</span> e2 <span class="kw">else</span> e3) <span class="kw">then</span> e4 <span class="kw">else</span> e5</a></code></pre></div>
+<p>becomes</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb22-1" title="1"><span class="kw">if</span> e1 <span class="kw">then</span> (<span class="kw">if</span> e2 <span class="kw">then</span> e4 <span class="kw">else</span> e5) <span class="kw">else</span> (<span class="kw">if</span> e3 <span class="kw">then</span> e4 <span class="kw">else</span> e5)</a></code></pre></div>
+<p>This conversion can trivialise some conditionals to the extent that we can delete them.</p>
+<p>The following nested case expressions for testing an empty list</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb23-1" title="1"><span class="kw">case</span> (<span class="kw">case</span> as <span class="kw">of</span> { [] <span class="ot">-&gt;</span> <span class="dt">Nothing</span>; (p<span class="fu">:</span>_) <span class="ot">-&gt;</span> <span class="dt">Just</span> p }) <span class="kw">of</span></a>
+<a class="sourceLine" id="cb23-2" title="2">  <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="dt">True</span></a>
+<a class="sourceLine" id="cb23-3" title="3">  <span class="dt">Just</span> _  <span class="ot">-&gt;</span> <span class="dt">False</span></a></code></pre></div>
+<p>becomes</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb24-1" title="1"><span class="kw">case</span> as <span class="kw">of</span></a>
+<a class="sourceLine" id="cb24-2" title="2">  []  <span class="ot">-&gt;</span> <span class="kw">case</span> <span class="dt">Nothing</span> <span class="kw">of</span> <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="dt">True</span></a>
+<a class="sourceLine" id="cb24-3" title="3">                        <span class="dt">Just</span> z  <span class="ot">-&gt;</span> <span class="dt">False</span></a>
+<a class="sourceLine" id="cb24-4" title="4">  p<span class="fu">:</span>_ <span class="ot">-&gt;</span> <span class="kw">case</span> <span class="dt">Just</span> p <span class="kw">of</span> <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="dt">True</span></a>
+<a class="sourceLine" id="cb24-5" title="5">                        <span class="dt">Just</span> _ <span class="ot">-&gt;</span> <span class="dt">False</span></a></code></pre></div>
+<p>which in turn simplifies to</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb25-1" title="1"><span class="kw">case</span> as <span class="kw">of</span></a>
+<a class="sourceLine" id="cb25-2" title="2">  []  <span class="ot">-&gt;</span> <span class="dt">True</span></a>
+<a class="sourceLine" id="cb25-3" title="3">  p<span class="fu">:</span>_ <span class="ot">-&gt;</span> <span class="dt">False</span></a></code></pre></div>
+<p>Join points in GHC are used to mitigate the effects of duplication of expressions due to commuting conversion. You can learn more about them and commuting conversion in <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/join-points-pldi17.pdf">Join Points in GHC</a> (Maurer et al. 2017).</p>
+<p>The abundance of joins in the optimised Core program combined with the nested case expressions due to staging make it likely that commuting conversion is a significant factor in why optimisations are effective on our staged code. At least, that is my educated guess.</p>
+<h2 id="qualitative-remarks-on-ergonomics">Qualitative remarks on ergonomics</h2>
+<h3 id="staging-might-require-restructuring">Staging might require restructuring</h3>
+<p>Whether the staging is as simple as placing quotations and splices depends on the structure of the implementation. Consider the following implementation without using any combinators:</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb26-1" title="1"><span class="ot">interpret ::</span> <span class="dt">RegExp</span> <span class="ot">-&gt;</span> <span class="dt">Matcher</span></a>
+<a class="sourceLine" id="cb26-2" title="2">interpret <span class="dt">Null</span> cs <span class="fu">=</span> <span class="dt">Just</span> cs</a>
+<a class="sourceLine" id="cb26-3" title="3">interpret (<span class="dt">Char</span> c) cs <span class="fu">=</span></a>
+<a class="sourceLine" id="cb26-4" title="4">  <span class="kw">case</span> cs <span class="kw">of</span></a>
+<a class="sourceLine" id="cb26-5" title="5">    (c' <span class="fu">:</span> rest) <span class="fu">|</span> c <span class="fu">==</span> c' <span class="ot">-&gt;</span> <span class="dt">Just</span> rest</a>
+<a class="sourceLine" id="cb26-6" title="6">    _ <span class="ot">-&gt;</span> <span class="dt">Nothing</span></a>
+<a class="sourceLine" id="cb26-7" title="7">interpret (re1 <span class="fu">:|:</span> re2) cs <span class="fu">=</span></a>
+<a class="sourceLine" id="cb26-8" title="8">  <span class="kw">case</span> interpret re1 cs <span class="kw">of</span></a>
+<a class="sourceLine" id="cb26-9" title="9">    <span class="dt">Just</span> cs' <span class="ot">-&gt;</span> <span class="dt">Just</span> cs'</a>
+<a class="sourceLine" id="cb26-10" title="10">    <span class="dt">Nothing</span> <span class="ot">-&gt;</span> interpret re2 cs</a>
+<a class="sourceLine" id="cb26-11" title="11">interpret (re1 <span class="fu">:.:</span> re2) cs <span class="fu">=</span></a>
+<a class="sourceLine" id="cb26-12" title="12">  <span class="kw">case</span> interpret re1 cs <span class="kw">of</span></a>
+<a class="sourceLine" id="cb26-13" title="13">    <span class="dt">Just</span> cs' <span class="ot">-&gt;</span> interpret re2 cs'</a>
+<a class="sourceLine" id="cb26-14" title="14">    <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="dt">Nothing</span></a>
+<a class="sourceLine" id="cb26-15" title="15">interpret (<span class="dt">Star</span> re) cs <span class="fu">=</span> matchStar (interpret re) cs</a></code></pre></div>
+<p>This implementation is not amenable to staging only by placing quotations and splices. We need to move <code>cs</code> over to the right side of the equations because unlike <code>Matcher</code>, <code>Code Matcher</code> is not a function type. Once that is done, we can mechanically place quotations and splices as before.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb27-1" title="1"><span class="ot">compile ::</span> <span class="dt">RegExp</span> <span class="ot">-&gt;</span> <span class="dt">Code</span> <span class="dt">Matcher</span></a>
+<a class="sourceLine" id="cb27-2" title="2">compile <span class="dt">Null</span> <span class="fu">=</span> [<span class="fu">||</span> <span class="dt">Just</span> <span class="fu">||</span>]</a>
+<a class="sourceLine" id="cb27-3" title="3">compile (<span class="dt">Char</span> c) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb27-4" title="4">  [<span class="fu">||</span></a>
+<a class="sourceLine" id="cb27-5" title="5">    \<span class="kw">case</span></a>
+<a class="sourceLine" id="cb27-6" title="6">      (c' <span class="fu">:</span> rest) <span class="fu">|</span> c <span class="fu">==</span> c' <span class="ot">-&gt;</span> <span class="dt">Just</span> rest</a>
+<a class="sourceLine" id="cb27-7" title="7">      _ <span class="ot">-&gt;</span> <span class="dt">Nothing</span></a>
+<a class="sourceLine" id="cb27-8" title="8">  <span class="fu">||</span>]</a>
+<a class="sourceLine" id="cb27-9" title="9">compile (re1 <span class="fu">:|:</span> re2) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb27-10" title="10">  [<span class="fu">||</span></a>
+<a class="sourceLine" id="cb27-11" title="11">    \cs <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb27-12" title="12">      <span class="kw">case</span> <span class="fu">$$</span>(compile re1) cs <span class="kw">of</span></a>
+<a class="sourceLine" id="cb27-13" title="13">        <span class="dt">Just</span> cs' <span class="ot">-&gt;</span> <span class="dt">Just</span> cs'</a>
+<a class="sourceLine" id="cb27-14" title="14">        <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="fu">$$</span>(compile re2) cs</a>
+<a class="sourceLine" id="cb27-15" title="15">  <span class="fu">||</span>]</a>
+<a class="sourceLine" id="cb27-16" title="16">compile (re1 <span class="fu">:.:</span> re2) <span class="fu">=</span></a>
+<a class="sourceLine" id="cb27-17" title="17">  [<span class="fu">||</span></a>
+<a class="sourceLine" id="cb27-18" title="18">    \cs <span class="ot">-&gt;</span></a>
+<a class="sourceLine" id="cb27-19" title="19">      <span class="kw">case</span> <span class="fu">$$</span>(compile re1) cs <span class="kw">of</span></a>
+<a class="sourceLine" id="cb27-20" title="20">        <span class="dt">Just</span> cs' <span class="ot">-&gt;</span> <span class="fu">$$</span>(compile re2) cs'</a>
+<a class="sourceLine" id="cb27-21" title="21">        <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="dt">Nothing</span></a>
+<a class="sourceLine" id="cb27-22" title="22">  <span class="fu">||</span>]</a>
+<a class="sourceLine" id="cb27-23" title="23">compile (<span class="dt">Star</span> re) <span class="fu">=</span> [<span class="fu">||</span> matchStar <span class="fu">$$</span>(compile re) <span class="fu">||</span>]</a></code></pre></div>
+<p>Although this is something to be aware, it is not a big price to pay.</p>
+<h3 id="arent-quotations-and-splices-automatic">Aren’t quotations and splices automatic?</h3>
+<p>Using <code>Code Matcher</code> instead of <code>Matcher</code> completely determines where the splices and quotations need to be placed without any ambiguity or significant modification to the code. This raises the question why do we need to do something that requires no programmer ingenuity? Isn’t it better to leave it to the compiler to synthesise? I am not sure about the answer.</p>
+<p>I know staged computation in <a href="https://www.cs.cmu.edu/~fp/papers/jacm00.pdf">ML-like languages can be understood as the S4 temporal modal logic</a> (2000, Davies and Pfenning). Quoting and splicing correspond to boxing and unboxing. Further, I know that in some linear logics boxing and unboxing at term-level can sometimes be synthesised. This makes me wonder if the same is possible for staged computation. If so, it feels like a shame to do something mechanical by hand.</p>
+<h3 id="polymorphism-have-your-interpreter-and-your-compiler-too">Polymorphism: have your interpreter and your compiler too!</h3>
+<p>Although we framed the staged interpreter as a more efficient version of the original interpreter, staging can’t help us if the regular expression isn’t known at compile time.</p>
 <h2 id="conclusion">Conclusion</h2></div>
 
 <script>

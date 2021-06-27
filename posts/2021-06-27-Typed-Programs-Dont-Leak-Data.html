@@ -1,0 +1,551 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-41394820-3');
+        </script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="description" content="Mistral Contrastin's thought bubble,
+          blog, and personal revelations." />
+        <meta name="author" content="Mistral Contrastin" />
+        <title>Do disturb me | Typed Programs Don't Leak Data</title>
+        <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet" />
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+        <link rel="alternate" type="application/atom+xml" href="../atom.xml" />
+
+        <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
+    </head>
+    <body>
+        <div id="header">
+            <div class="top-container">
+              <div id="logo">
+                  <a href="../">Do Disturb Me</a>
+              </div>
+              <div id="navigation">
+                  <a href="../archive.html">Blog</a>
+                  <a href="../teaching.html">Teaching</a>
+              </div>
+            </div>
+            <div id="mandelbrot"></div>
+        </div>
+
+        <div id="content">
+            <div class="info">
+  Posted on June 27, 2021
+  
+  
+</div>
+
+<h1>Typed Programs Don't Leak Data</h1>
+
+
+<p class="in-which">In which we turn privacy violations into compile-time errors in a simple imperative language embedded in Haskell and make GHC enforce it in style using GADTs.</p>
+
+
+<div class="post"><p>Private data should remain private. The goal is obvious, but how to achieve it is less so.</p>
+<p>First, it is a deeply global problem. Private data can enter a system through a fancy frontend and make its way deep into the jungle of backend services only to be logged into a file and read by someone who is not supposed to. It is not practical for people to audit a large system end-to-end.</p>
+<p>Second, it is not amenable to testing. The most <em>explicit</em> cases of leakage such as</p>
+<pre><code>publicStatus := privateMaritalStatus</code></pre>
+<p>can perhaps be tested, but how about the more <em>implicit</em> and elusive forms of leakage such as</p>
+<pre><code>if privateMaritalStatus = &quot;single&quot; {
+  publicStatus := &quot;available&quot;
+} else {
+  else publicStatus := &quot;complicated&quot;
+}</code></pre>
+<p>where private data doesn’t physically move to the public status, but by observing the public status, we can figure something out about the private data.</p>
+<p>The nightmare doesn’t end there. There are subtler ways of leaking data such as termination, execution time, and exceptions. Perhaps the most famous example is figuring out passwords by measuring the time it takes for a program to reject candidate passwords. The longer it it takes, more of the prefix we know.</p>
+<p>There are multitude of ways of mitigating these problems both dynamic and static. In this post, I’ll focus on one productive static approach, namely we’ll look at type systems that makes private data leakage impossible. Let’s get into it.</p>
+<p>All the Haskell necessary imports and Haskell extensions can be found <a href="#full-program">at the end of this post</a> as well in <a href>this repository</a>.</p>
+<h2 id="a-simple-imperative-language">A simple imperative language</h2>
+<p>As this is a blog post, we’ll use the most contrived language possible that demonstrates all the major ideas. First, we define everything using simple types that does not make use of any fancy type machinery.</p>
+<p>Our expression language has integer literals, variables, and addition.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" title="1"><span class="kw">data</span> <span class="dt">Variable</span> <span class="fu">=</span> <span class="dt">Variable</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb3-2" title="2"></a>
+<a class="sourceLine" id="cb3-3" title="3"><span class="kw">infixr</span> <span class="dv">6</span> <span class="fu">:+</span></a>
+<a class="sourceLine" id="cb3-4" title="4"><span class="kw">data</span> <span class="dt">Exp</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb3-5" title="5">  <span class="dt">EInt</span><span class="ot"> ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span></a>
+<a class="sourceLine" id="cb3-6" title="6">  <span class="dt">EVar</span><span class="ot"> ::</span> <span class="dt">Variable</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span></a>
+<a class="sourceLine" id="cb3-7" title="7"><span class="ot">  (:+) ::</span> <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span></a></code></pre></div>
+<p>Our little imperative language has assignment, sequencing, if-then-else statements, and while loops.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" title="1"><span class="kw">infixl</span> <span class="dv">5</span> <span class="fu">:=</span></a>
+<a class="sourceLine" id="cb4-2" title="2"><span class="kw">infixl</span> <span class="dv">4</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb4-3" title="3"><span class="kw">data</span> <span class="dt">Cmd</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb4-4" title="4"><span class="ot">  (:=)  ::</span> <span class="dt">Variable</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb4-5" title="5"><span class="ot">  (:&gt;&gt;) ::</span> <span class="dt">Cmd</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb4-6" title="6">  <span class="dt">ITE</span><span class="ot">   ::</span> <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb4-7" title="7">  <span class="dt">While</span><span class="ot"> ::</span> <span class="dt">Exp</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb4-8" title="8"></a>
+<a class="sourceLine" id="cb4-9" title="9"><span class="kw">newtype</span> <span class="dt">Program</span> <span class="fu">=</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a></code></pre></div>
+<p>Here’s a simple program in this language</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" title="1"><span class="ot">simpleProgram ::</span> <span class="dt">Program</span></a>
+<a class="sourceLine" id="cb5-2" title="2">simpleProgram <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb5-3" title="3">  x <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb5-4" title="4">  <span class="dt">ITE</span> (<span class="dt">EVar</span> x)</a>
+<a class="sourceLine" id="cb5-5" title="5">    (<span class="dt">While</span> (<span class="dt">EVar</span> y) <span class="fu">$</span></a>
+<a class="sourceLine" id="cb5-6" title="6">      y <span class="fu">:=</span> <span class="dt">EVar</span> y <span class="fu">:+</span> <span class="dt">EInt</span> (<span class="fu">-</span><span class="dv">1</span>) <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb5-7" title="7">      x <span class="fu">:=</span> <span class="dt">EVar</span> x <span class="fu">:+</span> <span class="dt">EInt</span> <span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb5-8" title="8">    (y <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">24</span>)</a>
+<a class="sourceLine" id="cb5-9" title="9">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb5-10" title="10">  x <span class="fu">=</span> <span class="dt">Variable</span> <span class="st">&quot;x&quot;</span></a>
+<a class="sourceLine" id="cb5-11" title="11">  y <span class="fu">=</span> <span class="dt">Variable</span> <span class="st">&quot;y&quot;</span></a></code></pre></div>
+<p>In more traditional syntax, this program corresponds to the following:</p>
+<pre><code>x := 42;
+if (x) {
+  while (y) {
+    y := y - 1;
+    x := x + 1;
+  }
+} else {
+  y := 24;
+}</code></pre>
+<p>At this point, I should write an evaluator function to give semantics to this language, but there is nothing interesting about the dynamic semantics. The intuitive evaluation of the language is the right one. The only oddity is that we treat <code>0</code> as false and any other number as true when an expression is used as a conditional expression.</p>
+<h2 id="typing-our-language">Typing our language</h2>
+<p>Now that we are acquainted with the language, let’s prevent private data from leaking.</p>
+<h3 id="security-levels">Security levels</h3>
+<p>Let’s first distinguish private from public. We’ll use natural numbers to do that. The higher the values, the more private they are. All variables in our language shall have intrinsic security levels.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" title="1"><span class="kw">type</span> <span class="dt">Level</span> <span class="fu">=</span> <span class="dt">Nat</span></a>
+<a class="sourceLine" id="cb7-2" title="2"></a>
+<a class="sourceLine" id="cb7-3" title="3"><span class="kw">newtype</span> <span class="dt">Variable</span> (<span class="ot">l ::</span> <span class="dt">Level</span>) <span class="fu">=</span> <span class="dt">Variable</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb7-4" title="4"></a>
+<a class="sourceLine" id="cb7-5" title="5"><span class="ot">public ::</span> <span class="dt">Variable</span> <span class="dv">0</span></a>
+<a class="sourceLine" id="cb7-6" title="6">public <span class="fu">=</span> <span class="dt">Variable</span> <span class="st">&quot;public&quot;</span></a>
+<a class="sourceLine" id="cb7-7" title="7"></a>
+<a class="sourceLine" id="cb7-8" title="8"><span class="ot">private ::</span> <span class="dt">Variable</span> <span class="dv">999</span></a>
+<a class="sourceLine" id="cb7-9" title="9">private <span class="fu">=</span> <span class="dt">Variable</span> <span class="st">&quot;private&quot;</span></a></code></pre></div>
+<h3 id="expressions">Expressions</h3>
+<p>Our expression language will remain the same, but the expressions will reflect how private they are in their types.</p>
+<p>For variable expressions, the obvious choice is to use the security level of the underlying variable. The literals will all be public, i.e., they all have the security level 0. Finally, for plus, we’ll be conservative and pick the more private security level. A folder that contains top secret intelligence and a pizza flyer still cannot be handed to a pizza lover without security clearance.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb8-1" title="1"><span class="kw">infixr</span> <span class="dv">6</span> <span class="fu">:+</span></a>
+<a class="sourceLine" id="cb8-2" title="2"><span class="kw">data</span> <span class="dt">Exp</span> (<span class="ot">level ::</span> <span class="dt">Level</span>) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb8-3" title="3">  <span class="dt">EInt</span><span class="ot"> ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span> <span class="dv">0</span></a>
+<a class="sourceLine" id="cb8-4" title="4">  <span class="dt">EVar</span><span class="ot"> ::</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Exp</span> level</a>
+<a class="sourceLine" id="cb8-5" title="5"><span class="ot">  (:+) ::</span> <span class="dt">Exp</span> level1 <span class="ot">-&gt;</span> <span class="dt">Exp</span> level2 <span class="ot">-&gt;</span> <span class="dt">Exp</span> (<span class="dt">Max</span> level1 level2)</a></code></pre></div>
+<p>Another way of writing these constructors would be using inference rules. <code>e : l</code> means <code>e</code> has a security level <code>l</code> and <code>v : l</code> means the intrinsic security level of the variable <code>v</code> is <code>l</code>. (I take some liberties with the notation)</p>
+<pre><code>  ----------
+  EInt n : 0
+
+    v : l
+  ----------
+  EVar v : l
+
+  e1 : l1      e2 : l2
+  --------------------
+  e1 :+ e2 : max l1 l2</code></pre>
+<p>Here’s a simple expression where the maximum computation is done for us behind the scenes.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" title="1"><span class="ot">simpleExp ::</span> <span class="dt">Exp</span> <span class="dv">999</span></a>
+<a class="sourceLine" id="cb10-2" title="2">simpleExp <span class="fu">=</span> <span class="dt">EVar</span> public <span class="fu">:+</span> <span class="dt">EVar</span> private</a></code></pre></div>
+<h3 id="commands">Commands</h3>
+<p>The commands are where information flow happens and where our type system gets interesting. Here they are</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb11-1" title="1"><span class="kw">infixl</span> <span class="dv">5</span> <span class="fu">:=</span></a>
+<a class="sourceLine" id="cb11-2" title="2"><span class="kw">infixl</span> <span class="dv">4</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb11-3" title="3"><span class="kw">data</span> <span class="dt">Cmd</span> (<span class="ot">level ::</span> <span class="dt">Level</span>) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb11-4" title="4"><span class="ot">  (:=)  ::</span> (le <span class="fu">&lt;=</span> lx) <span class="ot">=&gt;</span> <span class="dt">Variable</span> lx <span class="ot">-&gt;</span> <span class="dt">Exp</span> le <span class="ot">-&gt;</span> <span class="dt">Cmd</span> lx</a>
+<a class="sourceLine" id="cb11-5" title="5"><span class="ot">  (:&gt;&gt;) ::</span> <span class="dt">Cmd</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> (<span class="dt">Min</span> l1 l2)</a>
+<a class="sourceLine" id="cb11-6" title="6">  <span class="dt">ITE</span><span class="ot">   ::</span> (lb <span class="fu">&lt;=</span> <span class="dt">Min</span> l1 l2) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> (<span class="dt">Min</span> l1 l2)</a>
+<a class="sourceLine" id="cb11-7" title="7">  <span class="dt">While</span><span class="ot"> ::</span> (lb <span class="fu">&lt;=</span> l) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l</a></code></pre></div>
+<p>Structurally, it is identical to the simple commands. We have the same constructors with the same number of arguments. However, this definition is different in two different ways.</p>
+<ol type="1">
+<li>Each command now carries a security level. More precisely, they carry the level of the most public variable that was assigned in the command.</li>
+<li>Constructors for assignment, conditional, and while statements now require conditions on the security levels of their parameters.</li>
+</ol>
+<p>In the end, we don’t care about the security level of a command, it is only necessary to bar bad data flows. So it can be hidden away once we construct the program with the help of an existential type.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb12-1" title="1"><span class="kw">data</span> <span class="dt">Program</span> <span class="fu">=</span> <span class="kw">forall</span> l<span class="fu">.</span> <span class="dt">Program</span> (<span class="dt">Cmd</span> l)</a></code></pre></div>
+<p>We now go over each of these constructors one by one. Just as we did for expressions, we present the inference rule corresponding to each constructor. <code>c : l</code> means that the lowest security level that the command <code>c</code> assigns to is <code>l</code>.</p>
+<h4 id="assignment">Assignment</h4>
+<p>The assignment rule is the most fundamental as it is the only way in our language that can leak private data.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb13-1" title="1"><span class="ot">(:=) ::</span> (le <span class="fu">&lt;=</span> lx) <span class="ot">=&gt;</span> <span class="dt">Variable</span> lx <span class="ot">-&gt;</span> <span class="dt">Exp</span> le <span class="ot">-&gt;</span> <span class="dt">Cmd</span> lx</a></code></pre></div>
+<p>The equivalent inference rule:</p>
+<pre><code>  v : lv    e : le    le &lt;= lv
+  -----------------------------
+          v := e : lv</code></pre>
+<p>An assignment has only one variable in it, so the most public variable it assigns to is the variable being assigned. However, to construct an assignment at all, the expression must be less private than the variable.</p>
+<p>This is enough to ban all private data leaking through explicit flows. For example, the following program is fine because <code>public</code> has a lower security level (i.e., more public) than <code>private</code>.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb15-1" title="1">simpleAssignmentOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb15-2" title="2">  private <span class="fu">:=</span> <span class="dt">EVar</span> public</a></code></pre></div>
+<p>However, if we attempt to go in the other direction, we’ll get a type error.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb16-1" title="1"><span class="ot">simpleAssignmentKO ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb16-2" title="2">simpleAssignmentKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb16-3" title="3">  public <span class="fu">:=</span> <span class="dt">EVar</span> private</a></code></pre></div>
+<p>Particularly, GHC has the following to say about this program:</p>
+<pre><code>Couldn't match type ‘'False’ with ‘'True’ arising from a use of ‘:=’</code></pre>
+<p>I grant you that this is not the most obvious error message. But at least we have a compile-time error instead of leaking private data! Substituting the security levels, we have <code>999 &lt;= 0</code> which is a shorthand for <code>999 &lt;=?  0 ~ True</code> and GHC simplifies <code>999 &lt;=? 0</code> to <code>False</code>. This is why the error message says <code>False</code> and <code>True</code> do not match.</p>
+<h4 id="sequencing">Sequencing</h4>
+<p>The most public variable assigned in a sequence of two commands of course belongs to the subcommand that has the more public assignment in it.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb18-1" title="1"><span class="ot">(:&gt;&gt;) ::</span> <span class="dt">Cmd</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> (<span class="dt">Min</span> l1 l2)</a></code></pre></div>
+<p>The equivalent inference rule:</p>
+<pre><code>  c1 : l1       c2 : l2
+  ---------------------
+  c1 :&gt;&gt; c2 : Min l1 l2</code></pre>
+<p>Two commands in sequence are well-typed if and only if both of the subcommands are well-typed. For example, the following sequence of two assignments is alright.</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb20-1" title="1"><span class="ot">tempAssignmentOK ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb20-2" title="2">tempAssignmentOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb20-3" title="3">  temp <span class="fu">:=</span> <span class="dt">EVar</span> public <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb20-4" title="4">  private <span class="fu">:=</span> <span class="dt">EVar</span> temp</a>
+<a class="sourceLine" id="cb20-5" title="5">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb20-6" title="6">  temp <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">5</span> <span class="st">&quot;temp&quot;</span></a></code></pre></div>
+<p>The security level of the assignments are <code>Min 5 0</code> and <code>Min 999 5</code>, so the overall security level for the sequenced command is <code>Min 0 5</code> which is just <code>0</code>, i.e., the security level of <code>public</code> which is indeed the most public variable assigned in the program.</p>
+<h4 id="if-then-else">If-then-else</h4>
+<p>It is time to tackle the more mysterious implicit flows that happen as a result of a conditional write to some public data based on a private one.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb21-1" title="1"><span class="dt">ITE</span><span class="ot"> ::</span> (lb <span class="fu">&lt;=</span> <span class="dt">Min</span> l1 l2) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> (<span class="dt">Min</span> l1 l2)</a></code></pre></div>
+<p>The equivalent inference rule:</p>
+<pre><code>           e : lb
+          c1 : l1
+          c2 : l2
+      lb &lt;= Min l1 l2
+  -----------------------
+  ITE e c1 c2 : Min l1 l2</code></pre>
+<p>The reasoning for the overall security level of a conditional statement is same as that for sequencing. The most public level assigned in the overall statement must come from the more public subcommand. Unlike sequencing, we know that only one of the branches will be taken but we cannot know which one at compile time, so we pessimistically account for both cases.</p>
+<p>This rule also comes with a requirement that needs to be satisfied. The security level of the conditional expression must be less than those of both branches. This prevents implicit flows and explains why we carry the security level of the most public security level commands assign to. If the security level of the expression was higher than the lowest level assigned in one of the branches, then a more public variable’s value would be in part determined by a private one. Thus, by observing the more public value, we could deduce something about the private value. However, the condition ensures that only more public data can influence private data. This is safe because whoever has access to the more private data would also have to the public one.</p>
+<p>The explanation was a mouthful, but the examples make point clearer.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb23-1" title="1"><span class="ot">implicitPublicFlowOK ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb23-2" title="2">implicitPublicFlowOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb23-3" title="3">  <span class="dt">ITE</span> (<span class="dt">EVar</span> public)</a>
+<a class="sourceLine" id="cb23-4" title="4">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
+<a class="sourceLine" id="cb23-5" title="5">    (private <span class="fu">:=</span> <span class="dt">EVar</span> public)</a></code></pre></div>
+<p>The conditional expression in this program is public. In the then branch, we assign to a public data which is always safe. In the else branch, we assign private data, but this is fine too since by observing the result of <code>private</code>, we can only make a conclusion about <code>public</code> which we are allowed to anyway.</p>
+<p>The following program, on the other hand, fails with the same <code>True</code> is not <code>False</code> error:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb24-1" title="1"><span class="ot">implicitPrivateFlowKO ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb24-2" title="2">implicitPrivateFlowKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb24-3" title="3">  <span class="dt">ITE</span> (<span class="dt">EVar</span> private)</a>
+<a class="sourceLine" id="cb24-4" title="4">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
+<a class="sourceLine" id="cb24-5" title="5">    (private <span class="fu">:=</span> <span class="dt">EVar</span> public)</a></code></pre></div>
+<p>This program fails because once executed, if we observe the value of <code>public</code> not to be <code>42</code>, the fact that <code>private</code> is non-zero is leaked. Luckily, since <code>private</code> is more private than <code>public</code>, the conditional statement is ill-typed.</p>
+<p>The typing rules for conditionals also come with a limitation. It bans programs that cannot leak private data.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb25-1" title="1"><span class="ot">implicitPrivateFlowOKKO ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb25-2" title="2">implicitPrivateFlowOKKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb25-3" title="3">  <span class="dt">ITE</span> (<span class="dt">EVar</span> private)</a>
+<a class="sourceLine" id="cb25-4" title="4">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
+<a class="sourceLine" id="cb25-5" title="5">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a></code></pre></div>
+<p>This program is illegal according to our typing rules because there is an implicit flow from security level <code>999</code> to <code>0</code> (in two different ways in fact!), but it does not actually leak data. By observing the value of <code>public</code> after the conditional, we cannot deduce anything about <code>private</code> because the assignment to <code>public</code> is consistent in both branches.</p>
+<p>This particular example looks easy to detect, but in general, it requires program equivalence which would make typechecking undecidable.</p>
+<h4 id="while-loop">While loop</h4>
+<p>Uncharacteristically, while loop rule is simpler than the one for if-then-else statements.</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb26-1" title="1"><span class="dt">While</span><span class="ot"> ::</span> (lb <span class="fu">&lt;=</span> l) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l</a></code></pre></div>
+<p>The equivalent inference rule:</p>
+<pre><code>      e : lb
+      c : l
+     lb &lt;= l
+  -------------
+  While e c : l</code></pre>
+<p>The minimum assignment level can only come from the only subcommand of the while loop.</p>
+<p>The requirement for constructing a while loop is for the conditional expression’s security level to be more public than the most public level assigned in the loop body. The reasoning is precisely the same as the one for if-then-else statements.</p>
+<p>Now that we have the while loop, let’s look at the least contrived program of this post. We halve an even natural number by looping.</p>
+<p>Let’s first derive reusable increment and decrement operations. To do this we derive a generic <code>adder</code> first.</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb28-1" title="1"><span class="ot">lemmaMax0 ::</span> <span class="dt">Max</span> level <span class="dv">0</span> <span class="fu">:~:</span> level</a>
+<a class="sourceLine" id="cb28-2" title="2">lemmaMax0 <span class="fu">=</span> <span class="dt">Refl</span></a>
+<a class="sourceLine" id="cb28-3" title="3"></a>
+<a class="sourceLine" id="cb28-4" title="4"><span class="ot">adder ::</span> <span class="kw">forall</span> level<span class="fu">.</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Cmd</span> level</a>
+<a class="sourceLine" id="cb28-5" title="5">adder i var <span class="fu">|</span> <span class="dt">Refl</span> <span class="ot">&lt;-</span> lemmaMax0 <span class="fu">@</span>level <span class="fu">=</span> var <span class="fu">:=</span> <span class="dt">EVar</span> var <span class="fu">:+</span> <span class="dt">EInt</span> i</a></code></pre></div>
+<p>This looks more complicated than one initially expects. The body of the adder is simple, we offset the given variable’s value with <code>i</code> and assign back to the variable. But what about that <code>lemmaMax0</code> and <code>Refl</code>. Long story, short the assignment in question does not have access to a concrete level, it works for any level, so GHC has to do some symbolic reasoning.</p>
+<p>In particular, it needs to prove that <code>Max level 0 &lt;= level</code>. This is always true, but not obvious GHC. I prove a stronger property in <code>lemmaMax0</code>, namely <code>Max level 0</code> is exactly <code>level</code>. The proof is by reflexivity. Normally, GHC cannot do this on its own, so you need to teach it. I could have reinvented basic arithmetic, but I felt lazy and added a typechecker plugin that lets GHC in on some basic arithmetic facts. These plugins are incredibly cool, but very much scope of this post. The plugin I used is in <a href="https://github.com/clash-lang/ghc-typelits-extra">ghc-typelits-extra</a>.</p>
+<p>Now that we have this lemma, I simply pattern match on it which simplifies the <code>Max level 0 &lt;= level</code> proof obligation to <code>level &lt;= level</code> and GHC is clever enough to work that one out.</p>
+<p>After the small detour, the actual increment and decrement operations are trivial.</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb29-1" title="1">inc,<span class="ot"> dec ::</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Cmd</span> level</a>
+<a class="sourceLine" id="cb29-2" title="2">inc <span class="fu">=</span> adder <span class="dv">1</span></a>
+<a class="sourceLine" id="cb29-3" title="3">dec <span class="fu">=</span> adder (<span class="fu">-</span><span class="dv">1</span>)</a></code></pre></div>
+<p>We are now ready to halve an even natural number and store its value in <code>private</code>.</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb30-1" title="1"><span class="ot">halveCovertKO ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb30-2" title="2">halveCovertKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb30-3" title="3">  finished <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">0</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb30-4" title="4">  private <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">0</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb30-5" title="5">  <span class="dt">While</span> (<span class="dt">EVar</span> privCounter)</a>
+<a class="sourceLine" id="cb30-6" title="6">    (dec privCounter <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb30-7" title="7">     dec privCounter <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb30-8" title="8">     inc private) <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb30-9" title="9">  inc finished</a>
+<a class="sourceLine" id="cb30-10" title="10">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb30-11" title="11">  finished <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">0</span> <span class="st">&quot;finished&quot;</span></a>
+<a class="sourceLine" id="cb30-12" title="12">  privCounter <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">42</span> <span class="st">&quot;privCounter&quot;</span></a></code></pre></div>
+<p>The conditional of the while loop is just as private as the variables incremented and decremented in its body. Hence, the program does not leak data, or does it?</p>
+<h2 id="plugging-covert-channels">Plugging covert channels</h2>
+<p>The natural number halving program above does not leak data explicitly or implicitly, but it leaks some data through covert channels. We can observe that the program terminates because we can observe the value of <code>finished</code>. Knowing that the program terminated leaks the fact that <code>privCounter</code>’s original value was either zero or odd. We shouldn’t be able to deduce that since this counter is private.</p>
+<p>Fortunately, not all is lost. We can plug this covert channel with a minor modification to the while constructor.</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb31-1" title="1"><span class="dt">While</span><span class="ot"> ::</span> <span class="dt">Exp</span> <span class="dv">0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l</a></code></pre></div>
+<p>The equivalent inference rule:</p>
+<pre><code>      e : 0
+      c : l
+  -------------
+  While e c : l</code></pre>
+<p>This chance necessitates loop conditionals to be public. It also dispenses with the conditional expression being more public than the most public variable assigned in the body because this always holds when the conditional expression is public.</p>
+<p>This easily bars the halving program because it both modifies private variables, but does it cover all cases of non-termination-based private data leakage? If the program terminates, we learn that the conditional expression hit zero. This only tells us about the data involved in that expression, so if all of that is public anyway, we cannot possibly leak data.</p>
+<h3 id="expressivity">Expressivity</h3>
+<p>This change, sadly, lands two more blows to expressivity.</p>
+<p>First, if we initialise <code>privCounter</code> before the while loop to a positive even number, the program always terminates and the program cannot leak data. However, deducing this in general requires a solution to the halting problem.</p>
+<p>Second, and more importantly, non-termination can only depend on public data. For example, if we extended our language with arrays and had an array of employees, we would wouldn’t be able to loop over employees if the number of employees was private.</p>
+<p>Our saving grace is that we can get a lot done with terminating programs. Reassessing the employee example, if we extend our language with <code>foreach</code> loops that loops over the array directly, granted that we cannot make the array larger as we iterate over them, the loop would always terminate. Consequently, we can have a more relaxed constructor for <code>foreach</code> loops.</p>
+<h2 id="final-words">Final words</h2>
+<p>The language we considered here is simple, but the literature on type-based information-flow control is both wide and active. We already talked about how we can enrich the language with <code>foreach</code> and improve expressivity while being termination-sensitive. The same trick we used for while loops can also be applied to exceptions to prevent other covert channels. <a href="https://dl.acm.org/doi/10.1145/1929553.1929564">Language-Based Information-Flow Security</a> by Andrei Sabelfeld and Andrew Myers provide a good lay of the land. More specifically, <a href="https://ieeexplore.ieee.org/document/596807">Eliminating covert flows with minimum typings</a> by Volpano and Smith introduces termination-sensitive typing we presented as well as how to securely employ exceptions.</p>
+<p>The ulterior motive of this post was to show off how seamless type-level programming in Haskell could be. At no point, I said “I wish I was using a full dependently typed language” to myself. We even avoided reinventing mathematics using employing typechecker plugins. That topic clearly deserves a post of its own.</p>
+<p>You might be bit disappointed if you’re a Haskell developer looking to employ static IFC in your code. One remedy might be the <a href="https://hackage.haskell.org/package/lio">LIO monad available in Hackage</a> which takes a similar approach but is dynamic. If you’re after no runtime cost, Chapter 6 of <a href="https://dl.acm.org/doi/10.1145/1929553.1929564">Information Flow Enforcement in Monadic Libraries</a> provides a monad transformer in Haskell that employs the same ideas presented in this blog post to statically enforce information-flow properties.</p>
+<p>Finally, the intuition presented in this blog post about why our type system is sound is no substitute for a formal proof. The most beautiful definition that captures the desired property is called <em>non-interference</em> which simply says private data does not interfere with public data in a formal manner. This definition is far reaching, but that too deserves a thorough treatment of its own. That and the proof can be found in <a href="https://core.ac.uk/download/pdf/36700757.pdf">A sound type system for secure flow analysis</a> by Volpano, Irvine, and Smith. This is also the paper that introduced the type system we considered.</p>
+<h2 id="full-program">Full program</h2>
+<div class="sourceCode" id="cb33"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb33-1" title="1"><span class="ot">{-# OPTIONS_GHC -fplugin GHC.TypeLits.Extra.Solver #-}</span></a>
+<a class="sourceLine" id="cb33-2" title="2"></a>
+<a class="sourceLine" id="cb33-3" title="3"><span class="ot">{-# LANGUAGE KindSignatures #-}</span></a>
+<a class="sourceLine" id="cb33-4" title="4"><span class="ot">{-# LANGUAGE DataKinds #-}</span></a>
+<a class="sourceLine" id="cb33-5" title="5"><span class="ot">{-# LANGUAGE GADTs #-}</span></a>
+<a class="sourceLine" id="cb33-6" title="6"><span class="ot">{-# LANGUAGE TypeOperators #-}</span></a>
+<a class="sourceLine" id="cb33-7" title="7"><span class="ot">{-# LANGUAGE TypeApplications #-}</span></a>
+<a class="sourceLine" id="cb33-8" title="8"><span class="ot">{-# LANGUAGE ScopedTypeVariables #-}</span></a>
+<a class="sourceLine" id="cb33-9" title="9"></a>
+<a class="sourceLine" id="cb33-10" title="10"><span class="kw">module</span> <span class="dt">VolpanoSmith</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-11" title="11"></a>
+<a class="sourceLine" id="cb33-12" title="12"><span class="kw">import</span> <span class="dt">GHC.TypeLits</span> (<span class="dt">Nat</span>, type (&lt;=))</a>
+<a class="sourceLine" id="cb33-13" title="13"><span class="kw">import</span> <span class="dt">GHC.TypeLits.Extra</span> (<span class="dt">Max</span>, <span class="dt">Min</span>)</a>
+<a class="sourceLine" id="cb33-14" title="14"><span class="kw">import</span> <span class="dt">Data.Kind</span> (<span class="dt">Type</span>)</a>
+<a class="sourceLine" id="cb33-15" title="15"><span class="kw">import</span> <span class="dt">Data.Data</span> (type (:~:)(<span class="dt">Refl</span>))</a>
+<a class="sourceLine" id="cb33-16" title="16"></a>
+<a class="sourceLine" id="cb33-17" title="17"><span class="co">--------------------------------------------------------------------------------</span></a>
+<a class="sourceLine" id="cb33-18" title="18"><span class="co">-- Basic language without Information-Flow Security enforcement</span></a>
+<a class="sourceLine" id="cb33-19" title="19"><span class="co">--------------------------------------------------------------------------------</span></a>
+<a class="sourceLine" id="cb33-20" title="20"></a>
+<a class="sourceLine" id="cb33-21" title="21"><span class="kw">newtype</span> <span class="dt">Variable0</span> <span class="fu">=</span> <span class="dt">Variable0</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb33-22" title="22"></a>
+<a class="sourceLine" id="cb33-23" title="23"><span class="kw">infixr</span> <span class="dv">6</span> <span class="fu">:+.</span></a>
+<a class="sourceLine" id="cb33-24" title="24"><span class="kw">data</span> <span class="dt">Exp0</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-25" title="25">  <span class="dt">EInt0</span><span class="ot"> ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Exp0</span></a>
+<a class="sourceLine" id="cb33-26" title="26">  <span class="dt">EVar0</span><span class="ot"> ::</span> <span class="dt">Variable0</span> <span class="ot">-&gt;</span> <span class="dt">Exp0</span></a>
+<a class="sourceLine" id="cb33-27" title="27"><span class="ot">  (:+.) ::</span> <span class="dt">Exp0</span> <span class="ot">-&gt;</span> <span class="dt">Exp0</span> <span class="ot">-&gt;</span> <span class="dt">Exp0</span></a>
+<a class="sourceLine" id="cb33-28" title="28"></a>
+<a class="sourceLine" id="cb33-29" title="29"><span class="kw">infixl</span> <span class="dv">5</span> <span class="fu">:=.</span></a>
+<a class="sourceLine" id="cb33-30" title="30"><span class="kw">infixl</span> <span class="dv">4</span> <span class="fu">:&gt;&gt;.</span></a>
+<a class="sourceLine" id="cb33-31" title="31"><span class="kw">data</span> <span class="dt">Cmd0</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-32" title="32"><span class="ot">  (:=.)  ::</span> <span class="dt">Variable0</span> <span class="ot">-&gt;</span> <span class="dt">Exp0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd0</span></a>
+<a class="sourceLine" id="cb33-33" title="33"><span class="ot">  (:&gt;&gt;.) ::</span> <span class="dt">Cmd0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd0</span></a>
+<a class="sourceLine" id="cb33-34" title="34">  <span class="dt">ITE0</span><span class="ot">   ::</span> <span class="dt">Exp0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd0</span></a>
+<a class="sourceLine" id="cb33-35" title="35">  <span class="dt">While0</span><span class="ot"> ::</span> <span class="dt">Exp0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd0</span></a>
+<a class="sourceLine" id="cb33-36" title="36"></a>
+<a class="sourceLine" id="cb33-37" title="37"><span class="kw">type</span> <span class="dt">Program0</span> <span class="fu">=</span> <span class="dt">Cmd0</span></a>
+<a class="sourceLine" id="cb33-38" title="38"></a>
+<a class="sourceLine" id="cb33-39" title="39"><span class="ot">simpleProgram ::</span> <span class="dt">Program0</span></a>
+<a class="sourceLine" id="cb33-40" title="40">simpleProgram <span class="fu">=</span></a>
+<a class="sourceLine" id="cb33-41" title="41">  x <span class="fu">:=.</span> <span class="dt">EInt0</span> <span class="dv">42</span> <span class="fu">:&gt;&gt;.</span></a>
+<a class="sourceLine" id="cb33-42" title="42">  <span class="dt">ITE0</span> (<span class="dt">EVar0</span> x)</a>
+<a class="sourceLine" id="cb33-43" title="43">    (<span class="dt">While0</span> (<span class="dt">EVar0</span> y) <span class="fu">$</span></a>
+<a class="sourceLine" id="cb33-44" title="44">      y <span class="fu">:=.</span> <span class="dt">EVar0</span> y <span class="fu">:+.</span> <span class="dt">EInt0</span> (<span class="fu">-</span><span class="dv">1</span>) <span class="fu">:&gt;&gt;.</span></a>
+<a class="sourceLine" id="cb33-45" title="45">      x <span class="fu">:=.</span> <span class="dt">EVar0</span> x <span class="fu">:+.</span> <span class="dt">EInt0</span> <span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb33-46" title="46">    (y <span class="fu">:=.</span> <span class="dt">EInt0</span> <span class="dv">24</span>)</a>
+<a class="sourceLine" id="cb33-47" title="47">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-48" title="48">  x <span class="fu">=</span> <span class="dt">Variable0</span> <span class="st">&quot;x&quot;</span></a>
+<a class="sourceLine" id="cb33-49" title="49">  y <span class="fu">=</span> <span class="dt">Variable0</span> <span class="st">&quot;y&quot;</span></a>
+<a class="sourceLine" id="cb33-50" title="50"></a>
+<a class="sourceLine" id="cb33-51" title="51"><span class="co">--------------------------------------------------------------------------------</span></a>
+<a class="sourceLine" id="cb33-52" title="52"><span class="co">-- Privacy enforcing programs</span></a>
+<a class="sourceLine" id="cb33-53" title="53"><span class="co">--------------------------------------------------------------------------------</span></a>
+<a class="sourceLine" id="cb33-54" title="54"></a>
+<a class="sourceLine" id="cb33-55" title="55"><span class="kw">type</span> <span class="dt">Level</span> <span class="fu">=</span> <span class="dt">Nat</span></a>
+<a class="sourceLine" id="cb33-56" title="56"></a>
+<a class="sourceLine" id="cb33-57" title="57"><span class="kw">newtype</span> <span class="dt">Variable</span> (<span class="ot">l ::</span> <span class="dt">Level</span>) <span class="fu">=</span> <span class="dt">Variable</span> <span class="dt">String</span></a>
+<a class="sourceLine" id="cb33-58" title="58"></a>
+<a class="sourceLine" id="cb33-59" title="59"><span class="kw">infixr</span> <span class="dv">6</span> <span class="fu">:+</span></a>
+<a class="sourceLine" id="cb33-60" title="60"><span class="kw">data</span> <span class="dt">Exp</span> (<span class="ot">level ::</span> <span class="dt">Level</span>) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-61" title="61">  <span class="dt">EInt</span><span class="ot">  ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Exp</span> <span class="dv">0</span></a>
+<a class="sourceLine" id="cb33-62" title="62">  <span class="dt">EVar</span><span class="ot">  ::</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Exp</span> level</a>
+<a class="sourceLine" id="cb33-63" title="63"><span class="ot">  (:+) ::</span> <span class="dt">Exp</span> level1 <span class="ot">-&gt;</span> <span class="dt">Exp</span> level2 <span class="ot">-&gt;</span> <span class="dt">Exp</span> (<span class="dt">Max</span> level1 level2)</a>
+<a class="sourceLine" id="cb33-64" title="64"></a>
+<a class="sourceLine" id="cb33-65" title="65"><span class="kw">infixl</span> <span class="dv">5</span> <span class="fu">:=</span></a>
+<a class="sourceLine" id="cb33-66" title="66"><span class="kw">infixl</span> <span class="dv">4</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-67" title="67"><span class="kw">data</span> <span class="dt">Cmd</span> (<span class="ot">level ::</span> <span class="dt">Level</span>) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-68" title="68"><span class="ot">  (:=)  ::</span> (le <span class="fu">&lt;=</span> lx) <span class="ot">=&gt;</span> <span class="dt">Variable</span> lx <span class="ot">-&gt;</span> <span class="dt">Exp</span> le <span class="ot">-&gt;</span> <span class="dt">Cmd</span> lx</a>
+<a class="sourceLine" id="cb33-69" title="69"><span class="ot">  (:&gt;&gt;) ::</span> <span class="dt">Cmd</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> (<span class="dt">Min</span> l1 l2)</a>
+<a class="sourceLine" id="cb33-70" title="70">  <span class="dt">ITE</span><span class="ot">   ::</span> (lb <span class="fu">&lt;=</span> <span class="dt">Min</span> l1 l2) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd</span> (<span class="dt">Min</span> l1 l2)</a>
+<a class="sourceLine" id="cb33-71" title="71">  <span class="dt">While</span><span class="ot"> ::</span> (lb <span class="fu">&lt;=</span> l) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l <span class="ot">-&gt;</span> <span class="dt">Cmd</span> l</a>
+<a class="sourceLine" id="cb33-72" title="72"></a>
+<a class="sourceLine" id="cb33-73" title="73"><span class="kw">data</span> <span class="dt">Program</span> (<span class="ot">cmd ::</span> <span class="dt">Level</span> <span class="ot">-&gt;</span> <span class="dt">Type</span>) <span class="fu">=</span> <span class="kw">forall</span> l<span class="fu">.</span> <span class="dt">Program</span> (cmd l)</a>
+<a class="sourceLine" id="cb33-74" title="74"></a>
+<a class="sourceLine" id="cb33-75" title="75"><span class="co">--------------------------------------------------------------------------------</span></a>
+<a class="sourceLine" id="cb33-76" title="76"><span class="co">-- Example programs</span></a>
+<a class="sourceLine" id="cb33-77" title="77"><span class="co">--------------------------------------------------------------------------------</span></a>
+<a class="sourceLine" id="cb33-78" title="78"></a>
+<a class="sourceLine" id="cb33-79" title="79"><span class="ot">public ::</span> <span class="dt">Variable</span> <span class="dv">0</span></a>
+<a class="sourceLine" id="cb33-80" title="80">public <span class="fu">=</span> <span class="dt">Variable</span> <span class="st">&quot;public&quot;</span></a>
+<a class="sourceLine" id="cb33-81" title="81"></a>
+<a class="sourceLine" id="cb33-82" title="82"><span class="ot">private ::</span> <span class="dt">Variable</span> <span class="dv">999</span></a>
+<a class="sourceLine" id="cb33-83" title="83">private <span class="fu">=</span> <span class="dt">Variable</span> <span class="st">&quot;private&quot;</span></a>
+<a class="sourceLine" id="cb33-84" title="84"></a>
+<a class="sourceLine" id="cb33-85" title="85"><span class="ot">simpleExp ::</span> <span class="dt">Exp</span> <span class="dv">999</span></a>
+<a class="sourceLine" id="cb33-86" title="86">simpleExp <span class="fu">=</span> <span class="dt">EVar</span> public <span class="fu">:+</span> <span class="dt">EVar</span> private</a>
+<a class="sourceLine" id="cb33-87" title="87"></a>
+<a class="sourceLine" id="cb33-88" title="88"><span class="ot">simpleAssignmentOK ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb33-89" title="89">simpleAssignmentOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb33-90" title="90">  private <span class="fu">:=</span> <span class="dt">EVar</span> public</a>
+<a class="sourceLine" id="cb33-91" title="91"></a>
+<a class="sourceLine" id="cb33-92" title="92">  <span class="co">{-</span></a>
+<a class="sourceLine" id="cb33-93" title="93"><span class="co">simpleAssignmentKO :: Program Cmd</span></a>
+<a class="sourceLine" id="cb33-94" title="94"><span class="co">simpleAssignmentKO = Program $</span></a>
+<a class="sourceLine" id="cb33-95" title="95"><span class="co">  public := EVar private</span></a>
+<a class="sourceLine" id="cb33-96" title="96"><span class="co">  -}</span></a>
+<a class="sourceLine" id="cb33-97" title="97"></a>
+<a class="sourceLine" id="cb33-98" title="98"><span class="ot">tempAssignmentOK ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb33-99" title="99">tempAssignmentOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb33-100" title="100">  temp <span class="fu">:=</span> <span class="dt">EVar</span> public <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-101" title="101">  private <span class="fu">:=</span> <span class="dt">EVar</span> temp</a>
+<a class="sourceLine" id="cb33-102" title="102">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-103" title="103">  temp <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">5</span> <span class="st">&quot;temp&quot;</span></a>
+<a class="sourceLine" id="cb33-104" title="104"></a>
+<a class="sourceLine" id="cb33-105" title="105"><span class="ot">implicitPublicFlowOK ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb33-106" title="106">implicitPublicFlowOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb33-107" title="107">  <span class="dt">ITE</span> (<span class="dt">EVar</span> public)</a>
+<a class="sourceLine" id="cb33-108" title="108">    (public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
+<a class="sourceLine" id="cb33-109" title="109">    (private <span class="fu">:=</span> <span class="dt">EVar</span> public)</a>
+<a class="sourceLine" id="cb33-110" title="110"></a>
+<a class="sourceLine" id="cb33-111" title="111">  <span class="co">{-</span></a>
+<a class="sourceLine" id="cb33-112" title="112"><span class="co">implicitPrivateFlowKO :: Program Cmd</span></a>
+<a class="sourceLine" id="cb33-113" title="113"><span class="co">implicitPrivateFlowKO = Program $</span></a>
+<a class="sourceLine" id="cb33-114" title="114"><span class="co">  ITE (EVar private)</span></a>
+<a class="sourceLine" id="cb33-115" title="115"><span class="co">    (public := EInt 42)</span></a>
+<a class="sourceLine" id="cb33-116" title="116"><span class="co">    (private := EVar public)</span></a>
+<a class="sourceLine" id="cb33-117" title="117"><span class="co">  -}</span></a>
+<a class="sourceLine" id="cb33-118" title="118"></a>
+<a class="sourceLine" id="cb33-119" title="119">  <span class="co">{-</span></a>
+<a class="sourceLine" id="cb33-120" title="120"><span class="co">implicitPrivateFlowOKKO :: Program Cmd</span></a>
+<a class="sourceLine" id="cb33-121" title="121"><span class="co">implicitPrivateFlowOKKO = Program $</span></a>
+<a class="sourceLine" id="cb33-122" title="122"><span class="co">  ITE (EVar private)</span></a>
+<a class="sourceLine" id="cb33-123" title="123"><span class="co">    (public := EInt 42)</span></a>
+<a class="sourceLine" id="cb33-124" title="124"><span class="co">    (public := EInt 42)</span></a>
+<a class="sourceLine" id="cb33-125" title="125"><span class="co">  -}</span></a>
+<a class="sourceLine" id="cb33-126" title="126"></a>
+<a class="sourceLine" id="cb33-127" title="127"><span class="ot">implicitPrivateFlowOK ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb33-128" title="128">implicitPrivateFlowOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb33-129" title="129">  <span class="dt">ITE</span> (<span class="dt">EVar</span> private)</a>
+<a class="sourceLine" id="cb33-130" title="130">    (private <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span>)</a>
+<a class="sourceLine" id="cb33-131" title="131">    (private <span class="fu">:=</span> <span class="dt">EVar</span> public)</a>
+<a class="sourceLine" id="cb33-132" title="132"></a>
+<a class="sourceLine" id="cb33-133" title="133"><span class="ot">lemmaMax0 ::</span> <span class="dt">Max</span> level <span class="dv">0</span> <span class="fu">:~:</span> level</a>
+<a class="sourceLine" id="cb33-134" title="134">lemmaMax0 <span class="fu">=</span> <span class="dt">Refl</span></a>
+<a class="sourceLine" id="cb33-135" title="135"></a>
+<a class="sourceLine" id="cb33-136" title="136"><span class="ot">adder ::</span> <span class="kw">forall</span> level<span class="fu">.</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Cmd</span> level</a>
+<a class="sourceLine" id="cb33-137" title="137">adder i var <span class="fu">|</span> <span class="dt">Refl</span> <span class="ot">&lt;-</span> lemmaMax0 <span class="fu">@</span>level <span class="fu">=</span> var <span class="fu">:=</span> <span class="dt">EVar</span> var <span class="fu">:+</span> <span class="dt">EInt</span> i</a>
+<a class="sourceLine" id="cb33-138" title="138"></a>
+<a class="sourceLine" id="cb33-139" title="139">inc,<span class="ot"> dec ::</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Cmd</span> level</a>
+<a class="sourceLine" id="cb33-140" title="140">inc <span class="fu">=</span> adder <span class="dv">1</span></a>
+<a class="sourceLine" id="cb33-141" title="141">dec <span class="fu">=</span> adder (<span class="fu">-</span><span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb33-142" title="142"></a>
+<a class="sourceLine" id="cb33-143" title="143"><span class="ot">halveOK ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb33-144" title="144">halveOK <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb33-145" title="145">  finished <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">0</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-146" title="146">  public <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-147" title="147">  <span class="dt">While</span> (<span class="dt">EVar</span> pubCounter)</a>
+<a class="sourceLine" id="cb33-148" title="148">    (dec pubCounter <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-149" title="149">     dec pubCounter <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-150" title="150">     inc public) <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-151" title="151">  inc finished</a>
+<a class="sourceLine" id="cb33-152" title="152">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-153" title="153">  finished <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">0</span> <span class="st">&quot;finished&quot;</span></a>
+<a class="sourceLine" id="cb33-154" title="154">  pubCounter <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">0</span> <span class="st">&quot;pubCounter&quot;</span></a>
+<a class="sourceLine" id="cb33-155" title="155"></a>
+<a class="sourceLine" id="cb33-156" title="156"><span class="ot">halveCovertKO ::</span> <span class="dt">Program</span> <span class="dt">Cmd</span></a>
+<a class="sourceLine" id="cb33-157" title="157">halveCovertKO <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb33-158" title="158">  finished <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">0</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-159" title="159">  private <span class="fu">:=</span> <span class="dt">EInt</span> <span class="dv">42</span> <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-160" title="160">  <span class="dt">While</span> (<span class="dt">EVar</span> privCounter)</a>
+<a class="sourceLine" id="cb33-161" title="161">    (dec privCounter <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-162" title="162">     dec privCounter <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-163" title="163">     inc private) <span class="fu">:&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-164" title="164">  inc finished</a>
+<a class="sourceLine" id="cb33-165" title="165">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-166" title="166">  finished <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">0</span> <span class="st">&quot;finished&quot;</span></a>
+<a class="sourceLine" id="cb33-167" title="167">  privCounter <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">42</span> <span class="st">&quot;privCounter&quot;</span></a>
+<a class="sourceLine" id="cb33-168" title="168"></a>
+<a class="sourceLine" id="cb33-169" title="169"><span class="co">--------------------------------------------------------------------------------</span></a>
+<a class="sourceLine" id="cb33-170" title="170"><span class="co">-- Termination-sensitive privacy enforcing programs</span></a>
+<a class="sourceLine" id="cb33-171" title="171"><span class="co">--------------------------------------------------------------------------------</span></a>
+<a class="sourceLine" id="cb33-172" title="172"></a>
+<a class="sourceLine" id="cb33-173" title="173"><span class="kw">infixl</span> <span class="dv">5</span> <span class="fu">:==</span></a>
+<a class="sourceLine" id="cb33-174" title="174"><span class="kw">infixl</span> <span class="dv">4</span> <span class="fu">:&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-175" title="175"><span class="kw">data</span> <span class="dt">Cmd'</span> (<span class="ot">level ::</span> <span class="dt">Level</span>) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-176" title="176">  <span class="dt">Skip'</span><span class="ot">  ::</span> <span class="dt">Cmd'</span> level</a>
+<a class="sourceLine" id="cb33-177" title="177"><span class="ot">  (:==)  ::</span> (le <span class="fu">&lt;=</span> lx) <span class="ot">=&gt;</span> <span class="dt">Variable</span> lx <span class="ot">-&gt;</span> <span class="dt">Exp</span> le <span class="ot">-&gt;</span> <span class="dt">Cmd'</span> lx</a>
+<a class="sourceLine" id="cb33-178" title="178"><span class="ot">  (:&gt;&gt;&gt;) ::</span> <span class="dt">Cmd'</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd'</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd'</span> (<span class="dt">Min</span> l1 l2)</a>
+<a class="sourceLine" id="cb33-179" title="179">  <span class="dt">ITE'</span><span class="ot">   ::</span> (lb <span class="fu">&lt;=</span> <span class="dt">Min</span> l1 l2) <span class="ot">=&gt;</span> <span class="dt">Exp</span> lb <span class="ot">-&gt;</span> <span class="dt">Cmd'</span> l1 <span class="ot">-&gt;</span> <span class="dt">Cmd'</span> l2 <span class="ot">-&gt;</span> <span class="dt">Cmd'</span> (<span class="dt">Min</span> l1 l2)</a>
+<a class="sourceLine" id="cb33-180" title="180">  <span class="dt">While'</span><span class="ot"> ::</span> <span class="dt">Exp</span> <span class="dv">0</span> <span class="ot">-&gt;</span> <span class="dt">Cmd'</span> l <span class="ot">-&gt;</span> <span class="dt">Cmd'</span> l</a>
+<a class="sourceLine" id="cb33-181" title="181"></a>
+<a class="sourceLine" id="cb33-182" title="182"><span class="ot">adder' ::</span> <span class="kw">forall</span> level<span class="fu">.</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Cmd'</span> level</a>
+<a class="sourceLine" id="cb33-183" title="183">adder' i var <span class="fu">|</span> <span class="dt">Refl</span> <span class="ot">&lt;-</span> lemmaMax0 <span class="fu">@</span>level <span class="fu">=</span> var <span class="fu">:==</span> <span class="dt">EVar</span> var <span class="fu">:+</span> <span class="dt">EInt</span> i</a>
+<a class="sourceLine" id="cb33-184" title="184"></a>
+<a class="sourceLine" id="cb33-185" title="185">inc',<span class="ot"> dec' ::</span> <span class="dt">Variable</span> level <span class="ot">-&gt;</span> <span class="dt">Cmd'</span> level</a>
+<a class="sourceLine" id="cb33-186" title="186">inc' <span class="fu">=</span> adder' <span class="dv">1</span></a>
+<a class="sourceLine" id="cb33-187" title="187">dec' <span class="fu">=</span> adder' (<span class="fu">-</span><span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb33-188" title="188"></a>
+<a class="sourceLine" id="cb33-189" title="189"><span class="ot">halveOK' ::</span> <span class="dt">Program</span> <span class="dt">Cmd'</span></a>
+<a class="sourceLine" id="cb33-190" title="190">halveOK' <span class="fu">=</span> <span class="dt">Program</span> <span class="fu">$</span></a>
+<a class="sourceLine" id="cb33-191" title="191">  finished <span class="fu">:==</span> <span class="dt">EInt</span> <span class="dv">0</span> <span class="fu">:&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-192" title="192">  private <span class="fu">:==</span> <span class="dt">EInt</span> <span class="dv">0</span> <span class="fu">:&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-193" title="193">  <span class="dt">While'</span> (<span class="dt">EVar</span> pubCounter)</a>
+<a class="sourceLine" id="cb33-194" title="194">    (dec' pubCounter <span class="fu">:&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-195" title="195">     dec' pubCounter <span class="fu">:&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-196" title="196">     inc' private) <span class="fu">:&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-197" title="197">  inc' finished</a>
+<a class="sourceLine" id="cb33-198" title="198">  <span class="kw">where</span></a>
+<a class="sourceLine" id="cb33-199" title="199">  finished <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">0</span> <span class="st">&quot;finished&quot;</span></a>
+<a class="sourceLine" id="cb33-200" title="200">  pubCounter <span class="fu">=</span> <span class="dt">Variable</span> <span class="fu">@</span><span class="dv">0</span> <span class="st">&quot;pubCounter&quot;</span></a>
+<a class="sourceLine" id="cb33-201" title="201"></a>
+<a class="sourceLine" id="cb33-202" title="202">  <span class="co">{-</span></a>
+<a class="sourceLine" id="cb33-203" title="203"><span class="co">halveCovertKO' :: Program Cmd'</span></a>
+<a class="sourceLine" id="cb33-204" title="204"><span class="co">halveCovertKO' = Program $</span></a>
+<a class="sourceLine" id="cb33-205" title="205"><span class="co">  finished :== EInt 0 :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-206" title="206"><span class="co">  private :== EInt 0 :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-207" title="207"><span class="co">  While' (EVar privCounter)</span></a>
+<a class="sourceLine" id="cb33-208" title="208"><span class="co">    (dec' privCounter :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-209" title="209"><span class="co">     dec' privCounter :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-210" title="210"><span class="co">     inc' private) :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-211" title="211"><span class="co">  inc' finished</span></a>
+<a class="sourceLine" id="cb33-212" title="212"><span class="co">  where</span></a>
+<a class="sourceLine" id="cb33-213" title="213"><span class="co">  finished = Variable @0 &quot;finished&quot;</span></a>
+<a class="sourceLine" id="cb33-214" title="214"><span class="co">  privCounter = Variable @42 &quot;privCounter&quot;</span></a>
+<a class="sourceLine" id="cb33-215" title="215"><span class="co">  -}</span></a>
+<a class="sourceLine" id="cb33-216" title="216"></a>
+<a class="sourceLine" id="cb33-217" title="217">  <span class="co">{-</span></a>
+<a class="sourceLine" id="cb33-218" title="218"><span class="co">halveCovertOKKO :: Program Cmd'</span></a>
+<a class="sourceLine" id="cb33-219" title="219"><span class="co">halveCovertOKKO = Program $</span></a>
+<a class="sourceLine" id="cb33-220" title="220"><span class="co">  privCounter :== EInt 42 :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-221" title="221"><span class="co">  finished :== EInt 0 :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-222" title="222"><span class="co">  private :== EInt 0 :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-223" title="223"><span class="co">  While' (EVar privCounter)</span></a>
+<a class="sourceLine" id="cb33-224" title="224"><span class="co">    (dec' privCounter :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-225" title="225"><span class="co">     dec' privCounter :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-226" title="226"><span class="co">     inc' private) :&gt;&gt;&gt;</span></a>
+<a class="sourceLine" id="cb33-227" title="227"><span class="co">  inc' finished</span></a>
+<a class="sourceLine" id="cb33-228" title="228"><span class="co">  where</span></a>
+<a class="sourceLine" id="cb33-229" title="229"><span class="co">  finished = Variable @0 &quot;finished&quot;</span></a>
+<a class="sourceLine" id="cb33-230" title="230"><span class="co">  privCounter = Variable @42 &quot;privCounter&quot;</span></a>
+<a class="sourceLine" id="cb33-231" title="231"><span class="co">  -}</span></a></code></pre></div></div>
+
+<script>
+var figures =
+  Array.prototype.slice.call(document.getElementsByClassName("figure"),0)
+  .concat(
+    Array.prototype.slice.call(document.getElementsByTagName("figure"),0));
+
+for (var i = 0; i < figures.length; i++) {
+  var figure = figures[i];
+  var imgs = figure.getElementsByTagName("img");
+  if (imgs.length > 0) {
+    classes = imgs[0].classList;
+    for (var j = 0; j < classes.length; j++) {
+      figure.classList.add(classes[j] + "-figure");
+    }
+  }
+}
+</script>
+
+        </div>
+        <div id="footer">
+          <div class="top-container">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+          </div>
+        </div>
+    </body>
+</html>
