@@ -82,16 +82,21 @@ p.in-which span.drop {
   margin-left: 20px;
 }
 
-.post .figure img {
+.post figure img, .post .figure img {
   display: block;
   position: relative;
   margin: 0 auto 0 auto;
+  width: 100%;
 }
 
-.post .figure p {
+.post figure p, .post .figure p {
   text-align: center;
   font-style: italic;
   margin-top: 0.5em;
+}
+
+.post figure figcaption {
+  text-align: center;
 }
 
 .post h2, .post h3, .post h4 {
