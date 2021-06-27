@@ -4,6 +4,7 @@ postType: Technical
 inWhich: we turn privacy violations into compile-time errors in a simple
   imperative language embedded in Haskell and enforce it in style using GADTs.
 published: true
+lastUpdated: 2021-06-27
 ---
 
 Private data should remain private. The goal is obvious, but how to achieve it
@@ -592,6 +593,32 @@ by Tobias Nipkow and Gerwin Klein. Not only it is beautifully and inductively
 presented, but also the soundness proof of the type system is mechanised in
 Isabelle/HOL. All there was left for me was to translate it to Haskell using
 GADTs.
+
+## Inference rules
+
+Quick reference for all the inference rules in this post.
+
+Expressions:
+```
+                         v : l              e1 : l1      e2 : l2
+---------- int        ---------- var         -------------------- add
+EInt n : 0            EVar v : l            e1 :+ e2 : max l1 l2
+```
+
+Commands (termination-sensitive):
+```
+
+v : lv    e : le    le <= lv             c1 : l1       c2 : l2
+---------------------------- assign      --------------------- sequence
+        v := e : lv                      c1 :>> c2 : Min l1 l2
+
+
+        e : lb
+c1 : l1         c2 : l2                            e : 0
+    lb <= Min l1 l2                                c : l
+----------------------- if-then-else           ------------- while
+ITE e c1 c2 : Min l1 l2                        While e c : l
+```
 
 ## Full program
 
