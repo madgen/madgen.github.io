@@ -2,9 +2,9 @@
 title: Typed Programs Don't Leak Data
 postType: Technical
 inWhich: we turn privacy violations into compile-time errors in a simple
-  imperative language embedded in Haskell and enforce it in style using GADTs.
+  imperative language embedded in Haskell and enforce it using GADTs in style.
 published: true
-lastUpdated: 2021-06-27
+lastUpdated: 2021-06-30
 ---
 
 Private data should remain private. The goal is obvious, but how to achieve it
@@ -14,20 +14,21 @@ For one thing, it is a fundamentally global problem. Private data can enter a
 system through a fancy frontend, make its way deep through the maze of backend
 services, only to be logged and read by someone who is not supposed to. It is
 not practical for people to audit a large system end-to-end and even less
-realistic to expect such an audit to hold up against software evolution.
+realistic to expect such an audit to hold up against software evolution. What we
+need is an automated and _compositional_ solution.
 
 Further, privacy as a property is not always amenable to testing. The most
 _explicit_ cases of leakage such as
-```javascript
-publicStatus := privateMaritalStatus
+```java
+publicStatus = privateMaritalStatus;
 ```
 can perhaps be tested, but how about the more _implicit_ forms of
 leakage. Consider
-```
-if (privateMaritalStatus = "single") {
-  publicStatus := "available";
+```java
+if (privateMaritalStatus == "single") {
+  publicStatus = "available";
 } else {
-  publicStatus := "complicated";
+  publicStatus = "complicated";
 }
 ```
 where private marital status doesn't physically move to the public status, but
@@ -41,14 +42,22 @@ is figuring out passwords by measuring the time it takes for a program to reject
 candidate passwords. The longer rejection takes, the longer password prefix can
 be deduced.
 
-There are multitude of ways of mitigating these problems both dynamic and
-static. In this post, we focus on one productive static approach. Namely, we
-implement a type system that regulates explicit and implicit dataflows as well
-as non-termination as a covert channel. See [the end of this post](#final-words)
-for references.
+There are multitude of ways of mitigating these problems using both dynamic and
+static methods. In this post, we focus on **a type system that regulates
+explicit and implicit dataflows as well as non-termination as a covert
+channel**. This approach has no runtime impact, covers all executions, and is
+compositional, hence easy to scale. See [the end of this post](#final-words)
+for its foundations.
 
-We won't shy away from harnessing the full might of GHC. The necessary imports,
-extensions, and typechecker plugin can be found at [the end of this
+We won't shy away from harnessing the full might of GHC. If you are comfortable
+with Generalised Algebraic Datatypes (GADTs), it should be easy to follow along.
+Otherwise, you can visit one of many GADT tutorials out there (including [my
+exposition on type-level prgramming in
+Haskell](/posts/2019-10-03-Verifying-the-Titular-Properties-of-a-Leftist-Heap.html)
+that includes GADTs and much more) and come back. Alternatively, the
+privacy-related ideas should be accessible by following the prose and the
+inference rules alone. If you want to follow along using Haskell, the necessary
+imports, extensions, and typechecker plugin can be found at [the end of this
 post](#full-program) as well as [this
 repository](https://github.com/madgen/volpano-smith).
 
@@ -109,15 +118,15 @@ simpleProgram = Program $
 
 In more traditional syntax, this program corresponds to the following:
 
-```
-x := 42;
+```java
+x = 42;
 if (x) {
   while (y) {
-    y := y - 1;
-    x := x + 1;
+    y = y - 1;
+    x = x + 1;
   }
 } else {
-  y := 24;
+  y = 24;
 }
 ```
 
@@ -601,7 +610,7 @@ Quick reference for all the inference rules in this post.
 Expressions:
 ```
                          v : l              e1 : l1      e2 : l2
----------- int        ---------- var         -------------------- add
+---------- int        ---------- var        -------------------- add
 EInt n : 0            EVar v : l            e1 :+ e2 : max l1 l2
 ```
 
