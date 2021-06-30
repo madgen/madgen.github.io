@@ -45,30 +45,30 @@
   Posted on June 27, 2021
   
   
-    and last updated on June 27, 2021
+    and last updated on June 30, 2021
   
 </div>
 
 <h1>Typed Programs Don't Leak Data</h1>
 
 
-<p class="in-which">In which we turn privacy violations into compile-time errors in a simple imperative language embedded in Haskell and enforce it in style using GADTs.</p>
+<p class="in-which">In which we turn privacy violations into compile-time errors in a simple imperative language embedded in Haskell and enforce it using GADTs in style.</p>
 
 
 <div class="post"><p>Private data should remain private. The goal is obvious, but how to achieve it is less so.</p>
-<p>For one thing, it is a fundamentally global problem. Private data can enter a system through a fancy frontend, make its way deep through the maze of backend services, only to be logged and read by someone who is not supposed to. It is not practical for people to audit a large system end-to-end and even less realistic to expect such an audit to hold up against software evolution.</p>
+<p>For one thing, it is a fundamentally global problem. Private data can enter a system through a fancy frontend, make its way deep through the maze of backend services, only to be logged and read by someone who is not supposed to. It is not practical for people to audit a large system end-to-end and even less realistic to expect such an audit to hold up against software evolution. What we need is an automated and <em>compositional</em> solution.</p>
 <p>Further, privacy as a property is not always amenable to testing. The most <em>explicit</em> cases of leakage such as</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb1-1" title="1">publicStatus <span class="op">:=</span> privateMaritalStatus</a></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb1-1" title="1">publicStatus = privateMaritalStatus;</a></code></pre></div>
 <p>can perhaps be tested, but how about the more <em>implicit</em> forms of leakage. Consider</p>
-<pre><code>if (privateMaritalStatus = &quot;single&quot;) {
-  publicStatus := &quot;available&quot;;
-} else {
-  publicStatus := &quot;complicated&quot;;
-}</code></pre>
+<div class="sourceCode" id="cb2"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">if</span> (privateMaritalStatus == <span class="st">&quot;single&quot;</span>) {</a>
+<a class="sourceLine" id="cb2-2" title="2">  publicStatus = <span class="st">&quot;available&quot;</span>;</a>
+<a class="sourceLine" id="cb2-3" title="3">} <span class="kw">else</span> {</a>
+<a class="sourceLine" id="cb2-4" title="4">  publicStatus = <span class="st">&quot;complicated&quot;</span>;</a>
+<a class="sourceLine" id="cb2-5" title="5">}</a></code></pre></div>
 <p>where private marital status doesn’t physically move to the public status, but by observing the public status, we can figure something out about the private data. Without reifying these implicit flows at runtime, it doesn’t look like we can write tests.</p>
 <p>The nightmare doesn’t end there. There are subtler ways of leaking data such as non-termination, execution time, and exceptions. Perhaps the most famous example is figuring out passwords by measuring the time it takes for a program to reject candidate passwords. The longer rejection takes, the longer password prefix can be deduced.</p>
-<p>There are multitude of ways of mitigating these problems both dynamic and static. In this post, we focus on one productive static approach. Namely, we implement a type system that regulates explicit and implicit dataflows as well as non-termination as a covert channel. See <a href="#final-words">the end of this post</a> for references.</p>
-<p>We won’t shy away from harnessing the full might of GHC. The necessary imports, extensions, and typechecker plugin can be found at <a href="#full-program">the end of this post</a> as well as <a href="https://github.com/madgen/volpano-smith">this repository</a>.</p>
+<p>There are multitude of ways of mitigating these problems using both dynamic and static methods. In this post, we focus on <strong>a type system that regulates explicit and implicit dataflows as well as non-termination as a covert channel</strong>. This approach has no runtime impact, covers all executions, and is compositional, hence easy to scale. See <a href="#final-words">the end of this post</a> for its foundations.</p>
+<p>We won’t shy away from harnessing the full might of GHC. If you are comfortable with Generalised Algebraic Datatypes (GADTs), it should be easy to follow along. Otherwise, you can visit one of many GADT tutorials out there (including <a href="../posts/2019-10-03-Verifying-the-Titular-Properties-of-a-Leftist-Heap.html">my exposition on type-level prgramming in Haskell</a> that includes GADTs and much more) and come back. Alternatively, the privacy-related ideas should be accessible by following the prose and the inference rules alone. If you want to follow along using Haskell, the necessary imports, extensions, and typechecker plugin can be found at <a href="#full-program">the end of this post</a> as well as <a href="https://github.com/madgen/volpano-smith">this repository</a>.</p>
 <p>If you find a mistake, some explanation to be unclear, or just want to say hi, reach me on <a href="https://twitter.com/madgen_">Twitter</a> or by other ways listed on my homepage.</p>
 <p>Let’s get started.</p>
 <h2 id="a-simple-imperative-language">A simple imperative language</h2>
@@ -104,15 +104,15 @@
 <a class="sourceLine" id="cb5-10" title="10">  x <span class="fu">=</span> <span class="dt">Variable</span> <span class="st">&quot;x&quot;</span></a>
 <a class="sourceLine" id="cb5-11" title="11">  y <span class="fu">=</span> <span class="dt">Variable</span> <span class="st">&quot;y&quot;</span></a></code></pre></div>
 <p>In more traditional syntax, this program corresponds to the following:</p>
-<pre><code>x := 42;
-if (x) {
-  while (y) {
-    y := y - 1;
-    x := x + 1;
-  }
-} else {
-  y := 24;
-}</code></pre>
+<div class="sourceCode" id="cb6"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb6-1" title="1">x = <span class="dv">42</span>;</a>
+<a class="sourceLine" id="cb6-2" title="2"><span class="kw">if</span> (x) {</a>
+<a class="sourceLine" id="cb6-3" title="3">  <span class="kw">while</span> (y) {</a>
+<a class="sourceLine" id="cb6-4" title="4">    y = y - <span class="dv">1</span>;</a>
+<a class="sourceLine" id="cb6-5" title="5">    x = x + <span class="dv">1</span>;</a>
+<a class="sourceLine" id="cb6-6" title="6">  }</a>
+<a class="sourceLine" id="cb6-7" title="7">} <span class="kw">else</span> {</a>
+<a class="sourceLine" id="cb6-8" title="8">  y = <span class="dv">24</span>;</a>
+<a class="sourceLine" id="cb6-9" title="9">}</a></code></pre></div>
 <p>At this point, we should write an evaluator function to give dynamic semantics to this language, but there is nothing interesting about it. So, we’ll skip it. The intuitive evaluation of the language is the right one. The only oddity is that we treat <code>0</code> as false and any other number as true when an expression is used as a condition.</p>
 <h2 id="typing-our-language">Typing our language</h2>
 <p>Now that we are acquainted with the language, let’s prevent private data from leaking.</p>
@@ -292,7 +292,7 @@ if (x) {
 <p>Quick reference for all the inference rules in this post.</p>
 <p>Expressions:</p>
 <pre><code>                         v : l              e1 : l1      e2 : l2
----------- int        ---------- var         -------------------- add
+---------- int        ---------- var        -------------------- add
 EInt n : 0            EVar v : l            e1 :+ e2 : max l1 l2</code></pre>
 <p>Commands (termination-sensitive):</p>
 <pre><code>
