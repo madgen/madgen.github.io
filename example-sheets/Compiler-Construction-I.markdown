@@ -1,10 +1,10 @@
 ---
 title: Compiler Construction Example Sheet I
 date: 2018-01-06
-lastUpdated: 2021-02-07
+lastUpdated: 2022-01-23
 ---
 
-1. Build and play with the SLANG compiler. Experiment with the front end
+1. Build and play with the SLANG compiler. Experiment with the frontend
 (syntax/type checker) and be prepared to discuss what you have done in the
 supervision. It is OK if the changes you make do not work.
 
@@ -44,11 +44,17 @@ to describe? What problems of recursive descent parser does it address?
 
 13. [2015/3/3](http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2015p3q3.pdf)
 
-14. Consider a language of arithmetic expressions using `*`, `/`, `+`, `-`
-operators, operating on integers, and allowing paranthesised expressions.
+14. Consider a language of regular expressions consisting of characters,
+concatenation operation (e.g., `ab` matching `a` then `b`), alternative operator
+(e.g., `a|b` matching `a` or `b`), Kleene star (e.g., `a*` matching zero or more
+`a`s), a restricted form of character classes with ranges (e.g., `[a-c]` to
+mean matching `a` or `b` or `c`) as well as lists (e.g., `[abc]` to mean
+matching `a` or `b` or `c`) and parantheses (e.g., `a(b|c)` meaning matching
+`a` followed by matching `b` or `c`).
 
     a. Design a grammar for this language taking operator precedence into
-    account.
+    account (concatenation binds tighter than alternative). Write it down using
+    the EBNF notation.
 
     b. Write a hand-coded lexer and a recursive descent parser for this grammar
     in OCaml. Clearly explain any transformations you made to your original
