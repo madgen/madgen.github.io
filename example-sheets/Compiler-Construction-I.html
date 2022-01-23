@@ -67,10 +67,19 @@
 <li><p>How does a shift-reduce parser work? What class of languages can it be used to describe? What problems of recursive descent parser does it address?</p></li>
 <li><p><a href="http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2012p3q4.pdf">2012/3/4</a> (a) (b)</p></li>
 <li><p><a href="http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2015p3q3.pdf">2015/3/3</a></p></li>
-<li><p>Consider a language of regular expressions consisting of characters, concatenation operation (e.g., <code>ab</code> matching <code>a</code> then <code>b</code>), alternative operator (e.g., <code>a|b</code> matching <code>a</code> or <code>b</code>), Kleene star (e.g., <code>a*</code> matching zero or more <code>a</code>s), a restricted form of character classes with ranges (e.g., <code>[a-c]</code> to mean matching <code>a</code> or <code>b</code> or <code>c</code>) as well as lists (e.g., <code>[abc]</code> to mean matching <code>a</code> or <code>b</code> or <code>c</code>) and parantheses (e.g., <code>a(b|c)</code> meaning matching <code>a</code> followed by matching <code>b</code> or <code>c</code>).</p>
+<li>Consider a language of regular expressions consisting of
+<ul>
+<li>characters (e.g., <code>a</code> matching the string <code>a</code>),</li>
+<li>concatenation operation (e.g., <code>ab</code> matching <code>a</code> then <code>b</code>),</li>
+<li>alternative operator (e.g., <code>a|b</code> matching <code>a</code> or <code>b</code>),</li>
+<li>the Kleene star (e.g., <code>a*</code> matching zero or more <code>a</code>s),</li>
+<li>a restricted form of character classes with ranges (e.g., <code>[a-c]</code> to mean matching <code>a</code> or <code>b</code> or <code>c</code>) as well as lists (e.g., <code>[abc]</code> to mean matching <code>a</code> or <code>b</code> or <code>c</code>),</li>
+<li>and parantheses (e.g., <code>a(b|c)</code> meaning matching <code>a</code> followed by matching <code>b</code> or <code>c</code>).</li>
+</ul>
+For this language,
 <ol type="a">
-<li><p>Design a grammar for this language taking operator precedence into account (concatenation binds tighter than alternative). Write it down using the EBNF notation.</p></li>
-<li><p>Write a hand-coded lexer and a recursive descent parser for this grammar in OCaml. Clearly explain any transformations you made to your original grammar to accomplish this.</p></li>
+<li><p>Design a grammar for this language taking operator precedence into account (concatenation binds tighter than alternative). Write it down using the EBNF notation;</p></li>
+<li><p>Write a hand-coded lexer and a recursive descent parser for this grammar in OCaml. Clearly explain any transformations you made to your original grammar to accomplish this;</p></li>
 <li><p>Write a computer generated lexer and parser using <code>ocamllex</code> and <code>menhir</code> OCaml packages. You might like to consult <a href="https://dev.realworldocaml.org/parsing-with-ocamllex-and-menhir.html">this tutorial</a> to learn more about the tools.</p></li>
 </ol></li>
 </ol>
