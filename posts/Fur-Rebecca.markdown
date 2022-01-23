@@ -5,6 +5,15 @@ date: 2018-10-29
 inWhich: I provide a not-so-awkward recommendation service for her.
 ---
 
+### 23th of January, 2022
+
+  - I imagine if you read Homer's _Odyssey_, you hated it as much as I loved it.
+    I won't make the case for it as Margaret Atwood ruined it for me too in her
+    novella [_The Penelopiad_](https://en.wikipedia.org/wiki/The_Penelopiad).
+    She retells the famous story from the perspective of Odysseus' wife pointing
+    out the gross injustices with a whimsical language. I bet you'd enjoy it as
+    much as I did. Her voice reminded me of you.
+
 ### 16th of July, 2021
 
 Not all interludes last five minutes.
