@@ -1,7 +1,7 @@
 ---
 title: Compiler Construction Example Sheet I
 date: 2018-01-06
-lastUpdated: 2022-01-23
+lastUpdated: 2023-02-03
 ---
 
 1. Build and play with the SLANG compiler. Experiment with the frontend
@@ -16,35 +16,27 @@ how it fits to your pipeline.
 3. How is LLVM approach to compiler construction is different than that is
 presented in this course?
 
-4. Why are functional languages are commonly used to prototype compilers?
-
-5. Why does `past.ml` in first Slang compiler have `loc` parameter for every
+4. Why does `past.ml` in first Slang compiler have `loc` parameter for every
 constructor, while the corresponding constructors in `ast.ml` don't have them?
 
-6. According to lexical analysis algorithm described in the slides, what are the
+5. According to lexical analysis algorithm described in the slides, what are the
 two rules that disambiguate multiple possible matches out of the same character
 stream?
 
-7. Starting with regular expressions that match individual tokens, how do we
+6. Starting with regular expressions that match individual tokens, how do we
 generate a single lexing program?
 
-8. What is the difference between concrete and abstract syntax trees (CST vs
-AST)? What stages of compilation involve these?
-
-9. What does it mean for a grammar to be ambiguous? How can this ambiguity be
+7. What does it mean for a grammar to be ambiguous? How can this ambiguity be
 resolved?
 
-10. How does a recursive descent parser work? What class of languages can it be
+8. How does a recursive descent parser work? What class of languages can it be
 used to describe? What are the problems with it?
 
-11. How does a shift-reduce parser work? What class of languages can it be used
-to describe? What problems of recursive descent parser does it address?
+9. [2012/3/4](http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2012p3q4.pdf) (a) (b)
 
-12. [2012/3/4](http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2012p3q4.pdf) (a) (b)
+10. [2022/4/1](https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2022p4q1.pdf)
 
-13. [2015/3/3](http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2015p3q3.pdf)
-
-14. Consider a language of regular expressions consisting of
+11. Consider a language of regular expressions consisting of
     - characters (e.g., `a` matching the string `a`),
     - concatenation operation (e.g., `ab` matching `a` then `b`),
     - alternative operator (e.g., `a|b` matching `a` or `b`),
