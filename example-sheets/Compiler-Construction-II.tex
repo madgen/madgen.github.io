@@ -1,48 +1,34 @@
 ---
 title: Compiler Construction Example Sheet II
-date: 2018-01-06
+date: 2023-02-13
 ---
 
 \begin{document}
 
 \begin{enumerate}
-  \item What is the difference between a register machine and a stack machine
-    as used in programming language runtimes. In your discussion include at
-    least, code density, performance, memory allocation, and implementation
-    complexity.
+  \item Read the paper by~\citet{reynolds1972definitional} up to and including
+    section seven. Later sections are delightful as well, but less relevant to
+    the course. Section one can be skimmed, but it nicely sets up the scene. He
+    talks about \textsc{Algol} a lot. For the unfamiliar it is the archetype of
+    block structured programming languages \emph{e.g.} \textsc{C}, but unlike
+    \textsc{C} it has \emph{some} high-order function support.
 
-  \item How is environment implemented in Slang interpreters 0 and 2. Pay
-    special attention to handling of functions.
+    This is a great paper in computer science. Apart from historical value, it
+    is also what the lecturer basis his interpreter upon. It will allow you to
+    deeply understand how and why we bother with defunctionalisation \&
+    continuation passing style.
 
-  \item What is the main difference between interpreter 0 and interpreter 2?
-    What are the purposes of this change? What are the additions to interpreter
-    2 in the version 3 and how do they improve the compiler?
+    I strongly suggest you read it before you attempt the rest of the workset.
 
-  \item As you know Java virtual machine is a bytecode interpreter. Here are
-    the instructions of a function \texttt{f}. What is the high-level code that
-    produces these instructions? Annotate fragments of the code. This will
-    require you to lookup what these instructions do online. Please do not use
-    a decompiler.
+  \item
+    \href{https://www.cl.cam.ac.uk/teaching/2122/CompConstr/exercises_cps.ml}{CPS
+    and defunctionalisation exercise sheet} (from the course site)
 
-    \begin{minted}{text}
-public static int f(int);
-Code:
-   0: iload_0
-   1: ifne          6
-   4: iconst_1
-   5: ireturn
-   6: iload_0
-   7: iload_0
-   8: iconst_1
-   9: isub
-  10: invokestatic  #4     // Method f
-  13: imul
-  14: ireturn
-    \end{minted}
+  \item \href{https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2020p4q4.pdf}{2020/4/4}
 
-  \item \href{http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2011p3q5.pdf}{2011/3/5}
+  \item \href{https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2022p4q2.pdf}{2022/4/2}
 
-  \item \href{http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2014p3q4.pdf}{2014/3/4}
+  \item \href{http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2015p3q3.pdf}{2015/3/3}
 \end{enumerate}
 
 \end{document}
