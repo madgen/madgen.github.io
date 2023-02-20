@@ -1,37 +1,56 @@
 ---
 title: Compiler Construction Example Sheet III
 date: 2018-01-06
-lastUpdated: 2018-02-15
+lastUpdated: 2023-02-20
 ---
 
 \begin{document}
 
 \begin{enumerate}
-  \item Read the paper by~\citet{reynolds1972definitional} up to and including
-    section seven. Later sections are delightful as well, but less relevant to
-    the course. Section one can be skimmed, but it nicely sets up the scene. He
-    talks about \textsc{Algol} a lot. For the unfamiliar it is the archetype of
-    block structured programming languages \emph{e.g.} \textsc{C}, but unlike
-    \textsc{C} it has \emph{some} high-order function support.
-
-    This is a great paper in computer science. Apart from historical value, it
-    is also what the lecturer basis his interpreter upon. It will allow you to
-    deeply understand how and why we bother with defunctionalisation \&
-    continuation passing style.
-
-    I strongly suggest you read it before you attempt the rest of the workset.
-
-  \item
-    \href{https://www.cl.cam.ac.uk/teaching/current/CompConstr/exercises_cps.ml}{CPS
-    and defunctionalisation exercise sheet} (from the course site)
-
-  \item How is the state data type in interpreter 1 used? What is the
-    difference between EXAMINE and COMPUTE constructors? Discuss in detail.
+  \item In \textsc{C}, when you are allocating memory with \texttt{malloc} you
+    need to pass the size of the memory you want to be allocated and the
+    routine returns a pointer. When you later want to free this memory you use
+    the free routine and only pass the pointer. How come \emph{libc} knows how
+    much memory to deallocate?
 
   \item How can multiple source files can be compiled separately and linked
     together? How and which parts of ELF help you do that?
 
-  \item \href{http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2017p23q4.pdf}{2017/3/4}
+  \item After reviewing lecture notes on garbage collection, read
+    \citet{unified} up to and including section 4.
+
+  \item How is environment implemented in Slang interpreters 0 and 2. Pay
+    special attention to handling of functions.
+
+  \item What is the main difference between interpreter 0 and interpreter 2?
+    What are the purposes of this change? What are the additions to the
+    interpreter 2 in the version 3? How do they improve the compiler?
+
+  \item \href{https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2020p4q3.pdf}{2020/4/3}
+
+  \item \href{https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2018p4q4.pdf}{2018/4/4}
+
+  \item As you know Java virtual machine is a bytecode interpreter. Here are
+    the instructions of a function \texttt{f}. What is the high-level code that
+    produces these instructions? Annotate fragments of the code. This will
+    require you to lookup what these instructions do online. Please do not use
+    a decompiler.
+
+    \begin{minted}{text}
+public static int f(int);
+Code:
+   0: iload_0
+   1: ifne          6
+   4: iconst_1
+   5: ireturn
+   6: iload_0
+   7: iload_0
+   8: iconst_1
+   9: isub
+  10: invokestatic  #4     // Method f
+  13: imul
+  14: ireturn
+    \end{minted}
 
   \item Write a program with the following specification on Linux outputting an
     ELF binary using x86\_64 instruction set:
