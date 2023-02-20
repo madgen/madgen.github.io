@@ -45,7 +45,7 @@
   Posted on January  6, 2018
   
   
-    and last updated on February 15, 2018
+    and last updated on February 20, 2023
   
 </div>
 
@@ -54,13 +54,28 @@
 
 
 <div class="post"><ol>
-<li><p>Read the paper by <span class="citation" data-cites="reynolds1972definitional">Reynolds (1972)</span> up to and including section seven. Later sections are delightful as well, but less relevant to the course. Section one can be skimmed, but it nicely sets up the scene. He talks about <span class="smallcaps">Algol</span> a lot. For the unfamiliar it is the archetype of block structured programming languages <em>e.g.</em> <span class="smallcaps">C</span>, but unlike <span class="smallcaps">C</span> it has <em>some</em> high-order function support.</p>
-<p>This is a great paper in computer science. Apart from historical value, it is also what the lecturer basis his interpreter upon. It will allow you to deeply understand how and why we bother with defunctionalisation &amp; continuation passing style.</p>
-<p>I strongly suggest you read it before you attempt the rest of the workset.</p></li>
-<li><p><a href="https://www.cl.cam.ac.uk/teaching/current/CompConstr/exercises_cps.ml">CPS and defunctionalisation exercise sheet</a> (from the course site)</p></li>
-<li><p>How is the state data type in interpreter 1 used? What is the difference between EXAMINE and COMPUTE constructors? Discuss in detail.</p></li>
+<li><p>In <span class="smallcaps">C</span>, when you are allocating memory with <code>malloc</code> you need to pass the size of the memory you want to be allocated and the routine returns a pointer. When you later want to free this memory you use the free routine and only pass the pointer. How come <em>libc</em> knows how much memory to deallocate?</p></li>
 <li><p>How can multiple source files can be compiled separately and linked together? How and which parts of ELF help you do that?</p></li>
-<li><p><a href="http://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2017p23q4.pdf">2017/3/4</a></p></li>
+<li><p>After reviewing lecture notes on garbage collection, read <span class="citation" data-cites="unified">Bacon et al. (2004)</span> up to and including section 4.</p></li>
+<li><p>How is environment implemented in Slang interpreters 0 and 2. Pay special attention to handling of functions.</p></li>
+<li><p>What is the main difference between interpreter 0 and interpreter 2? What are the purposes of this change? What are the additions to the interpreter 2 in the version 3? How do they improve the compiler?</p></li>
+<li><p><a href="https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2020p4q3.pdf">2020/4/3</a></p></li>
+<li><p><a href="https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2018p4q4.pdf">2018/4/4</a></p></li>
+<li><p>As you know Java virtual machine is a bytecode interpreter. Here are the instructions of a function <code>f</code>. What is the high-level code that produces these instructions? Annotate fragments of the code. This will require you to lookup what these instructions do online. Please do not use a decompiler.</p>
+<pre class="text"><code>public static int f(int);
+Code:
+   0: iload_0
+   1: ifne          6
+   4: iconst_1
+   5: ireturn
+   6: iload_0
+   7: iload_0
+   8: iconst_1
+   9: isub
+  10: invokestatic  #4     // Method f
+  13: imul
+  14: ireturn
+    </code></pre></li>
 <li><p>Write a program with the following specification on Linux outputting an ELF binary using x86_64 instruction set:</p>
 <p>Input: An integer N (supplied as command line argument or standard input)</p>
 <p>Output: N lines. In the first of which there is a <code>*</code> and in each subsequent lines there is an extra star.</p>
@@ -75,8 +90,8 @@ Output:
     </code></pre></li>
 </ol>
 <div id="refs" class="references">
-<div id="ref-reynolds1972definitional">
-<p>Reynolds, J.C., 1972. Interpreters for higher-order programming languages, in: Proceedings of the Acm Annual Conference-Volume 2. ACM, pp. 717–740.</p>
+<div id="ref-unified">
+<p>Bacon, D.F., Cheng, P., Rajan, V., 2004. A unified theory of garbage collection. ACM SIGPLAN Notices 39, 50–68.</p>
 </div>
 </div></div>
 
