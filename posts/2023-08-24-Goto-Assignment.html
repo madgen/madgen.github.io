@@ -1,0 +1,422 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-41394820-3');
+        </script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="description" content="Mistral Contrastin's thought bubble,
+          blog, and personal revelations." />
+        <meta name="author" content="Mistral Contrastin" />
+        <title>Do disturb me | Goto Assignment: A better local Goto Definition</title>
+        <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet" />
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+        <link rel="alternate" type="application/atom+xml" href="../atom.xml" />
+
+        <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
+    </head>
+    <body>
+        <div id="header">
+            <div class="top-container">
+              <div id="logo">
+                  <a href="../">Do Disturb Me</a>
+              </div>
+              <div id="navigation">
+                  <a href="../archive.html">Blog</a>
+                  <a href="../teaching.html">Teaching</a>
+              </div>
+            </div>
+            <div id="mandelbrot"></div>
+        </div>
+
+        <div id="content">
+            <div class="info">
+  Posted on August 24, 2023
+  
+  
+  by Mistral Contrastin
+</div>
+
+<h1>Goto Assignment: A better local Goto Definition</h1>
+
+
+<p class="in-which">In which we discuss a novel local code navigation more useful for exploring source code than Goto Definition. We explore its relationship to static single assignment form (SSA) intermediate representation. This post comes with a proof-of-concept Haskell LSP server and a Visual Studio Code (VSCode) extension for a simple While language.</p>
+
+
+<div class="post"><p>Goto Definition functionality in IDEs is essential to modern software
+development. It works beautifully when used inter-procedurally to navigate to
+functions, methods, data specifications, and other top-level declarations.</p>
+<p>When used locally on variables, Goto Definition leaves much to be desired.
+Many language servers navigate to declarations of variables. If the language
+allows conditional definitions or definitions by first assignment, then we end
+up in the first or the last assignment. This is unhelpful:</p>
+<ul>
+<li>In typed languages with declarations, the information revealed at going to
+the declaration is redundant as the hover functionality typically already
+shows the relevant information without jumping around.</li>
+<li>In all languages, the first assignment is rarely useful unless the variable
+is used as a constant. The last assignment can be useful, but also misleading
+when the control flow is not linear due to conditionals and loops. In
+essence, they use a subtly wrong notions of first and last.</li>
+</ul>
+<p>We propose an alternative that we shall call <em>Goto Assignment</em> that takes us
+to the most recent assignments (plural!) following the control flow of the
+program. Here’s the navigation in action.</p>
+<figure>
+<img src="../images/goto-assignment/demo.gif" title="GIF showing Goto Assignment in action in VSCode" alt="Goto Assignment VSCode Demo" />
+<figcaption aria-hidden="true">Goto Assignment VSCode Demo</figcaption>
+</figure>
+<p>The rest of this post first explores what is wrong with local Goto Definition
+and gradually builds up to Goto Assignment. Then we examine how this navigation
+is intimately related to SSA. Despite the conceptual clarity of SSA, it is not
+the most practical implementation strategy, so we sketch the Goto Assignment
+computation using a (simple) Haskell tree walk. Finally, we discuss how this
+feature might manifest in more sophisticated languages and some natural
+extensions to the idea for a more fine-grained experience.</p>
+<p>You can find an LSP server implementation in Haskell on a simple While language
+as well as a VSCode extension that talks to the LSP server in <a href="https://github.com/madgen/goto-assignment">this
+repo</a> and try it for yourself.</p>
+<h2 id="everything-that-is-wrong">Everything that is wrong</h2>
+<p>Let’s arrive at a better Goto Definition through examples. We don’t explicitly
+introduce the While language. It is a standard imperative language. To aid the
+presentation, we shall use <code>GTA x</code> statement to point to the
+definition/assignment of <code>x</code> at the time the statement is used.</p>
+<p>Consider the following conditional initialisation:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> <span class="dv">0</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="fu">rand</span> <span class="kw">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="cn">GTA</span> x</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  x :<span class="kw">=</span> <span class="dv">42</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> x</span></code></pre></div>
+<p>If you were to navigate to the definition of <code>x</code> from the <code>GTA x</code> at the end,
+depending on the language server implementation, we’d end up either at <code>x := 0</code>
+or <code>x := 42</code>. Neither are helpful. Depending on what <code>rand</code> evaluates to, <code>x</code>
+can be either of those things.</p>
+<p>So perhaps, the answer is to list all assignments to the variable? Not quite.
+We wouldn’t want <code>GTA x</code> within the <code>if</code> statement to take us to <code>x := 42</code>.</p>
+<p>So how about all preceding assignments? That’d contain all the information to
+understand what <code>x</code> is, but it’ll generally contain too many irrelevant
+assignments. Consider a linear sequence of assignments:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> <span class="dv">0</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> x <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> x <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> x <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> x <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> x <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> x <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> x</span></code></pre></div>
+<p>If code navigation offers all of these assignments as options, it’d be pretty
+annoying. While debugging, we often observe some outcome (perhaps through logs
+or tests) and would like to work backwards to find what could have led to that
+outcome. Seeing all possible assignments doesn’t help us with this at all! It’d
+be better to follow the chain backwards gradually.</p>
+<p>What’s worse is this would also give us the “dead” assignments. Particularly in
+testing code, variables are often reassigned from scratch for each test case.
+For example,</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>given :<span class="kw">=</span> <span class="dv">0</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>expected :<span class="kw">=</span> <span class="dv">42</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># test with given and expected</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>given :<span class="kw">=</span> <span class="dv">1</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>expected :<span class="kw">=</span> <span class="dv">43</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co"># test with given and expected</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> given</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> expected</span></code></pre></div>
+<p>We wouldn’t want navigation results to include <code>given := 0</code> and <code>expected := 42</code>. As those assignments are dead.</p>
+<p>Then what we want is a set of most recent assignments. But what is recent (and
+I promise I’m not being academic)? Consider the following while loop,</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> <span class="dv">42</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> x <span class="kw">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="cn">GTA</span> x</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  x :<span class="kw">=</span> x <span class="kw">-</span> <span class="dv">1</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span></code></pre></div>
+<p>In this example, the most recent assignments to <code>x</code> at the point the definition
+is requested include <code>x := 42</code>, but it also includes <code>x := x - 1</code>. So we are
+not working with a spatial, but a temporal notion.</p>
+<p>All in all, with all of these examples, we reach the conclusion that to
+effectively navigate assignments to a binder, we need to</p>
+<ul>
+<li>account for control flow</li>
+<li>potentially present multiple options</li>
+<li>only present the most recent options</li>
+</ul>
+<h2 id="relationship-to-single-static-assignment">Relationship to Single Static Assignment</h2>
+<p><a href="https://en.wikipedia.org/wiki/Static_single-assignment_form">Static single
+assignment form</a>
+is an intermediate representation where each assignment is to a unique
+variable. This simplifies program analysis and correspondingly many
+optimisations.</p>
+<p>What does SSA have anything to do with code navigation? As it turns out, if the
+program is in the SSA form, computing what I described in the previous section
+is trivial.</p>
+<p>Let’s see what a sequence of assignment in, SSA-form looks like.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> <span class="dv">0</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> x</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> x <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> x</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> x <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> x</span></code></pre></div>
+<p>becomes</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>x1 :<span class="kw">=</span> <span class="dv">0</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> x1</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>x2 :<span class="kw">=</span> x1 <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> x2</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>x3 :<span class="kw">=</span> x2 <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> x3</span></code></pre></div>
+<p>Finding the most recent assignment is trivial. We simply look up the unique
+assignment for the target binder.</p>
+<p>SSA deals with conditionals via <em>phi</em> nodes these are used to consolidate
+unique assignments from different branches into the same variable. For example,</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="fu">rand</span> <span class="kw">{</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  x :<span class="kw">=</span> <span class="dv">1</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span> <span class="cf">else</span> <span class="kw">{</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  x :<span class="kw">=</span> <span class="dv">2</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> x</span></code></pre></div>
+<p>becomes</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="fu">rand</span> <span class="kw">{</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  x1 :<span class="kw">=</span> <span class="dv">1</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span> <span class="cf">else</span> <span class="kw">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  x2 :<span class="kw">=</span> <span class="dv">2</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>x3 :<span class="kw">=</span> phi(x1, x2)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="cn">GTA</span> x3</span></code></pre></div>
+<p>The assignment involving the phi node does not have a corresponding assignment
+in the source code, but it provides exactly the necessary information to
+collect the most recent assignments. When we want to navigate to assignments,</p>
+<ul>
+<li>if there is a proper (unique) assignment, we make a note of it,</li>
+<li>if it is a pseudo assignment involving a phi node, then we follow the
+assignments for the arguments of the phi node and repeat the process</li>
+</ul>
+<p>in the end, we end up with a collection of most recent assignments that can be
+mapped back to assignments in the source code.</p>
+<p>The exploration of the idea through SSA makes the concept crystal clear in my
+mind. Although it is not a measure for “correctness”, it strenghtens my belief
+that navigating in this way is somehow meaningful or natural.</p>
+<h2 id="sketching-an-implementation-in-haskell">Sketching an implementation in Haskell</h2>
+<p>As tempting as it is to provide an implementation via conversion to the SSA
+form and back, it would be arduous as we’d need to render the program as a
+graph first, compute the <a href="https://en.wikipedia.org/wiki/Static_single-assignment_form#Computing_minimal_SSA_using_dominance_frontiers">dominance
+frontiers</a>,
+do renaming based on that information, and finally compute the Goto Assignment
+table.</p>
+<p>It is much simpler to maintain an environment consisting an
+assignments-in-effect table and a Goto-Assignment table. We then populate these
+while walking an abstract-syntax tree (AST). We now explore how to do that in
+a generic way that yields the first and last assignment implementations for
+free.</p>
+<p>Let’s first look at the AST of the While language.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Program</span> <span class="fu">id</span> <span class="ot">=</span> <span class="dt">Block</span> <span class="fu">id</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Block</span> <span class="fu">id</span> <span class="ot">=</span> [<span class="dt">Statement</span> <span class="fu">id</span>]</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Statement</span> <span class="fu">id</span> <span class="kw">where</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Assignment</span> (<span class="dt">Variable</span> <span class="fu">id</span>) (<span class="dt">Expression</span> <span class="fu">id</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">Ite</span> (<span class="dt">Expression</span> <span class="fu">id</span>) (<span class="dt">Block</span> <span class="fu">id</span>) (<span class="dt">Block</span> <span class="fu">id</span>)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">While</span> (<span class="dt">Expression</span> <span class="fu">id</span>) (<span class="dt">Block</span> <span class="fu">id</span>)</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Expression</span> <span class="fu">id</span> <span class="ot">=</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">EConst</span> <span class="dt">Int</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">EVar</span> (<span class="dt">Variable</span> <span class="fu">id</span>)</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">EPlus</span> (<span class="dt">Expression</span> <span class="fu">id</span>) (<span class="dt">Expression</span> <span class="fu">id</span>)</span></code></pre></div>
+<p>In While programs, we have assignment, if-then-else, and while statements in a
+list. The exressions are constants, variables, and addition. We abstract over
+identifiers which can be a numbering of nodes or simply positions.</p>
+<h3 id="walking-the-ast">Walking the AST</h3>
+<p>We now traverse a given program and update tables within the environment in the
+process. The first higher-order function parameter <code>choose</code> definitions and the
+second one <code>union</code>s them to handle join points in the control flow.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ot">goToDefSimple ::</span> <span class="kw">forall</span> <span class="fu">id</span><span class="op">.</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Ord</span> <span class="fu">id</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=&gt;</span> (<span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span>)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="ot">-&gt;</span> (<span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span>)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="ot">-&gt;</span> <span class="dt">Program</span> <span class="fu">id</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="ot">-&gt;</span> <span class="dt">GoToDef</span> <span class="fu">id</span></span></code></pre></div>
+<p>Skipping over block folding, let’s focus on statement handling.</p>
+<p>We start with assignments first:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>goSt env<span class="op">@</span>(defsInEffect, _) (<span class="dt">Assignment</span> var<span class="op">@</span>(<span class="dt">Variable</span> <span class="fu">id</span> str) expr) <span class="ot">=</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  (defsInEffect', goToDefTbl')</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    defsInEffect' <span class="ot">=</span> chooseDef str (Set.singleton <span class="fu">id</span>) defsInEffect</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    env' <span class="ot">=</span> (defsInEffect', goExpr env expr)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    goToDefTbl' <span class="ot">=</span> goVar env' var</span></code></pre></div>
+<p>We first handle the right-hand side (RHS) of the assignment using the input
+environment (since the assignment hasn’t occurred yet). This extends the Goto
+Assignment table by looking up the assignment in effect and adding entries for
+the <code>id</code>s of the expressions on the RHS.</p>
+<p>Then we <code>choose</code> between the assignment being analysed and the definition in
+the environment.</p>
+<p>Then we look at the conditionals:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>goSt env<span class="op">@</span>(defsInEffect, _) (<span class="dt">Ite</span> e th el) <span class="ot">=</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  (unionDef defsInEffectTh defsInEffectEl, goToDefTbl'')</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    goToDefTbl <span class="ot">=</span> goExpr env e</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    (defsInEffectTh, goToDefTbl') <span class="ot">=</span> goBlock (defsInEffect, goToDefTbl) th</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    (defsInEffectEl, goToDefTbl'') <span class="ot">=</span> goBlock (defsInEffect, goToDefTbl') el</span></code></pre></div>
+<p>For the condition, we extend the Goto Assignment table just as we did for the
+RHS of the assignment. Then we evaluate the <code>then</code> and <code>else</code> blocks extending
+the Goto Assignment as we go along. For both blocks we use the input
+assignments in effect. Note that the assignments-in-effect table is not
+threaded and identical in each branch as the assignments in these blocks are
+independent and not visible to each other.</p>
+<p>Crucially, we <code>union</code> the assignments-in-effect tables produced by each block
+on exit to account for the join points.</p>
+<p>Finally, we look at the most challenging construct, i.e., the while loops:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>goSt env (<span class="dt">While</span> e body) <span class="ot">=</span> drive env</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    drive env' <span class="ot">=</span> <span class="kw">if</span> env' <span class="op">==</span> step env'</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>                 <span class="kw">then</span> env'</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>                 <span class="kw">else</span> drive <span class="op">$</span> step env'</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    step env'<span class="op">@</span>(defsInEffect, _) <span class="ot">=</span> (defsInEffect'', goToDefTbl')</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>      <span class="kw">where</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>        goToDefTbl <span class="ot">=</span> goExpr env' e</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>        env'' <span class="ot">=</span> (defsInEffect, goToDefTbl)</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>        (defsInEffect', goToDefTbl') <span class="ot">=</span> goBlock env'' body</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>        defsInEffect'' <span class="ot">=</span> unionDef defsInEffect defsInEffect'</span></code></pre></div>
+<p>We compute the fixpoint of the <code>step</code> function. In each step, we <code>union</code> the
+definitions in effect before going around the loop with the one at the end of
+the body of the loop.</p>
+<p>The attentive reader will be scratching their head for our use of fixpoints for
+a Goto Assignment functionality. It seems like an overkill, but it is
+necessary, consider the following program:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode ruby"><code class="sourceCode ruby"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>x :<span class="kw">=</span> <span class="dv">0</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> x <span class="kw">{</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">while</span> x <span class="kw">{</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    <span class="cn">GTA</span> x</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    x :<span class="kw">=</span> x <span class="kw">+</span> <span class="dv">1</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">}</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  x :<span class="kw">=</span> x <span class="kw">+</span> <span class="dv">2</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="kw">}</span></span></code></pre></div>
+<p>The most recent assignments include all three assignments for <code>GTA x</code>. Without
+iterating, we would miss out on <code>x := x + 2</code>. Exercise to the reader, work out
+why. Instead of unbounded recursion, we can in fact statically determine the
+number of iterations needed (number of nested loops). But for the sake of
+simplicity, we just iterate and allow it to converge for every well-formed
+program.</p>
+<h3 id="choosing-and-unioning-assignments">Choosing and unioning assignments</h3>
+<p>It is time for the magic trick, we shall get the desired Goto Assignment
+implementation with the following <code>choose</code> and <code>union</code> choices:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ot">choose ::</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>choose <span class="ot">=</span> <span class="fu">const</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="ot">union ::</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>union <span class="ot">=</span> S.union</span></code></pre></div>
+<p>The choice for <code>union</code> as set union is easy to explain, we want all possible
+recent results. That is if there is one assignment in each branch of a
+conditional, on exit, it could be either of them. Hence, both definitions will
+be in effect.</p>
+<p>To understand the choice for <code>const</code>, requires us to recall the traversal for assignments:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="ot">chooseDef ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">DefsInEffect</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">DefsInEffect</span> <span class="fu">id</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>chooseDef <span class="ot">=</span> M.insertWith choose</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- ...</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>defsInEffect' <span class="ot">=</span> chooseDef str (Set.singleton <span class="fu">id</span>) defsInEffect</span></code></pre></div>
+<p><code>chooseDef</code> using <code>const</code> favours the assignment that is being added to the
+assignments-in-effect table over whatever might already be in the table. This
+allows us to keep the most recent assignment.</p>
+<p>The choices to compute the <em>first</em> and <em>last</em> assignments (source-code
+distance-wise) instead looks like the following:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ot">chooseFirst ::</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>chooseFirst <span class="ot">=</span> <span class="fu">min</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="ot">unionFirst ::</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>unionFirst <span class="ot">=</span> <span class="fu">const</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="ot">chooseLast ::</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>chooseLast <span class="ot">=</span> <span class="fu">const</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a><span class="ot">unionLast ::</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span> <span class="ot">-&gt;</span> <span class="dt">S.Set</span> <span class="fu">id</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>unionLast <span class="ot">=</span> <span class="fu">max</span></span></code></pre></div>
+<p>Once again, the reason to figure out why these choices are correct are left as
+exercises to the reader. <em>Can you figure out why the choices for the last
+assignment might yield an unexpected result under this implementation? How
+would you fix it?</em> The reader can consult the test cases of the implementation
+to examine the differences between the first, last, and most recent assignments
+differences.</p>
+<h2 id="relationship-to-other-languages">Relationship to other languages</h2>
+<p>Let’s first talk about the languages where the most recent singular definition
+is as good as gold. The pure fragment of OCaml and the non-monadic fragment of
+Haskell are examples to this. Consider the following program:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> x =</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">if</span> rand</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">then</span> <span class="kw">let</span> x = <span class="dv">1</span> <span class="kw">in</span> x</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">then</span> <span class="kw">let</span> x = <span class="dv">2</span> <span class="kw">in</span> x</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="kw">in</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>x</span></code></pre></div>
+<p>In this program, we are forced to put the let binding around the <code>if</code> before
+referencing <code>x</code>, so looking at the syntactically closest (and largest)
+definition is effectively what we want. A similar example can be written in
+Haskell.</p>
+<p>How about an imperative language with pass-by-reference such as mutable
+references in Rust or C++? We could extend the idea of Goto Assignment to <em>Goto
+Mutation</em>. In addition to considering assignments to update the
+assignments-in-effect table, we’d also take a note of function and method call
+arguments that are passed by reference.</p>
+<p>How about object-oriented languages such as Java or Ruby? Each property
+assignment can be considered as an assignment or mutation to the receiver of
+the property. Once again we can update the assignments-in-effect table
+accordingly. How about the property itself? For properties, the standard Goto
+Definition functionality is likely the most useful navigation in general, but
+one could also track Goto Assignment on properties locally separate from the
+receiver of the property. This would make Goto Assignment a
+<a href="https://en.wikipedia.org/wiki/Pointer_analysis#Introduction"><em>field-sensitive</em></a>
+navigation. That in turn introduces a number of hard problems related to
+<a href="https://en.wikipedia.org/wiki/Aliasing_(computing)">aliasing</a> that any
+field-sensitive analysis would face.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>We looked at Goto Assignment navigation in detail, its relationship to SSA, <a href="https://en.wikipedia.org/wiki/Aliasing_(computing)">a
+simple implementation for
+it</a>, and some natural
+extensions to the idea with more sophisticated languages in mind.</p>
+<p>My sincere hope is that people take this idea and implement it in all my
+favourite languages =)</p>
+<p>I also wondered how one would measure the efficacy of this navigation over the
+standard local Goto Definition implemented in many LSP servers today. Besides
+qualitative assessments, I cannot think of a good way of comparing one
+navigation tool to the other. Please do reach out if you have ideas.</p></div>
+
+<script>
+var figures =
+  Array.prototype.slice.call(document.getElementsByClassName("figure"),0)
+  .concat(
+    Array.prototype.slice.call(document.getElementsByTagName("figure"),0));
+
+for (var i = 0; i < figures.length; i++) {
+  var figure = figures[i];
+  var imgs = figure.getElementsByTagName("img");
+  if (imgs.length > 0) {
+    classes = imgs[0].classList;
+    for (var j = 0; j < classes.length; j++) {
+      figure.classList.add(classes[j] + "-figure");
+    }
+  }
+}
+</script>
+
+        </div>
+        <div id="footer">
+          <div class="top-container">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+          </div>
+        </div>
+    </body>
+</html>

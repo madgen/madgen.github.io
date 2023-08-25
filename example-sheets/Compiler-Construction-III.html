@@ -47,6 +47,7 @@
   
     and last updated on February 20, 2023
   
+  by Mistral Contrastin
 </div>
 
 <h1>Compiler Construction Example Sheet III</h1>
@@ -54,14 +55,27 @@
 
 
 <div class="post"><ol>
-<li><p>In <span class="smallcaps">C</span>, when you are allocating memory with <code>malloc</code> you need to pass the size of the memory you want to be allocated and the routine returns a pointer. When you later want to free this memory you use the free routine and only pass the pointer. How come <em>libc</em> knows how much memory to deallocate?</p></li>
-<li><p>How can multiple source files can be compiled separately and linked together? How and which parts of ELF help you do that?</p></li>
-<li><p>After reviewing lecture notes on garbage collection, read <span class="citation" data-cites="unified">Bacon et al. (2004)</span> up to and including section 4.</p></li>
-<li><p>How is environment implemented in Slang interpreters 0 and 2. Pay special attention to handling of functions.</p></li>
-<li><p>What is the main difference between interpreter 0 and interpreter 2? What are the purposes of this change? What are the additions to the interpreter 2 in the version 3? How do they improve the compiler?</p></li>
+<li><p>In <span class="smallcaps">C</span>, when you are allocating memory with <code>malloc</code> you
+need to pass the size of the memory you want to be allocated and the
+routine returns a pointer. When you later want to free this memory you use
+the free routine and only pass the pointer. How come <em>libc</em> knows how
+much memory to deallocate?</p></li>
+<li><p>How can multiple source files can be compiled separately and linked
+together? How and which parts of ELF help you do that?</p></li>
+<li><p>After reviewing lecture notes on garbage collection, read
+<span class="citation" data-cites="unified">Bacon et al. (2004)</span> up to and including section 4.</p></li>
+<li><p>How is environment implemented in Slang interpreters 0 and 2. Pay
+special attention to handling of functions.</p></li>
+<li><p>What is the main difference between interpreter 0 and interpreter 2?
+What are the purposes of this change? What are the additions to the
+interpreter 2 in the version 3? How do they improve the compiler?</p></li>
 <li><p><a href="https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2020p4q3.pdf">2020/4/3</a></p></li>
 <li><p><a href="https://www.cl.cam.ac.uk/teaching/exams/pastpapers/y2018p4q4.pdf">2018/4/4</a></p></li>
-<li><p>As you know Java virtual machine is a bytecode interpreter. Here are the instructions of a function <code>f</code>. What is the high-level code that produces these instructions? Annotate fragments of the code. This will require you to lookup what these instructions do online. Please do not use a decompiler.</p>
+<li><p>As you know Java virtual machine is a bytecode interpreter. Here are
+the instructions of a function <code>f</code>. What is the high-level code that
+produces these instructions? Annotate fragments of the code. This will
+require you to lookup what these instructions do online. Please do not use
+a decompiler.</p>
 <pre class="text"><code>public static int f(int);
 Code:
    0: iload_0
@@ -74,11 +88,12 @@ Code:
    9: isub
   10: invokestatic  #4     // Method f
   13: imul
-  14: ireturn
-    </code></pre></li>
-<li><p>Write a program with the following specification on Linux outputting an ELF binary using x86_64 instruction set:</p>
+  14: ireturn</code></pre></li>
+<li><p>Write a program with the following specification on Linux outputting an
+ELF binary using x86_64 instruction set:</p>
 <p>Input: An integer N (supplied as command line argument or standard input)</p>
-<p>Output: N lines. In the first of which there is a <code>*</code> and in each subsequent lines there is an extra star.</p>
+<p>Output: N lines. In the first of which there is a <code>*</code> and in each
+subsequent lines there is an extra star.</p>
 <p>Example:</p>
 <pre class="text"><code>Input: 5
 Output:
@@ -86,12 +101,11 @@ Output:
 **
 ***
 ****
-*****
-    </code></pre></li>
+*****</code></pre></li>
 </ol>
-<div id="refs" class="references">
-<div id="ref-unified">
-<p>Bacon, D.F., Cheng, P., Rajan, V., 2004. A unified theory of garbage collection. ACM SIGPLAN Notices 39, 50–68.</p>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-unified" class="csl-entry" role="listitem">
+Bacon, D.F., Cheng, P., Rajan, V., 2004. A unified theory of garbage collection. ACM SIGPLAN Notices 39, 50–68.
 </div>
 </div></div>
 

@@ -45,6 +45,7 @@
   Posted on April 29, 2018
   
   
+  by Mistral Contrastin
 </div>
 
 <h1>Concepts in Programming Languages I</h1>
@@ -52,42 +53,53 @@
 
 
 <div class="post"><ol>
-<li><p>Read and make notes on chapters 3 (on <span class="smallcaps">LISP</span>) &amp; 5 (on <span class="smallcaps">ALGOL</span>) of <span class="citation" data-cites="mitchell2003concepts">Mitchell (2003)</span>. In your notes, pay particular attention to motivation and new innovations of the language.</p></li>
+<li><p>Read and make notes on chapters 3 (on <span class="smallcaps">LISP</span>) &amp; 5 (on
+<span class="smallcaps">ALGOL</span>) of <span class="citation" data-cites="mitchell2003concepts">Mitchell (2003)</span>. In your notes, pay
+particular attention to motivation and new innovations of the language.</p></li>
 <li><p>An author writes</p>
-<p>Briefly discuss the merits and/or shortcomings of the above three statements, giving examples and/or counterexamples from procedural, applicative, logical, and/or object-oriented programming languages.</p></li>
-<li><p>For the programming languages <span class="smallcaps">FORTRAN</span>, <span class="smallcaps">LISP</span>, <span class="smallcaps">Java</span>, <span class="smallcaps">C</span>, <span class="smallcaps">C++</span> and <span class="smallcaps">ML</span> briefly discuss and evaluate their typing disciplines.</p></li>
+<p>Briefly discuss the merits and/or shortcomings of the above three
+statements, giving examples and/or counterexamples from procedural,
+applicative, logical, and/or object-oriented programming languages.</p></li>
+<li><p>For the programming languages <span class="smallcaps">FORTRAN</span>, <span class="smallcaps">LISP</span>,
+<span class="smallcaps">Java</span>, <span class="smallcaps">C</span>, <span class="smallcaps">C++</span> and <span class="smallcaps">ML</span> briefly discuss and
+evaluate their typing disciplines.</p></li>
 <li><p>Consider the following two program fragments:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode lisp"><code class="sourceCode commonlisp"><a class="sourceLine" id="cb1-1" title="1">( <span class="kw">defvar</span><span class="fu"> x </span><span class="dv">1</span> )</a>
-<a class="sourceLine" id="cb1-2" title="2">( <span class="kw">defun</span><span class="fu"> g</span>(z) (<span class="op">+</span> x z) )</a>
-<a class="sourceLine" id="cb1-3" title="3">( <span class="kw">defun</span><span class="fu"> f</span>(y)</a>
-<a class="sourceLine" id="cb1-4" title="4"> (<span class="op">+</span> (g <span class="dv">1</span>)</a>
-<a class="sourceLine" id="cb1-5" title="5">    ( <span class="kw">let</span></a>
-<a class="sourceLine" id="cb1-6" title="6">       ( ( x (<span class="op">+</span> y <span class="dv">3</span>) ) )</a>
-<a class="sourceLine" id="cb1-7" title="7">       (</a>
-<a class="sourceLine" id="cb1-8" title="8">           g(<span class="op">+</span> y x)</a>
-<a class="sourceLine" id="cb1-9" title="9">           ) ) ) )</a>
-<a class="sourceLine" id="cb1-10" title="10">( f <span class="dv">2</span> )</a>
-<a class="sourceLine" id="cb1-11" title="11">    </a></code></pre></div>
-<div class="sourceCode" id="cb2"><pre class="sourceCode ml"><code class="sourceCode ocaml"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">val</span> x = <span class="dv">1</span> ;</a>
-<a class="sourceLine" id="cb2-2" title="2"><span class="kw">fun</span> g(z) = x + z ;</a>
-<a class="sourceLine" id="cb2-3" title="3"><span class="kw">fun</span> f(y)</a>
-<a class="sourceLine" id="cb2-4" title="4">= g(<span class="dv">1</span>) +</a>
-<a class="sourceLine" id="cb2-5" title="5">  <span class="kw">let</span></a>
-<a class="sourceLine" id="cb2-6" title="6">     <span class="kw">val</span> x = y + <span class="dv">3</span></a>
-<a class="sourceLine" id="cb2-7" title="7">  <span class="kw">in</span></a>
-<a class="sourceLine" id="cb2-8" title="8">     g(y+x)</a>
-<a class="sourceLine" id="cb2-9" title="9">  <span class="kw">end</span> ;</a>
-<a class="sourceLine" id="cb2-10" title="10">f(<span class="dv">2</span>) ;</a>
-<a class="sourceLine" id="cb2-11" title="11">    </a></code></pre></div>
-<p>What are their respective output values when run in their corresponding interpreters? Justify your answer, relating it to the concepts in the course.</p></li>
-<li><p>Give an overview of the LISP abstract machine (or execution model) and comment on its merits and drawbacks from the viewpoints of programming, compilation, execution, etc.</p></li>
-<li><p>Define the following parameter-passing mechanisms: pass-by-value,pass-by-reference, pass-by value/result, and pass-by-name. Briefly comment on their merits and drawbacks.</p></li>
-<li><p>What is aliasing in the context of programming languages? Explain the contexts in which it arises and provide examples of the phenomenon.</p></li>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lisp"><code class="sourceCode commonlisp"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>( <span class="kw">defvar</span><span class="fu"> x </span><span class="dv">1</span> )</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>( <span class="kw">defun</span><span class="fu"> g</span>(z) (<span class="op">+</span> x z) )</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>( <span class="kw">defun</span><span class="fu"> f</span>(y)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a> (<span class="op">+</span> (g <span class="dv">1</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    ( <span class="kw">let</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>       ( ( x (<span class="op">+</span> y <span class="dv">3</span>) ) )</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>       (</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>           g(<span class="op">+</span> y x)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>           ) ) ) )</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>( f <span class="dv">2</span> )</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode ml"><code class="sourceCode ocaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> x = <span class="dv">1</span> ;</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">fun</span> g(z) = x + z ;</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">fun</span> f(y)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>= g(<span class="dv">1</span>) +</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>     <span class="kw">val</span> x = y + <span class="dv">3</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">in</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>     g(y+x)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">end</span> ;</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>f(<span class="dv">2</span>) ;</span></code></pre></div>
+<p>What are their respective output values when run in their corresponding
+interpreters? Justify your answer, relating it to the concepts in the
+course.</p></li>
+<li><p>Give an overview of the LISP abstract machine (or execution model) and
+comment on its merits and drawbacks from the viewpoints of programming,
+compilation, execution, etc.</p></li>
+<li><p>Define the following parameter-passing mechanisms:
+pass-by-value,pass-by-reference, pass-by value/result, and pass-by-name.
+Briefly comment on their merits and drawbacks.</p></li>
+<li><p>What is aliasing in the context of programming languages? Explain the
+contexts in which it arises and provide examples of the phenomenon.</p></li>
 <li><p>As many exam questions as you would like me to mark.</p></li>
 </ol>
-<div id="refs" class="references">
-<div id="ref-mitchell2003concepts">
-<p>Mitchell, J.C., 2003. Concepts in programming languages. Cambridge University Press.</p>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-mitchell2003concepts" class="csl-entry" role="listitem">
+Mitchell, J.C., 2003. Concepts in programming languages. Cambridge University Press.
 </div>
 </div></div>
 
