@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41394820-3"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-41394820-3');
+        </script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="description" content="Mistral Contrastin's thought bubble,
+          blog, and personal revelations." />
+        <meta name="author" content="Mistral Contrastin" />
+        <title>Do disturb me | Haskell LSP Laboratory</title>
+        <link href="https://fonts.googleapis.com/css?family=Noto+Sans" rel="stylesheet" />
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+        <link rel="alternate" type="application/atom+xml" href="../atom.xml" />
+
+        <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png" />
+    </head>
+    <body>
+        <div id="header">
+            <div class="top-container">
+              <div id="logo">
+                  <a href="../">Do Disturb Me</a>
+              </div>
+              <div id="navigation">
+                  <a href="../archive.html">Blog</a>
+                  <a href="../teaching.html">Teaching</a>
+              </div>
+            </div>
+            <div id="mandelbrot"></div>
+        </div>
+
+        <div id="content">
+            <div class="info">
+  Posted on September 30, 2023
+  
+  
+  by Mistral Contrastin
+</div>
+
+<h1>Haskell LSP Laboratory</h1>
+
+
+<p class="in-which">In which we set up the simplest VSCode extension in TypeScript and language server protocol (LSP) server in Haskell to experiment with IDEs.</p>
+
+
+<div class="post"><p>You know Haskell. You know type theory. You know formal methods. You have the
+best ideas to transform the way people write and understand code. All you need
+is a simple setup to test your ideas. This post provides exactly that.</p>
+<p>Recently, <a href="2023-08-24-Goto-Assignment.html">I tried to improve on local code navigation
+experience</a>. The idea and the
+algorithm were all well and clear but I didn’t know the first thing about
+integrating my ideas within an IDE. I knew LSP is <em>the</em> modern standard for it,
+so it was high time I learnt how to set it up with Haskell.</p>
+<p>I distilled a basic setup in <a href="https://github.com/madgen/lsp-lab">this
+repo</a>, so that you can experiment
+with your developer productivity ideas right away. I implemented some toy hover
+functionality for demonstration purposes:</p>
+<figure>
+<img src="../images/lsp-lab/hover-demo-fast.gif" alt="VSCode hover showing word length" />
+<figcaption aria-hidden="true">VSCode hover showing word length</figcaption>
+</figure>
+<p>The rest of this post reviews the basics of LSP (skip if you’re already
+comfortable with it) and discuss the setup so that you can adapt it to your
+needs.</p>
+<h2 id="lsp-overview">LSP Overview</h2>
+<p>LSP is to editors, what LLVM is to compilers. It provides a common ground so
+that language services can remain agnostic to IDEs and IDEs can remain agnostic
+to language services. In short, it realises the following diagram:</p>
+<pre><code>  VSCode +---&gt; +-----+ +---&gt; Haskell services implemented in Haskell
+               |     |
+     Vim +---&gt; | LSP | +---&gt; OCaml services implemented in TypeScript
+               |     |
+   Emacs +---&gt; +-----+ +---&gt; Java services implemented in C</code></pre>
+<p>The protocol is exhaustively documented
+<a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/">here</a>
+and <a href="https://code.visualstudio.com/api/get-started/your-first-extension">this starter
+guide</a> is
+helpful.</p>
+<p>LSP is implemented with a client-server architecture. Each IDE needs a separate
+client, so clients are best kept thin. The server does the heavy lifting of
+providing language services and is shared across IDEs.</p>
+<p>The client is there to tell the IDE under which conditions, the language
+services should be in effect (e.g., when the filetype is set to a particular
+language) and to provide interactions &amp; UI elements (e.g., actions through
+keyboard shortcuts, commands in a dropdown menu, configurations for services).</p>
+<p>The server implements the analysis needed to provide language services, e.g.,
+hovering on a particular element, going to definition or references, and
+executing bespoke commands.</p>
+<p>Clients don’t need to know which language services are provided by servers in
+advance. For example, when a server declares and implements hover
+functionality, the IDE picks up on it without the client implementation
+manifesting hovering. This is neat as you don’t have to update every client
+every time you add some common functionality.</p>
+<h2 id="the-setup">The setup</h2>
+<p>I placed the client and server in the same directory for convenience. The
+overall file structure is as follows:</p>
+<pre><code>lsp-lab
+├── README.md
+├── client
+│   ├── README.md
+│   ├── package-lock.json
+│   ├── package.json     -- Extension manifest
+│   ├── src
+│   │   └── extension.ts -- Extension entry
+│   └── tsconfig.json
+└── server
+    ├── LICENSE
+    ├── README.md
+    ├── Setup.hs
+    ├── app
+    │   └── Main.hs      -- LSP server entry
+    ├── lsp-lab-server.cabal
+    ├── package.yaml
+    ├── src
+    │   └── Lib.hs
+    ├── stack.yaml
+    └── stack.yaml.lock</code></pre>
+<p>The client source files are bootstrapped with <code>yo code</code> and the Haskell files
+are bootstrapped with <code>stack new</code>.</p>
+<p>Among these files, we discuss three that contain most of the functionality for
+the extension.</p>
+<ul>
+<li><code>client/package.json</code>: declares which UI/UX elements the extension
+<em>contributes</em> and the event to <em>activate</em> the extension.</li>
+<li><code>client/src/extension.ts</code>: entry point to the extension. It finds and
+connects to the LSP server.</li>
+<li><code>server/app/Main.hs</code>: entry point to the hover functionality. It interprets
+the arguments passed through LSP messages, computes what to show on hover,
+and sends back a response to the client.</li>
+</ul>
+<h3 id="package.json"><code>package.json</code></h3>
+<p>This is the manifest of the extension akin to a <code>.cabal</code> or <code>package.yaml</code> file
+in Haskell projects. It holds metadata and declares dependencies, but also
+determines when the extension should be in effect, and what it contributes to
+the IDE, (e.g., a custom command the user can invoke, a configuration box, a
+language the IDE should list). See <a href="https://code.visualstudio.com/api/references/contribution-points">the wide range of things an extension can
+contribute</a>.</p>
+<p>In our case, we contribute a brand new language with the name <code>LSPLab</code> and a
+file extension <code>.lsp-lab</code>. This causes files with the given extension to be
+recognised as <code>LSPLab</code> files. When the file doesn’t end with <code>.lsp-lab</code>, a user
+can still select the language from a dropdown menu that includes <code>LSPLab</code>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="er">&quot;contributes&quot;:</span> <span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;languages&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;id&quot;</span><span class="fu">:</span> <span class="st">&quot;LSPLab&quot;</span><span class="fu">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;extensions&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;.lsp-lab&quot;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      <span class="ot">]</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Next, we declare when to activate the extension (e.g., when a particular
+language is set for the open file, when VSCode starts up). See <a href="https://code.visualstudio.com/api/references/activation-events">the full list
+of activation
+events</a>.</p>
+<p>We want our extension to be active when the language is set to or detected as
+<code>LSPLab</code>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="er">&quot;activationEvents&quot;:</span> <span class="ot">[</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;onLanguage:LSPLab&quot;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="ot">]</span></span></code></pre></div>
+<h3 id="extension.ts"><code>extension.ts</code></h3>
+<p>This file is the entry point to the extension. We need to define <code>activate</code> and
+<code>deactivate</code> functions. In the case of a language server, these should handle
+LSP-server connections.</p>
+<p>At a high level, we define <code>ServerOptions</code> &amp; <code>LanguageClientOptions</code>, create a
+new <code>LanguageClient</code> object, and start it. We use the <code>vscode-languageclient</code>
+library (having declared it in <code>package.json</code> and run <code>npm install</code>).</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> serverOptions<span class="op">:</span> ServerOptions <span class="op">=</span> {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  run<span class="op">:</span> {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    command<span class="op">:</span> execPath<span class="op">,</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    transport<span class="op">:</span> TransportKind<span class="op">.</span><span class="at">stdio</span><span class="op">,</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    args<span class="op">:</span> []<span class="op">,</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Same but for the debug key</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> clientOptions<span class="op">:</span> LanguageClientOptions <span class="op">=</span> {</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  documentSelector<span class="op">:</span> [{ scheme<span class="op">:</span> <span class="st">'file'</span><span class="op">,</span> language<span class="op">:</span> <span class="st">'LSPLab'</span> }]<span class="op">,</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>client <span class="op">=</span> <span class="kw">new</span> <span class="fu">LanguageClient</span>(</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">'lsp-lab-client'</span><span class="op">,</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>  <span class="st">'LSP Laboratory'</span><span class="op">,</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  serverOptions<span class="op">,</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>  clientOptions</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>client<span class="op">.</span><span class="fu">start</span>()<span class="op">;</span></span></code></pre></div>
+<p>To activate the extension, we tell the client how to find and connect to the
+LSP server. There are a number of ways of accomplishing this task. One can</p>
+<ul>
+<li>execute a shell command to start the server and communicate;</li>
+<li>do IPC calls (if the server is implemented in TypeScript or JavaScript);</li>
+<li>or communicate through a socket.</li>
+</ul>
+<p>Above in <code>serverOptions</code>, we stick to executing a shell command. To do so, the
+client must locate the binary for the server. A common solution is for the
+extension to contribute a configuration box to specify where the binary is. I
+don’t like that solution for experimentation because my Haskell binaries are
+deep inside <code>.stack-works</code> and include version numbers in the path that are
+subject to change. Instead, I exploit the directory structure and search for
+the binary:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>stdout <span class="op">=</span> <span class="fu">execSync</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="vs">`find </span><span class="sc">${</span><span class="bu">__dirname</span><span class="sc">}</span><span class="vs">/../../server -iname lsp-lab-server-exe -type file | tail -n1`</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>execPath <span class="op">=</span> path<span class="op">.</span><span class="fu">normalize</span>(stdout<span class="op">.</span><span class="fu">toString</span>(<span class="st">'utf-8'</span>)<span class="op">.</span><span class="fu">replace</span>(<span class="ss">/</span><span class="sc">\n+$</span><span class="ss">/</span><span class="op">,</span> <span class="st">''</span>))<span class="op">;</span></span></code></pre></div>
+<p>Needless to say this is not a setup that you can deploy, but it is convenient
+for experimentation.</p>
+<p>Finally, to deactivate, if there’s a client running, we stop it:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (client) {</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  client<span class="op">.</span><span class="fu">stop</span>()<span class="op">;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="main.hs"><code>Main.hs</code></h3>
+<p>We covered everything on the client-side, time to look at the server. The <code>lsp</code>
+Haskell library makes it easy and type-safe to create LSP servers.</p>
+<p>When the server binary runs it just starts the server according to the given
+definition and waits for LSP messages.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ot">main ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>main <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  exitCode <span class="ot">&lt;-</span> runServer serverDef</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  exitWith <span class="op">$</span> <span class="dt">ExitFailure</span> exitCode</span></code></pre></div>
+<p>The top-level server definition has the simplest values one could provide for
+each field (which I copied and pasted from <a href="https://github.com/haskell/lsp/blob/master/lsp/example/Simple.hs">this <code>lsp</code> library
+example</a>)
+except for <code>staticHandlers</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ot">serverDef ::</span> <span class="dt">ServerDefinition</span> ()</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>serverDef <span class="ot">=</span> <span class="dt">ServerDefinition</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  { onConfigurationChange <span class="ot">=</span> <span class="fu">const</span> <span class="op">$</span> <span class="fu">const</span> <span class="op">$</span> <span class="dt">Right</span> ()</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  , defaultConfig <span class="ot">=</span> ()</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  , doInitialize <span class="ot">=</span> \env _req <span class="ot">-&gt;</span> <span class="fu">pure</span> <span class="op">$</span> <span class="dt">Right</span> env</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  , staticHandlers <span class="ot">=</span> handlers</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  , interpretHandler <span class="ot">=</span> \env <span class="ot">-&gt;</span> <span class="dt">Iso</span> (runLspT env) liftIO</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  , options <span class="ot">=</span> defaultOptions</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
+<p>The <code>staticHandlers</code> are set to <code>handlers</code> which explain how to respond to LSP
+requests from clients. Of particular interest to us, we respond to hover queries:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>requestHandler <span class="dt">SMethod_TextDocumentHover</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="op">$</span> \req responder <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> <span class="dt">TRequestMessage</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>        _</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>        _</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        _</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>        (<span class="dt">HoverParams</span> (<span class="dt">TextDocumentIdentifier</span> uri) pos _workDone) <span class="ot">=</span> req</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> path <span class="ot">=</span> fromJust <span class="op">$</span> uriToFilePath uri</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  contents <span class="ot">&lt;-</span> liftIO <span class="op">$</span> TIO.readFile path</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> <span class="dt">Position</span> line col <span class="ot">=</span> pos</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> findWordAndBoundaries</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    contents</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>    (<span class="fu">fromIntegral</span> line)</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>    (<span class="fu">fromIntegral</span> col) <span class="kw">of</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Just</span> (word, leftCol, rightCol) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> ms <span class="ot">=</span> mkMarkdown</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>            <span class="op">$</span> <span class="st">&quot;length('&quot;</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>            <span class="op">&lt;&gt;</span> word</span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>            <span class="op">&lt;&gt;</span> <span class="st">&quot;') = &quot;</span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>            <span class="op">&lt;&gt;</span> fromString (<span class="fu">show</span> (T.length word))</span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> <span class="fu">range</span> <span class="ot">=</span> <span class="dt">Range</span></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>            (<span class="dt">Position</span> line <span class="op">$</span> <span class="fu">fromIntegral</span> leftCol)</span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>            (<span class="dt">Position</span> line <span class="op">$</span> <span class="fu">fromIntegral</span> rightCol)</span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> rsp <span class="ot">=</span> <span class="dt">Hover</span> (<span class="dt">InL</span> ms) (<span class="dt">Just</span> <span class="fu">range</span>)</span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a>      responder (<span class="dt">Right</span> <span class="op">$</span> <span class="dt">InL</span> rsp)</span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Nothing</span> <span class="ot">-&gt;</span> responder (<span class="dt">Right</span> <span class="op">$</span> <span class="dt">InR</span> <span class="dt">Null</span>)]</span></code></pre></div>
+<p>The request handler for a particular LSP method (in this case
+<a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover"><code>textDocument/hover</code></a>)
+is a lambda with a parameter <code>req</code> that gives us the request arguments and a
+callback <code>responder</code> to send back our response.</p>
+<p>In this case, the parameters are an identifier for the file, a position in that
+file, and a parameter to report on
+<a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workDoneProgressParams">progress</a>
+(which is a cool piece of UX consideration that we ignore here 😛).</p>
+<p>The implementation uses the <code>lsp</code> library to convert the <code>uri</code> into a path
+Haskell understands, reads that file at the path, identify the boundaries of
+the word, measure its length, and compose a markdown response to be shown on
+text hover.</p>
+<p>The implementation itself is not particularly exciting and is omitted, but here
+are few points common to all <code>lsp</code> users:</p>
+<ul>
+<li>positions are zero-based;</li>
+<li>the constructor names are faithful to the spec which makes it easier to
+search for things;</li>
+<li>there are plenty uses of <code>InL</code> and <code>InR</code> constructors for <a href="https://github.com/haskell/lsp/blob/9b1d6ba2c6cad515485e034f3bb175e02cd85247/lsp-types/src/Language/LSP/Protocol/Types/Common.hs#L84-L89">the type
+constructor
+<code>|?</code></a>
+because the specification defines possible inputs and outputs in any given
+position through unnamed unions. These two constructors handle those
+uniformly.</li>
+</ul>
+<h2 id="wrap-up">Wrap up</h2>
+<p>We explored a simple setup to experiment with IDE features in VSCode using the
+Haskell <code>lsp</code> library. We discussed the interesting parts of the setup to
+facilitate customisation so that you can realise more exciting ideas.</p>
+<p>I hope this saves you a couple of hours when you’re getting started.</p></div>
+
+<script>
+var figures =
+  Array.prototype.slice.call(document.getElementsByClassName("figure"),0)
+  .concat(
+    Array.prototype.slice.call(document.getElementsByTagName("figure"),0));
+
+for (var i = 0; i < figures.length; i++) {
+  var figure = figures[i];
+  var imgs = figure.getElementsByTagName("img");
+  if (imgs.length > 0) {
+    classes = imgs[0].classList;
+    for (var j = 0; j < classes.length; j++) {
+      figure.classList.add(classes[j] + "-figure");
+    }
+  }
+}
+</script>
+
+        </div>
+        <div id="footer">
+          <div class="top-container">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+          </div>
+        </div>
+    </body>
+</html>

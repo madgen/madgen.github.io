@@ -10,8 +10,16 @@
         <email>madgenhetic@gmail.com</email>
         
     </author>
-    <updated>2023-08-24T00:00:00Z</updated>
+    <updated>2023-09-30T00:00:00Z</updated>
     <entry>
+    <title>Haskell LSP Laboratory</title>
+    <link href="https://dodisturb.me/posts/2023-09-30-Haskell-LSP-Laboratory.html" />
+    <id>https://dodisturb.me/posts/2023-09-30-Haskell-LSP-Laboratory.html</id>
+    <published>true</published>
+    <updated>2023-09-30T00:00:00Z</updated>
+    <summary type="html"><![CDATA[In which we set up the simplest VSCode extension in TypeScript and language server protocol (LSP) server in Haskell to experiment with IDEs.]]></summary>
+</entry>
+<entry>
     <title>Goto Assignment: A better local Goto Definition</title>
     <link href="https://dodisturb.me/posts/2023-08-24-Goto-Assignment.html" />
     <id>https://dodisturb.me/posts/2023-08-24-Goto-Assignment.html</id>
